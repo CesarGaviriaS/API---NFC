@@ -91,6 +91,20 @@
         .history-item.entrada .tipo {
             background-color: #d63384;
         }
+        #last-detected-item-content .element-item{
+
+            display: flex;
+            align-items: center;
+            gap:10px;
+        }
+        #last-detected-item-content .element-image{
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #dee2e6;
+        }
+
 
 </style>
 
@@ -156,7 +170,7 @@
                     </div>
                 </div>
             </div>
-
+            
             <!-- BOTONES DE CONTROL -->
             <div class="d-flex justify-content-center gap-3 mt-4">
                 <button id="btnEjecutar" class="btn btn-primary px-4" disabled>
@@ -166,6 +180,16 @@
                     <i class="bi bi-x-circle me-1"></i> Cancelar
                 </button>
             </div>
+
+            <div class="card shadow-sm mt-3">
+                <div class="card-header bg-light text-center fw-bold text-primary">
+                    último elemento detectado
+                </div>
+                <div class="card-body" id="last-detected-item-content">
+                    Esperando escaneo.....
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
