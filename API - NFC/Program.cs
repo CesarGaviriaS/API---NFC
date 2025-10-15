@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity; // <-- AÑADIDO: Necesario para Identity
 using Microsoft.AspNetCore.Authentication.Cookies; // <-- AÑADIDO: Necesario para la autenticación por Cookies
 
 var builder = WebApplication.CreateBuilder(args);
-
+//Comentario x de persona x
 // --- SECCIÓN DE SERVICIOS ---
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
