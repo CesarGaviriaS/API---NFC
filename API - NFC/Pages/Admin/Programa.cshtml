@@ -5,57 +5,146 @@
     ViewData["Title"] = "Gestión de Programas";
 }
 
+<style>
+    .badge-role {
+        font-size: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+        .table tbody tr:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+</style>
+
 <div class="main-content">
     <partial name="_AdminSubNav" />
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>@ViewData["Title"]</h1>
-        <button type="button" class="btn btn-success" onclick="abrirModal()">
-            <i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo
-        </button>
+
+    <!-- Header con título y botón -->
+    <div class="card border-0 shadow-sm mb-3 bg-success text-white">
+        <div class="card-body py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0"><i class="bi bi-journal-code me-2"></i>@ViewData["Title"]</h3>
+                </div>
+                <button type="button" class="btn btn-light" onclick="abrirModal()">
+                    <i class="bi bi-plus-circle-fill me-2"></i>Crear Programa
+                </button>
+            </div>
+        </div>
     </div>
 
-    <table class="table table-striped table-hover shadow-sm">
-        <thead class="table-success">
-            <tr>
-                <th>ID</th>
-                <th>Código</th>
-                <th>Nombre del Programa</th>
-                <th>Nivel</th>
-                <th style="width: 15%;">Acciones</th>
-            </tr>
-        </thead>
-        <tbody id="tablaDatos">
-        </tbody>
-    </table>
+    <!-- Filtros compactos -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <input type="text"
+                           class="form-control form-control-sm"
+                           id="searchInput"
+                           placeholder="🔍 Buscar por nombre o código...">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select form-select-sm" id="nivelFilter">
+                        <option value="">Todos los niveles</option>
+                        <!-- Se llenará dinámicamente -->
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </button>
+                </div>
+                <div class="col-md-1 text-center">
+                    <span class="badge bg-success py-2 px-3" id="resultadosContador">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla moderna -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-success">
+                        <tr>
+                            <th class="py-3"><i class="bi bi-hash me-1"></i>ID</th>
+                            <th class="py-3"><i class="bi bi-code-square me-1"></i>Código</th>
+                            <th class="py-3"><i class="bi bi-journal-text me-1"></i>Nombre del Programa</th>
+                            <th class="py-3"><i class="bi bi-award me-1"></i>Nivel</th>
+                            <th class="py-3 text-center" style="width: 15%;">
+                                <i class="bi bi-gear-fill me-1"></i>Acciones
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaDatos">
+                        <!-- Se llenará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado vacío -->
+            <div id="emptyState" class="text-center py-5 d-none">
+                <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
+                <p class="text-muted mt-3 fs-5">No se encontraron programas</p>
+                <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
+            </div>
+        </div>
+    </div>
 </div>
 
+<!-- Modal para crear/editar -->
 <div class="modal fade" id="editorModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitulo"></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalTitulo">
+                    <i class="bi bi-journal-code me-2"></i>Programa
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4">
                 <form id="formularioEditor">
                     <input type="hidden" id="idInput">
                     <div class="mb-3">
-                        <label for="nombreInput" class="form-label">Nombre del Programa</label>
-                        <input type="text" class="form-control" id="nombreInput" required>
+                        <label for="nombreInput" class="form-label fw-semibold">
+                            <i class="bi bi-journal-text me-1"></i>Nombre del Programa
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="nombreInput" required>
                     </div>
                     <div class="mb-3">
-                        <label for="codigoInput" class="form-label">Código</label>
-                        <input type="text" class="form-control" id="codigoInput" required>
+                        <label for="codigoInput" class="form-label fw-semibold">
+                            <i class="bi bi-code-square me-1"></i>Código
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="codigoInput" required>
                     </div>
                     <div class="mb-3">
-                        <label for="nivelInput" class="form-label">Nivel de Formación</label>
-                        <input type="text" class="form-control" id="nivelInput">
+                        <label for="nivelInput" class="form-label fw-semibold">
+                            <i class="bi bi-award me-1"></i>Nivel de Formación
+                        </label>
+                        <select class="form-select form-select-lg" id="nivelInput" required>
+                            <option value="">Seleccione un nivel...</option>
+                            <option value="Técnico">Técnico</option>
+                            <option value="Tecnólogo">Tecnólogo</option>
+                            <option value="Profesional">Profesional</option>
+                            <option value="Especialización">Especialización</option>
+                        </select>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-success" onclick="guardar()">Guardar Cambios</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+                <button type="button" class="btn btn-success" onclick="guardar()">
+                    <i class="bi bi-check-circle me-1"></i>Guardar Cambios
+                </button>
             </div>
         </div>
     </div>
@@ -63,4 +152,36 @@
 
 @section Scripts {
     <script src="~/js/admin/programa.js"></script>
+    <script>
+        // Función para limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('nivelFilter').value = '';
+            if (typeof aplicarFiltros === 'function') {
+                aplicarFiltros();
+            }
+        }
+
+        // Event listeners para filtros en tiempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const nivelFilter = document.getElementById('nivelFilter');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+
+            if (nivelFilter) {
+                nivelFilter.addEventListener('change', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+        });
+    </script>
 }

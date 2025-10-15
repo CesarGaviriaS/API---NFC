@@ -5,113 +5,264 @@
     ViewData["Title"] = "Gestión de Elementos";
 }
 
+<style>
+    .badge-role {
+        font-size: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+        .table tbody tr:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+    .nav-tabs .nav-link {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+    }
+</style>
+
 <div class="main-content">
     <partial name="_AdminSubNav" />
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>@ViewData["Title"]</h1>
-        <button type="button" class="btn btn-success" onclick="abrirModal()">
-            <i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Elemento
-        </button>
+    <!-- Header con título y botón -->
+    <div class="card border-0 shadow-sm mb-3 bg-success text-white">
+        <div class="card-body py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0"><i class="bi bi-box-seam me-2"></i>@ViewData["Title"]</h3>
+                </div>
+                <button type="button" class="btn btn-light" onclick="abrirModal()">
+                    <i class="bi bi-plus-circle-fill me-2"></i>Crear Elemento
+                </button>
+            </div>
+        </div>
     </div>
 
-    <table class="table table-striped table-hover shadow-sm">
-        <thead class="table-success">
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Marca / Serial</th>
-                <th>Tipo</th>
-                <th>Propietario</th>
-                <th>Características</th>
-                <th style="width: 15%;">Acciones</th>
-            </tr>
-        </thead>
-        <tbody id="tablaDatos"></tbody>
-    </table>
+    <!-- Filtros compactos -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3">
+                    <input type="text"
+                           class="form-control form-control-sm"
+                           id="searchInput"
+                           placeholder="🔍 Buscar elemento...">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="tipoFilter">
+                        <option value="">Todos los tipos</option>
+                        <!-- Se llenará dinámicamente -->
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="propietarioFilter">
+                        <option value="">Todos los propietarios</option>
+                        <!-- Se llenará dinámicamente -->
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="nfcFilter">
+                        <option value="">Todos (NFC)</option>
+                        <option value="true">Con NFC</option>
+                        <option value="false">Sin NFC</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </button>
+                </div>
+                <div class="col-md-1 text-center">
+                    <span class="badge bg-success py-2 px-3" id="resultadosContador">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla moderna -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-success">
+                        <tr>
+                            <th class="py-3"><i class="bi bi-hash me-1"></i>ID</th>
+                            <th class="py-3"><i class="bi bi-box me-1"></i>Nombre</th>
+                            <th class="py-3"><i class="bi bi-upc-scan me-1"></i>Marca / Serial</th>
+                            <th class="py-3"><i class="bi bi-tag me-1"></i>Tipo</th>
+                            <th class="py-3"><i class="bi bi-person me-1"></i>Propietario</th>
+                            <th class="py-3"><i class="bi bi-wifi me-1"></i>NFC</th>
+                            <th class="py-3 text-center" style="width: 12%;">
+                                <i class="bi bi-gear-fill me-1"></i>Acciones
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaDatos">
+                        <!-- Se llenará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado vacío -->
+            <div id="emptyState" class="text-center py-5 d-none">
+                <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
+                <p class="text-muted mt-3 fs-5">No se encontraron elementos</p>
+                <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal para Crear/Editar Elemento -->
 <div class="modal fade" id="editorModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitulo"></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalTitulo">
+                    <i class="bi bi-box-seam me-2"></i>Elemento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4">
                 <form id="formularioEditor">
                     <input type="hidden" id="idInput">
+
+                    <!-- Información Básica -->
+                    <h6 class="text-success mb-3">
+                        <i class="bi bi-info-circle-fill me-2"></i>Información Básica
+                    </h6>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="nombreInput" class="form-label">Nombre del Elemento</label>
+                            <label for="nombreInput" class="form-label fw-semibold">
+                                <i class="bi bi-box me-1"></i>Nombre del Elemento
+                            </label>
                             <input type="text" class="form-control" id="nombreInput" required>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="marcaInput" class="form-label">Marca</label>
+                        <div class="col-md-3 mb-3">
+                            <label for="marcaInput" class="form-label fw-semibold">
+                                <i class="bi bi-award me-1"></i>Marca
+                            </label>
                             <input type="text" class="form-control" id="marcaInput">
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="serialInput" class="form-label">Serial</label>
+                        <div class="col-md-3 mb-3">
+                            <label for="serialInput" class="form-label fw-semibold">
+                                <i class="bi bi-upc-scan me-1"></i>Serial
+                            </label>
                             <input type="text" class="form-control" id="serialInput">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="tieneNFCInput" class="form-label">Tiene Tag NFC</label>
-                            <select id="tieneNFCInput" class="form-select">
-                                <option value="true">Sí</option>
-                                <option value="false">No</option>
-                            </select>
-                        </div>
                     </div>
+
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="tipoElementoIdInput" class="form-label">Tipo de Elemento</label>
+                        <div class="col-md-4 mb-3">
+                            <label for="tipoElementoIdInput" class="form-label fw-semibold">
+                                <i class="bi bi-tag me-1"></i>Tipo de Elemento
+                            </label>
                             <select id="tipoElementoIdInput" class="form-select" required></select>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="propietarioIdInput" class="form-label">Propietario</label>
+                        <div class="col-md-4 mb-3">
+                            <label for="tieneNFCInput" class="form-label fw-semibold">
+                                <i class="bi bi-wifi me-1"></i>Tiene Tag NFC
+                            </label>
+                            <select id="tieneNFCInput" class="form-select">
+                                <option value="true">✓ Sí, tiene NFC</option>
+                                <option value="false">✗ No tiene NFC</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="imageUrlInput" class="form-label fw-semibold">
+                                <i class="bi bi-image me-1"></i>URL de la Imagen
+                            </label>
+                            <input type="text" class="form-control" id="imageUrlInput" placeholder="https://...">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Propietario -->
+                    <h6 class="text-success mb-3">
+                        <i class="bi bi-person-fill me-2"></i>Propietario
+                    </h6>
+                    <div class="row">
+                        <div class="col-12 mb-3">
                             <ul class="nav nav-tabs nav-fill" id="propietarioTab" role="tablist">
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="select-tab" data-bs-toggle="tab" data-bs-target="#select-pane" type="button" role="tab">Seleccionar de Lista</button>
+                                    <button class="nav-link active" id="select-tab" data-bs-toggle="tab" data-bs-target="#select-pane" type="button" role="tab">
+                                        <i class="bi bi-list-ul me-1"></i>Seleccionar de Lista
+                                    </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#document-pane" type="button" role="tab">Buscar por Documento</button>
+                                    <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#document-pane" type="button" role="tab">
+                                        <i class="bi bi-search me-1"></i>Buscar por Documento
+                                    </button>
                                 </li>
                             </ul>
-                            <div class="tab-content border border-top-0 p-2" id="propietarioTabContent">
+                            <div class="tab-content border border-top-0 rounded-bottom p-3" id="propietarioTabContent">
                                 <div class="tab-pane fade show active" id="select-pane" role="tabpanel">
                                     <select id="propietarioIdInput" class="form-select"></select>
                                 </div>
                                 <div class="tab-pane fade" id="document-pane" role="tabpanel">
-                                    <input type="text" class="form-control" id="propietarioDocInput" placeholder="Ingrese el documento y presione Enter...">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                                        <input type="text"
+                                               class="form-control"
+                                               id="propietarioDocInput"
+                                               placeholder="Ingrese el documento y presione Enter...">
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="caracteristicasTecnicasInput" class="form-label">Características Técnicas</label>
-                        <textarea class="form-control" id="caracteristicasTecnicasInput" rows="2"></textarea>
+
+                    <hr class="my-4">
+
+                    <!-- Características -->
+                    <h6 class="text-success mb-3">
+                        <i class="bi bi-list-stars me-2"></i>Características y Detalles
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="caracteristicasTecnicasInput" class="form-label fw-semibold">
+                                <i class="bi bi-cpu me-1"></i>Características Técnicas
+                            </label>
+                            <textarea class="form-control"
+                                      id="caracteristicasTecnicasInput"
+                                      rows="3"
+                                      placeholder="Ej: Procesador, RAM, Almacenamiento..."></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="caracteristicasFisicasInput" class="form-label fw-semibold">
+                                <i class="bi bi-rulers me-1"></i>Características Físicas
+                            </label>
+                            <textarea class="form-control"
+                                      id="caracteristicasFisicasInput"
+                                      rows="3"
+                                      placeholder="Ej: Color, peso, dimensiones..."></textarea>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label for="caracteristicasFisicasInput" class="form-label">Características Físicas</label>
-                        <textarea class="form-control" id="caracteristicasFisicasInput" rows="2"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="detallesInput" class="form-label">Detalles Adicionales</label>
-                        <textarea class="form-control" id="detallesInput" rows="2"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="imageUrlInput" class="form-label">URL de la Imagen</label>
-                        <input type="text" class="form-control" id="imageUrlInput">
+                        <label for="detallesInput" class="form-label fw-semibold">
+                            <i class="bi bi-journal-text me-1"></i>Detalles Adicionales
+                        </label>
+                        <textarea class="form-control"
+                                  id="detallesInput"
+                                  rows="2"
+                                  placeholder="Cualquier información adicional relevante..."></textarea>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-success" onclick="guardar()">Guardar Cambios</button>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+                <button type="button" class="btn btn-success" onclick="guardar()">
+                    <i class="bi bi-check-circle me-1"></i>Guardar Elemento
+                </button>
             </div>
         </div>
     </div>
@@ -119,4 +270,56 @@
 
 @section Scripts {
     <script src="~/js/admin/elemento.js"></script>
+    <script>
+        // Función para limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('tipoFilter').value = '';
+            document.getElementById('propietarioFilter').value = '';
+            document.getElementById('nfcFilter').value = '';
+            if (typeof aplicarFiltros === 'function') {
+                aplicarFiltros();
+            }
+        }
+
+        // Event listeners para filtros en tiempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const tipoFilter = document.getElementById('tipoFilter');
+            const propietarioFilter = document.getElementById('propietarioFilter');
+            const nfcFilter = document.getElementById('nfcFilter');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+
+            if (tipoFilter) {
+                tipoFilter.addEventListener('change', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+
+            if (propietarioFilter) {
+                propietarioFilter.addEventListener('change', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+
+            if (nfcFilter) {
+                nfcFilter.addEventListener('change', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+        });
+    </script>
 }
