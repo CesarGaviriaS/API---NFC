@@ -1,0 +1,108 @@
+﻿@page
+@model API___NFC.Pages.Admin.UsuariosModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Gestión de Usuarios";
+}
+
+<div class="main-content">
+    <partial name="_AdminSubNav" />
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>@ViewData["Title"]</h1>
+        <!-- Botón con desplegable para elegir qué tipo de usuario crear -->
+        <div class="btn-group">
+            <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Usuario
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="abrirModal('aprendiz')">Aprendiz</a></li>
+                <li><a class="dropdown-item" href="#" onclick="abrirModal('funcionario')">Funcionario</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <table class="table table-striped table-hover shadow-sm">
+        <thead class="table-success">
+            <tr>
+                <th>ID Usuario</th>
+                <th>Rol</th>
+                <th>Nombre</th>
+                <th>Documento</th>
+                <th>Ficha / Detalle</th>
+                <th style="width: 15%;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tablaDatos"></tbody>
+    </table>
+</div>
+
+<!-- ========= MODAL PARA APRENDIZ ========= -->
+<div class="modal fade" id="aprendizModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="aprendizModalTitulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="aprendizForm">
+                    <input type="hidden" id="aprendizIdInput">
+                    <div class="mb-3">
+                        <label for="aprendizNombreInput" class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" id="aprendizNombreInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="aprendizDocumentoInput" class="form-label">Documento</label>
+                        <input type="text" class="form-control" id="aprendizDocumentoInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="aprendizFichaIdInput" class="form-label">Ficha</label>
+                        <select id="aprendizFichaIdInput" class="form-select" required></select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" onclick="guardar('aprendiz')">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========= MODAL PARA FUNCIONARIO ========= -->
+<div class="modal fade" id="funcionarioModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="funcionarioModalTitulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="funcionarioForm">
+                    <input type="hidden" id="funcionarioIdInput">
+                    <div class="mb-3">
+                        <label for="funcionarioNombreInput" class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" id="funcionarioNombreInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="funcionarioDocumentoInput" class="form-label">Documento</label>
+                        <input type="text" class="form-control" id="funcionarioDocumentoInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="funcionarioDetalleInput" class="form-label">Detalle (Cargo, etc.)</label>
+                        <input type="text" class="form-control" id="funcionarioDetalleInput">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" onclick="guardar('funcionario')">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/admin/usuarios.js"></script>
+}

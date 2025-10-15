@@ -1,0 +1,235 @@
+﻿@page
+@{
+    ViewData["Title"] = "Gestión de Tags NFC";
+    Layout = "_AdminLayout";
+}
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Columna Principal de Acciones -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-id-card-alt me-2"></i>Grabación y Limpieza de Tags</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Sección de Escritura -->
+                    <div class="mb-4 p-3 border rounded">
+                        <h5 class="mb-3">1. Grabar un Tag</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="selectUsuario" class="form-label">Seleccionar Usuario</label>
+                                <select id="selectUsuario" class="form-select">
+                                    <option selected disabled>Cargando usuarios...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="selectElemento" class="form-label">Seleccionar Elemento</label>
+                                <select id="selectElemento" class="form-select" disabled>
+                                    <option selected disabled>Primero seleccione un usuario</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="alert alert-light mt-3" role="alert">
+                            <strong>Datos a grabar:</strong> <span id="data-to-write-display" class="font-monospace text-primary">N/A</span>
+                        </div>
+                        <div class="d-grid">
+                            <button id="btnGrabar" class="btn btn-primary btn-lg" disabled>
+                                <i class="fas fa-save me-2"></i>Preparar para Grabar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Limpieza -->
+                    <div class="p-3 border rounded">
+                        <h5 class="mb-3">2. Otras Acciones</h5>
+                        <div class="d-grid">
+                            <button id="btnLimpiar" class="btn btn-danger">
+                                <i class="fas fa-eraser me-2"></i>Preparar para Limpiar Tag
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna de Estado y Lectura -->
+        <div class="col-lg-4">
+            <div class="card position-sticky" style="top: 1rem;">
+                <div class="card-header">
+                    <h5><i class="fas fa-satellite-dish me-2"></i>Estado del Lector</h5>
+                </div>
+                <div class="card-body">
+                    <div id="status-panel" class="alert alert-secondary text-center">
+                        <div id="status-message">Conectando con el agente...</div>
+                    </div>
+
+                    <h6 class="mt-4">Último Tag Leído</h6>
+                    <div id="last-read-panel" class="p-2 bg-light rounded">
+                        <p class="text-muted text-center small mb-0">No se ha leído ningún tag en esta sesión.</p>
+                    </div>
+                    <div class="d-grid mt-3">
+                        <button id="btnLeer" class="btn btn-info">
+                            <i class="fas fa-sync-alt me-2"></i>Activar Modo Lectura
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- URLs de la API ---
+            const getUsersUrl = '@Url.Action("GetAllUsers", "Gestion")';
+            const getElementsUrl = '@Url.Action("GetElementsByUser", "Gestion")';
+
+            // --- Referencias al DOM ---
+            const selectUsuario = document.getElementById('selectUsuario');
+            const selectElemento = document.getElementById('selectElemento');
+            const dataToWriteDisplay = document.getElementById('data-to-write-display');
+            const btnGrabar = document.getElementById('btnGrabar');
+            const btnLimpiar = document.getElementById('btnLimpiar');
+            const btnLeer = document.getElementById('btnLeer');
+            const statusPanel = document.getElementById('status-panel');
+            const statusMessage = document.getElementById('status-message');
+            const lastReadPanel = document.getElementById('last-read-panel');
+
+            // --- Lógica de la Interfaz ---
+            const updateStatus = (message, type = 'info') => {
+                const alertClasses = {
+                    info: 'alert-info',
+                    success: 'alert-success',
+                    error: 'alert-danger',
+                    warning: 'alert-warning'
+                };
+                statusPanel.className = `alert ${alertClasses[type]} text-center`;
+                statusMessage.innerHTML = message;
+            };
+
+            const loadUsers = async () => {
+                try {
+                    const response = await fetch(getUsersUrl);
+                    if (!response.ok) throw new Error('No se pudieron cargar los usuarios.');
+                    const users = await response.json();
+
+                    selectUsuario.innerHTML = '<option selected disabled>-- Seleccione un usuario --</option>';
+                    users.forEach(user => {
+                        const option = new Option(`${user.nombre} (ID: ${user.idUsuario})`, user.idUsuario);
+                        selectUsuario.add(option);
+                    });
+                } catch (error) {
+                    updateStatus(error.message, 'error');
+                }
+            };
+
+            const loadElements = async (userId) => {
+                selectElemento.innerHTML = '<option selected disabled>Cargando elementos...</option>';
+                selectElemento.disabled = true;
+                btnGrabar.disabled = true;
+
+                try {
+                    const response = await fetch(`${getElementsUrl}?idUsuario=${userId}`);
+                    if (!response.ok) throw new Error('No se pudieron cargar los elementos.');
+                    const elements = await response.json();
+
+                    selectElemento.innerHTML = '<option selected disabled>-- Seleccione un elemento --</option>';
+                    if (elements.length > 0) {
+                        elements.forEach(element => {
+                            const option = new Option(`${element.nombreElemento} (ID: ${element.idElemento})`, element.idElemento);
+                            selectElemento.add(option);
+                        });
+                        selectElemento.disabled = false;
+                    } else {
+                        selectElemento.innerHTML = '<option selected disabled>Este usuario no tiene elementos</option>';
+                    }
+                } catch (error) {
+                    updateStatus(error.message, 'error');
+                }
+            };
+
+            const updateDataToWrite = () => {
+                const userId = selectUsuario.value;
+                const elementId = selectElemento.value;
+
+                if (userId && elementId && userId !== '-- Seleccione un usuario --' && elementId !== '-- Seleccione un elemento --') {
+                    const dataString = `${userId},${elementId}`;
+                    dataToWriteDisplay.textContent = dataString;
+                    btnGrabar.disabled = false;
+                } else {
+                    dataToWriteDisplay.textContent = 'N/A';
+                    btnGrabar.disabled = true;
+                }
+            };
+
+            // --- Event Listeners ---
+            selectUsuario.addEventListener('change', () => {
+                const userId = selectUsuario.value;
+                loadElements(userId);
+                updateDataToWrite();
+            });
+
+            selectElemento.addEventListener('change', updateDataToWrite);
+
+            // --- Conexión y Lógica de SignalR ---
+            const connection = new signalR.HubConnectionBuilder().withUrl("/nfcHub").withAutomaticReconnect().build();
+
+            btnGrabar.addEventListener('click', () => {
+                const data = dataToWriteDisplay.textContent;
+                if (data && data !== 'N/A') {
+                    connection.invoke('SetAgentModeToWrite', data);
+                    updateStatus('Enviando solicitud de grabación al agente...', 'info');
+                }
+            });
+
+            btnLimpiar.addEventListener('click', () => {
+                connection.invoke('SetAgentModeToClean');
+                updateStatus('Enviando solicitud de limpieza al agente...', 'info');
+            });
+
+            btnLeer.addEventListener('click', () => {
+                connection.invoke('SetAgentModeToRead');
+                updateStatus('Agente en modo de Lectura Continua.', 'info');
+            });
+
+            // Handlers para mensajes desde el agente
+            connection.on('AgentStatusUpdate', (message, type) => {
+                updateStatus(message, type);
+            });
+
+            connection.on('OperationSuccess', (message, verifiedData) => {
+                updateStatus(message, 'success');
+                lastReadPanel.innerHTML = `<span class="font-monospace">${verifiedData || '(Tag Vacío)'}</span>`;
+            });
+
+            connection.on('OperationFailed', (errorMessage) => {
+                updateStatus(errorMessage, 'error');
+            });
+
+             connection.on("RecibirDatosTag", (tagData) => {
+                lastReadPanel.innerHTML = `Datos leídos: <span class="font-monospace text-success">${tagData}</span>`;
+            });
+
+            // Iniciar conexión y la página
+            async function start() {
+                try {
+                    await connection.start();
+                    updateStatus('Conectado al agente. Listo para operar.', 'success');
+                    loadUsers();
+                } catch (err) {
+                    console.error(err);
+                    updateStatus('Error de conexión con el agente.', 'error');
+                }
+            }
+
+            start();
+        });
+    </script>
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+}

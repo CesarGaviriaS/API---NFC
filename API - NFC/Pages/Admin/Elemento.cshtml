@@ -1,0 +1,122 @@
+﻿@page
+@model API___NFC.Pages.Admin.ElementoModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Gestión de Elementos";
+}
+
+<div class="main-content">
+    <partial name="_AdminSubNav" />
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>@ViewData["Title"]</h1>
+        <button type="button" class="btn btn-success" onclick="abrirModal()">
+            <i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Elemento
+        </button>
+    </div>
+
+    <table class="table table-striped table-hover shadow-sm">
+        <thead class="table-success">
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Marca / Serial</th>
+                <th>Tipo</th>
+                <th>Propietario</th>
+                <th>Características</th>
+                <th style="width: 15%;">Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tablaDatos"></tbody>
+    </table>
+</div>
+
+<!-- Modal para Crear/Editar Elemento -->
+<div class="modal fade" id="editorModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formularioEditor">
+                    <input type="hidden" id="idInput">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nombreInput" class="form-label">Nombre del Elemento</label>
+                            <input type="text" class="form-control" id="nombreInput" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="marcaInput" class="form-label">Marca</label>
+                            <input type="text" class="form-control" id="marcaInput">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="serialInput" class="form-label">Serial</label>
+                            <input type="text" class="form-control" id="serialInput">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="tieneNFCInput" class="form-label">Tiene Tag NFC</label>
+                            <select id="tieneNFCInput" class="form-select">
+                                <option value="true">Sí</option>
+                                <option value="false">No</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="tipoElementoIdInput" class="form-label">Tipo de Elemento</label>
+                            <select id="tipoElementoIdInput" class="form-select" required></select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="propietarioIdInput" class="form-label">Propietario</label>
+                            <ul class="nav nav-tabs nav-fill" id="propietarioTab" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="select-tab" data-bs-toggle="tab" data-bs-target="#select-pane" type="button" role="tab">Seleccionar de Lista</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#document-pane" type="button" role="tab">Buscar por Documento</button>
+                                </li>
+                            </ul>
+                            <div class="tab-content border border-top-0 p-2" id="propietarioTabContent">
+                                <div class="tab-pane fade show active" id="select-pane" role="tabpanel">
+                                    <select id="propietarioIdInput" class="form-select"></select>
+                                </div>
+                                <div class="tab-pane fade" id="document-pane" role="tabpanel">
+                                    <input type="text" class="form-control" id="propietarioDocInput" placeholder="Ingrese el documento y presione Enter...">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="caracteristicasTecnicasInput" class="form-label">Características Técnicas</label>
+                        <textarea class="form-control" id="caracteristicasTecnicasInput" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="caracteristicasFisicasInput" class="form-label">Características Físicas</label>
+                        <textarea class="form-control" id="caracteristicasFisicasInput" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="detallesInput" class="form-label">Detalles Adicionales</label>
+                        <textarea class="form-control" id="detallesInput" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="imageUrlInput" class="form-label">URL de la Imagen</label>
+                        <input type="text" class="form-control" id="imageUrlInput">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" onclick="guardar()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/admin/elemento.js"></script>
+}

@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Administración</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .main-content {
+            padding: 2rem;
+        }
+
+        .navbar {
+            background-color: #00963f;
+        }
+
+    </style>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#" style="color:#FFF;"
+                   onmouseover="this.style.fontWeight='bold'"
+                   onmouseout="this.style.fontWeight='normal'">Panel de Administración</a>
+                <div class="collapse navbar-collapse">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/Terminal"
+                               style="color:#FFF;"
+                               onmouseover="this.style.fontWeight='bold'"
+                               onmouseout="this.style.fontWeight='normal'">
+                                NFC HUB (Terminal)
+                            </a>
+
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/Admin/usuarios5" style="color:#FFF;"
+                               onmouseover="this.style.fontWeight='bold'"
+                               onmouseout="this.style.fontWeight='normal'">Gestión de Datos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/Admin/GestionNFC" style="color:#FFF;"
+                               onmouseover="this.style.fontWeight='bold'"
+                               onmouseout="this.style.fontWeight='normal'">Gestión NFC</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container-fluid">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
