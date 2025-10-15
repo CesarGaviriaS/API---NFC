@@ -23,72 +23,160 @@
     const funcionarioDetalleInput = document.getElementById('funcionarioDetalleInput');
     const funcionarioModalTitulo = document.getElementById('funcionarioModalTitulo');
 
+    // Elementos de filtrado
+    const searchInput = document.getElementById('searchInput');
+    const rolFilter = document.getElementById('rolFilter');
+    const fichaFilter = document.getElementById('fichaFilter');
+    const resultadosContador = document.getElementById('resultadosContador');
+    const emptyState = document.getElementById('emptyState');
+
     const tablaDatos = document.getElementById('tablaDatos');
-    let listaUsuariosCompleta = []; // Almacenamos los datos para la edición
+    let listaUsuariosCompleta = []; // Almacenamos los datos completos
+    let listaFichas = []; // Almacenamos las fichas para el filtro
 
     // --- CARGAR DATOS EN LA TABLA PRINCIPAL ---
     const cargarDatos = async () => {
         try {
             const response = await fetch(usuariosApiUrl);
             listaUsuariosCompleta = await response.json();
-
-            tablaDatos.innerHTML = '';
-            if (listaUsuariosCompleta.length === 0) {
-                tablaDatos.innerHTML = '<tr><td colspan="6" class="text-center">No hay usuarios para mostrar.</td></tr>';
-                return;
-            }
-
-            listaUsuariosCompleta.forEach(user => {
-                let rol, nombre, documento, detalle, editId;
-                if (user.aprendiz) {
-                    rol = 'Aprendiz';
-                    nombre = user.aprendiz.nombre;
-                    documento = user.aprendiz.documento;
-                    detalle = user.aprendiz.ficha ? user.aprendiz.ficha.codigo : 'Sin Ficha';
-                    editId = user.aprendiz.idAprendiz;
-                } else if (user.funcionario) {
-                    rol = 'Funcionario';
-                    nombre = user.funcionario.nombre;
-                    documento = user.funcionario.documento;
-                    detalle = user.funcionario.detalle || 'N/A';
-                    editId = user.funcionario.idFuncionario;
-                }
-
-                tablaDatos.innerHTML += `
-                    <tr>
-                        <td>${user.idUsuario}</td>
-                        <td><span class="badge bg-${rol === 'Aprendiz' ? 'success' : 'info'}">${rol}</span></td>
-                        <td>${nombre}</td>
-                        <td>${documento}</td>
-                        <td>${detalle}</td>
-                        <td>
-                            <button class="btn btn-sm btn-warning" onclick="abrirModal('${rol.toLowerCase()}', ${editId})">
-                                <i class="bi bi-pencil-fill"></i> Editar
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="desactivar(${user.idUsuario})">
-                                <i class="bi bi-trash-fill"></i> Borrar
-                            </button>
-                        </td>
-                    </tr>`;
-            });
+            aplicarFiltros(); // Aplicar filtros después de cargar
         } catch (error) {
             console.error("Error al cargar usuarios:", error);
         }
     };
 
-    // --- CARGAR FICHAS PARA EL SELECTOR DEL MODAL DE APRENDIZ ---
+    // --- APLICAR FILTROS ---
+    const aplicarFiltros = () => {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const rolSeleccionado = rolFilter.value;
+        const fichaSeleccionada = fichaFilter.value;
+
+        // Filtrar usuarios
+        const usuariosFiltrados = listaUsuariosCompleta.filter(user => {
+            let rol, nombre, documento, fichaId;
+
+            if (user.aprendiz) {
+                rol = 'Aprendiz';
+                nombre = user.aprendiz.nombre;
+                documento = user.aprendiz.documento;
+                fichaId = user.aprendiz.idFicha;
+            } else if (user.funcionario) {
+                rol = 'Funcionario';
+                nombre = user.funcionario.nombre;
+                documento = user.funcionario.documento;
+                fichaId = null;
+            }
+
+            // Filtro de búsqueda
+            const matchSearch = searchTerm === '' ||
+                nombre.toLowerCase().includes(searchTerm) ||
+                documento.includes(searchTerm);
+
+            // Filtro de rol
+            const matchRol = rolSeleccionado === '' || rol === rolSeleccionado;
+
+            // Filtro de ficha
+            const matchFicha = fichaSeleccionada === '' ||
+                (fichaId && fichaId.toString() === fichaSeleccionada);
+
+            return matchSearch && matchRol && matchFicha;
+        });
+
+        renderizarTabla(usuariosFiltrados);
+    };
+
+    // --- RENDERIZAR TABLA ---
+    const renderizarTabla = (usuarios) => {
+        tablaDatos.innerHTML = '';
+        resultadosContador.textContent = usuarios.length;
+
+        if (usuarios.length === 0) {
+            emptyState.classList.remove('d-none');
+            return;
+        }
+
+        emptyState.classList.add('d-none');
+
+        usuarios.forEach(user => {
+            let rol, nombre, documento, detalle, editId, badgeClass;
+
+            if (user.aprendiz) {
+                rol = 'Aprendiz';
+                nombre = user.aprendiz.nombre;
+                documento = user.aprendiz.documento;
+                detalle = user.aprendiz.ficha ? user.aprendiz.ficha.codigo : 'Sin Ficha';
+                editId = user.aprendiz.idAprendiz;
+                badgeClass = 'bg-primary';
+            } else if (user.funcionario) {
+                rol = 'Funcionario';
+                nombre = user.funcionario.nombre;
+                documento = user.funcionario.documento;
+                detalle = user.funcionario.detalle || 'N/A';
+                editId = user.funcionario.idFuncionario;
+                badgeClass = 'bg-warning text-dark';
+            }
+
+            const rolBadge = rol === 'Aprendiz'
+                ? `<span class="badge ${badgeClass} badge-role"><i class="bi bi-mortarboard-fill me-1"></i>${rol}</span>`
+                : `<span class="badge ${badgeClass} badge-role"><i class="bi bi-person-badge-fill me-1"></i>${rol}</span>`;
+
+            const infoAdicional = rol === 'Aprendiz'
+                ? `<span class="badge bg-success bg-opacity-10 text-success">${detalle}</span>`
+                : `<span class="text-muted">${detalle}</span>`;
+
+            tablaDatos.innerHTML += `
+                <tr>
+                    <td class="fw-semibold">${user.idUsuario}</td>
+                    <td>${rolBadge}</td>
+                    <td class="fw-semibold">${nombre}</td>
+                    <td><span class="badge bg-light text-dark">${documento}</span></td>
+                    <td>${infoAdicional}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-primary" onclick="abrirModal('${rol.toLowerCase()}', ${editId})">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="desactivar(${user.idUsuario})">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    };
+
+    // --- CARGAR FICHAS PARA EL SELECTOR Y FILTRO ---
     const cargarFichas = async () => {
         try {
             const response = await fetch(fichasApiUrl);
-            const fichas = await response.json();
+            listaFichas = await response.json();
+
+            // Llenar select del modal de aprendiz
             aprendizFichaIdInput.innerHTML = '<option value="">Seleccione una ficha...</option>';
-            fichas.forEach(ficha => {
+            listaFichas.forEach(ficha => {
                 aprendizFichaIdInput.innerHTML += `<option value="${ficha.idFicha}">${ficha.codigo} - ${ficha.programa.nombrePrograma}</option>`;
+            });
+
+            // Llenar filtro de fichas
+            fichaFilter.innerHTML = '<option value="">Todas las fichas</option>';
+            listaFichas.forEach(ficha => {
+                fichaFilter.innerHTML += `<option value="${ficha.idFicha}">${ficha.codigo}</option>`;
             });
         } catch (error) {
             console.error("Error al cargar fichas:", error);
         }
     };
+
+    // --- LIMPIAR FILTROS ---
+    window.limpiarFiltros = () => {
+        searchInput.value = '';
+        rolFilter.value = '';
+        fichaFilter.value = '';
+        aplicarFiltros();
+    };
+
+    // --- EVENT LISTENERS PARA FILTROS EN TIEMPO REAL ---
+    searchInput.addEventListener('input', aplicarFiltros);
+    rolFilter.addEventListener('change', aplicarFiltros);
+    fichaFilter.addEventListener('change', aplicarFiltros);
 
     // --- ABRIR EL MODAL CORRESPONDIENTE ---
     window.abrirModal = (tipo, id = 0) => {
