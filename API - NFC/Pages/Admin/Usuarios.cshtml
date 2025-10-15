@@ -5,66 +5,163 @@
     ViewData["Title"] = "Gestión de Usuarios";
 }
 
+<style>
+    /* Pequeños ajustes modernos manteniendo Bootstrap */
+    .badge-role {
+        font-size: 0.75rem;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+        .table tbody tr:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+</style>
+
 <div class="main-content">
     <partial name="_AdminSubNav" />
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>@ViewData["Title"]</h1>
-        <!-- Botón con desplegable para elegir qué tipo de usuario crear -->
-        <div class="btn-group">
-            <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Usuario
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" onclick="abrirModal('aprendiz')">Aprendiz</a></li>
-                <li><a class="dropdown-item" href="#" onclick="abrirModal('funcionario')">Funcionario</a></li>
-            </ul>
+    <!-- Header con título y botón -->
+    <div class="card border-0 shadow-sm mb-3 bg-success text-white">
+        <div class="card-body py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0"><i class="bi bi-people-fill me-2"></i>@ViewData["Title"]</h3>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-plus-circle-fill me-2"></i>Crear Usuario
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="abrirModal('aprendiz')">
+                                <i class="bi bi-mortarboard-fill me-2 text-primary"></i>Aprendiz
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="abrirModal('funcionario')">
+                                <i class="bi bi-person-badge-fill me-2 text-warning"></i>Funcionario
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 
-    <table class="table table-striped table-hover shadow-sm">
-        <thead class="table-success">
-            <tr>
-                <th>ID Usuario</th>
-                <th>Rol</th>
-                <th>Nombre</th>
-                <th>Documento</th>
-                <th>Ficha / Detalle</th>
-                <th style="width: 15%;">Acciones</th>
-            </tr>
-        </thead>
-        <tbody id="tablaDatos"></tbody>
-    </table>
+    <!-- Filtros compactos -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <input type="text"
+                           class="form-control form-control-sm"
+                           id="searchInput"
+                           placeholder="🔍 Buscar por nombre o documento...">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="rolFilter">
+                        <option value="">Todos los roles</option>
+                        <option value="Aprendiz">Aprendiz</option>
+                        <option value="Funcionario">Funcionario</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="fichaFilter">
+                        <option value="">Todas las fichas</option>
+                        <!-- Se llenará dinámicamente -->
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </button>
+                </div>
+                <div class="col-md-1 text-center">
+                    <span class="badge bg-success py-2 px-3" id="resultadosContador">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla moderna con Bootstrap -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-success">
+                        <tr>
+                            <th class="py-3"><i class="bi bi-hash me-1"></i>ID Usuario</th>
+                            <th class="py-3"><i class="bi bi-person-badge me-1"></i>Rol</th>
+                            <th class="py-3"><i class="bi bi-person-fill me-1"></i>Nombre</th>
+                            <th class="py-3"><i class="bi bi-card-text me-1"></i>Documento</th>
+                            <th class="py-3"><i class="bi bi-info-circle me-1"></i>Ficha / Detalle</th>
+                            <th class="py-3 text-center" style="width: 15%;">
+                                <i class="bi bi-gear-fill me-1"></i>Acciones
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaDatos">
+                        <!-- Se llenará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado vacío -->
+            <div id="emptyState" class="text-center py-5 d-none">
+                <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
+                <p class="text-muted mt-3 fs-5">No se encontraron usuarios</p>
+                <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ========= MODAL PARA APRENDIZ ========= -->
 <div class="modal fade" id="aprendizModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="aprendizModalTitulo"></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="aprendizModalTitulo">
+                    <i class="bi bi-mortarboard-fill me-2"></i>Aprendiz
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4">
                 <form id="aprendizForm">
                     <input type="hidden" id="aprendizIdInput">
                     <div class="mb-3">
-                        <label for="aprendizNombreInput" class="form-label">Nombre Completo</label>
-                        <input type="text" class="form-control" id="aprendizNombreInput" required>
+                        <label for="aprendizNombreInput" class="form-label fw-semibold">
+                            <i class="bi bi-person me-1"></i>Nombre Completo
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="aprendizNombreInput" required>
                     </div>
                     <div class="mb-3">
-                        <label for="aprendizDocumentoInput" class="form-label">Documento</label>
-                        <input type="text" class="form-control" id="aprendizDocumentoInput" required>
+                        <label for="aprendizDocumentoInput" class="form-label fw-semibold">
+                            <i class="bi bi-card-text me-1"></i>Documento
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="aprendizDocumentoInput" required>
                     </div>
                     <div class="mb-3">
-                        <label for="aprendizFichaIdInput" class="form-label">Ficha</label>
-                        <select id="aprendizFichaIdInput" class="form-select" required></select>
+                        <label for="aprendizFichaIdInput" class="form-label fw-semibold">
+                            <i class="bi bi-bookmark-fill me-1"></i>Ficha
+                        </label>
+                        <select id="aprendizFichaIdInput" class="form-select form-select-lg" required></select>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-success" onclick="guardar('aprendiz')">Guardar Cambios</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+                <button type="button" class="btn btn-success" onclick="guardar('aprendiz')">
+                    <i class="bi bi-check-circle me-1"></i>Guardar Cambios
+                </button>
             </div>
         </div>
     </div>
@@ -72,32 +169,44 @@
 
 <!-- ========= MODAL PARA FUNCIONARIO ========= -->
 <div class="modal fade" id="funcionarioModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="funcionarioModalTitulo"></h5>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="funcionarioModalTitulo">
+                    <i class="bi bi-person-badge-fill me-2"></i>Funcionario
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4">
                 <form id="funcionarioForm">
                     <input type="hidden" id="funcionarioIdInput">
                     <div class="mb-3">
-                        <label for="funcionarioNombreInput" class="form-label">Nombre Completo</label>
-                        <input type="text" class="form-control" id="funcionarioNombreInput" required>
+                        <label for="funcionarioNombreInput" class="form-label fw-semibold">
+                            <i class="bi bi-person me-1"></i>Nombre Completo
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="funcionarioNombreInput" required>
                     </div>
                     <div class="mb-3">
-                        <label for="funcionarioDocumentoInput" class="form-label">Documento</label>
-                        <input type="text" class="form-control" id="funcionarioDocumentoInput" required>
+                        <label for="funcionarioDocumentoInput" class="form-label fw-semibold">
+                            <i class="bi bi-card-text me-1"></i>Documento
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="funcionarioDocumentoInput" required>
                     </div>
                     <div class="mb-3">
-                        <label for="funcionarioDetalleInput" class="form-label">Detalle (Cargo, etc.)</label>
-                        <input type="text" class="form-control" id="funcionarioDetalleInput">
+                        <label for="funcionarioDetalleInput" class="form-label fw-semibold">
+                            <i class="bi bi-briefcase me-1"></i>Detalle (Cargo, etc.)
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="funcionarioDetalleInput">
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-success" onclick="guardar('funcionario')">Guardar Cambios</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+                <button type="button" class="btn btn-success" onclick="guardar('funcionario')">
+                    <i class="bi bi-check-circle me-1"></i>Guardar Cambios
+                </button>
             </div>
         </div>
     </div>
@@ -105,4 +214,47 @@
 
 @section Scripts {
     <script src="~/js/admin/usuarios.js"></script>
+    <script>
+        // Función para limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('rolFilter').value = '';
+            document.getElementById('fichaFilter').value = '';
+            // Llamar a la función de filtrado (implementar en usuarios.js)
+            if (typeof aplicarFiltros === 'function') {
+                aplicarFiltros();
+            }
+        }
+
+        // Event listeners para filtros en tiempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const rolFilter = document.getElementById('rolFilter');
+            const fichaFilter = document.getElementById('fichaFilter');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+
+            if (rolFilter) {
+                rolFilter.addEventListener('change', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+
+            if (fichaFilter) {
+                fichaFilter.addEventListener('change', function() {
+                    if (typeof aplicarFiltros === 'function') {
+                        aplicarFiltros();
+                    }
+                });
+            }
+        });
+    </script>
 }
