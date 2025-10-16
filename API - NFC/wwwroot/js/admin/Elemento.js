@@ -6,7 +6,7 @@
 
     const editorModal = new bootstrap.Modal(document.getElementById('editorModal'));
 
-    // --- Referencias a los inputs del formulario ---
+    // Referencias a los inputs del formulario
     const idInput = document.getElementById('idInput');
     const nombreInput = document.getElementById('nombreInput');
     const marcaInput = document.getElementById('marcaInput');
@@ -22,32 +22,49 @@
     const modalTitulo = document.getElementById('modalTitulo');
     const tablaDatos = document.getElementById('tablaDatos');
 
-    let listaElementosCompleta = []; // Cache para editar
-    let listaUsuariosCompleta = []; // Cache para buscar por documento
+    // Elementos de filtrado
+    const searchInput = document.getElementById('searchInput');
+    const tipoFilter = document.getElementById('tipoFilter');
+    const propietarioFilter = document.getElementById('propietarioFilter');
+    const nfcFilter = document.getElementById('nfcFilter');
+    const resultadosContador = document.getElementById('resultadosContador');
+    const emptyState = document.getElementById('emptyState');
 
-    // --- CARGAR DATOS PARA LOS SELECTORES (DROPDOWNS) ---
+    let listaElementosCompleta = [];
+    let listaUsuariosCompleta = [];
+    let listaTiposElemento = [];
+
+    // CARGAR TIPOS DE ELEMENTO
     const cargarTiposElemento = async () => {
         try {
             const response = await fetch(tipoElementoApiUrl);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const tipos = await response.json();
+            listaTiposElemento = await response.json();
 
+            // Llenar select del modal
             tipoElementoIdInput.innerHTML = '<option value="">Seleccione un tipo...</option>';
-            tipos.forEach(tipo => {
+            listaTiposElemento.forEach(tipo => {
                 tipoElementoIdInput.innerHTML += `<option value="${tipo.idTipoElemento}">${tipo.nombreTipoElemento}</option>`;
+            });
+
+            // Llenar filtro de tipos
+            tipoFilter.innerHTML = '<option value="">Todos los tipos</option>';
+            listaTiposElemento.forEach(tipo => {
+                tipoFilter.innerHTML += `<option value="${tipo.idTipoElemento}">${tipo.nombreTipoElemento}</option>`;
             });
         } catch (error) {
             console.error("Error al cargar tipos de elemento:", error);
-            tipoElementoIdInput.innerHTML = '<option value="">Error al cargar</option>';
         }
     };
 
+    // CARGAR PROPIETARIOS
     const cargarPropietarios = async () => {
         try {
             const response = await fetch(usuarioApiUrl);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            listaUsuariosCompleta = await response.json(); // Guardamos en cache
+            listaUsuariosCompleta = await response.json();
 
+            // Llenar select del modal
             propietarioIdInput.innerHTML = '<option value="">Seleccione un propietario...</option>';
             listaUsuariosCompleta.forEach(user => {
                 const rol = user.aprendiz ? 'Aprendiz' : 'Funcionario';
@@ -55,16 +72,22 @@
                 const documento = user.aprendiz ? user.aprendiz.documento : user.funcionario.documento;
                 propietarioIdInput.innerHTML += `<option value="${user.idUsuario}">${rol} - ${nombre} - ${documento}</option>`;
             });
+
+            // Llenar filtro de propietarios
+            propietarioFilter.innerHTML = '<option value="">Todos los propietarios</option>';
+            listaUsuariosCompleta.forEach(user => {
+                const nombre = user.aprendiz ? user.aprendiz.nombre : user.funcionario.nombre;
+                propietarioFilter.innerHTML += `<option value="${user.idUsuario}">${nombre}</option>`;
+            });
         } catch (error) {
             console.error("Error al cargar propietarios:", error);
-            propietarioIdInput.innerHTML = '<option value="">Error al cargar</option>';
         }
     };
 
-    // --- LÓGICA DE BÚSQUEDA POR DOCUMENTO ---
+    // BÚSQUEDA POR DOCUMENTO
     propietarioDocInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Evita que el formulario se envíe
+            e.preventDefault();
             const doc = propietarioDocInput.value.trim();
             if (!doc) return;
 
@@ -74,84 +97,133 @@
             });
 
             if (usuarioEncontrado) {
-                // Si lo encontramos, seleccionamos la opción en el dropdown
                 propietarioIdInput.value = usuarioEncontrado.idUsuario;
-                // Y cambiamos a la otra pestaña para que el usuario vea su selección
                 new bootstrap.Tab(document.getElementById('select-tab')).show();
-                propietarioDocInput.value = ''; // Limpiamos el campo de búsqueda
+                propietarioDocInput.value = '';
             } else {
                 alert('No se encontró ningún usuario con ese documento.');
             }
         }
     });
 
-    // --- CARGAR DATOS EN LA TABLA PRINCIPAL ---
+    // CARGAR DATOS EN LA TABLA
     const cargarDatos = async () => {
         try {
             const response = await fetch(elementoApiUrl);
             if (!response.ok) throw new Error('Error al cargar elementos');
             listaElementosCompleta = await response.json();
-
-            tablaDatos.innerHTML = '';
-            if (listaElementosCompleta.length === 0) {
-                tablaDatos.innerHTML = '<tr><td colspan="7" class="text-center">No hay elementos para mostrar.</td></tr>';
-                return;
-            }
-
-            listaElementosCompleta.forEach(item => {
-                const tipo = item.tipoElemento ? item.tipoElemento.nombreTipoElemento : 'N/A';
-
-                // --- LÓGICA MEJORADA PARA MOSTRAR EL PROPIETARIO ---
-                let propietarioInfo = '<em class="text-muted">N/A</em>';
-                if (item.propietario) {
-                    const nombre = item.propietario.aprendiz?.nombre || item.propietario.funcionario?.nombre;
-                    const documento = item.propietario.aprendiz?.documento || item.propietario.funcionario?.documento;
-                    propietarioInfo = `${nombre || ''} <br><small class="text-muted">${documento || ''}</small>`;
-                }
-
-                // --- LÓGICA PARA MOSTRAR LAS CARACTERÍSTICAS ---
-                const caracteristicas = `
-                <small><strong>Téc:</strong> ${item.caracteristicasTecnicas || 'N/A'}</small><br>
-                <small><strong>Fís:</strong> ${item.caracteristicasFisicas || 'N/A'}</small><br>
-                <small><strong>Det:</strong> ${item.detalles || 'N/A'}</small>
-            `;
-
-                tablaDatos.innerHTML += `
-                <tr>
-                    <td>${item.idElemento}</td>
-                    <td>${item.nombreElemento}</td>
-                    <td>
-                        ${item.marca || 'N/A'}
-                        <br><small class="text-muted">S/N: ${item.serial || 'N/A'}</small>
-                    </td>
-                    <td>${tipo}</td>
-                    <td>${propietarioInfo}</td>
-                    <td>${caracteristicas}</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning" onclick="abrirModal(${item.idElemento})">
-                            <i class="bi bi-pencil-fill"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="desactivar(${item.idElemento})">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
-                    </td>
-                </tr>`;
-            });
+            aplicarFiltros();
         } catch (error) {
             console.error("Error al cargar elementos:", error);
             tablaDatos.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${error.message}</td></tr>`;
         }
     };
 
-    // --- ABRIR EL MODAL ---
+    // APLICAR FILTROS
+    const aplicarFiltros = () => {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const tipoSeleccionado = tipoFilter.value;
+        const propietarioSeleccionado = propietarioFilter.value;
+        const nfcSeleccionado = nfcFilter.value;
+
+        const elementosFiltrados = listaElementosCompleta.filter(elemento => {
+            // Filtro de búsqueda
+            const matchSearch = searchTerm === '' ||
+                elemento.nombreElemento.toLowerCase().includes(searchTerm) ||
+                (elemento.marca && elemento.marca.toLowerCase().includes(searchTerm)) ||
+                (elemento.serial && elemento.serial.toLowerCase().includes(searchTerm));
+
+            // Filtro de tipo
+            const matchTipo = tipoSeleccionado === '' ||
+                (elemento.idTipoElemento && elemento.idTipoElemento.toString() === tipoSeleccionado);
+
+            // Filtro de propietario
+            const matchPropietario = propietarioSeleccionado === '' ||
+                (elemento.idPropietario && elemento.idPropietario.toString() === propietarioSeleccionado);
+
+            // Filtro de NFC
+            const matchNFC = nfcSeleccionado === '' ||
+                (nfcSeleccionado === 'true' && elemento.tieneNFCTag === true) ||
+                (nfcSeleccionado === 'false' && elemento.tieneNFCTag === false);
+
+            return matchSearch && matchTipo && matchPropietario && matchNFC;
+        });
+
+        renderizarTabla(elementosFiltrados);
+    };
+
+    // RENDERIZAR TABLA
+    const renderizarTabla = (elementos) => {
+        tablaDatos.innerHTML = '';
+        resultadosContador.textContent = elementos.length;
+
+        if (elementos.length === 0) {
+            emptyState.classList.remove('d-none');
+            return;
+        }
+
+        emptyState.classList.add('d-none');
+
+        elementos.forEach(item => {
+            const tipo = item.tipoElemento ? item.tipoElemento.nombreTipoElemento : 'N/A';
+
+            let propietarioInfo = '<em class="text-muted">N/A</em>';
+            if (item.propietario) {
+                const nombre = item.propietario.aprendiz?.nombre || item.propietario.funcionario?.nombre;
+                const documento = item.propietario.aprendiz?.documento || item.propietario.funcionario?.documento;
+                propietarioInfo = `${nombre || ''} <br><small class="text-muted">${documento || ''}</small>`;
+            }
+
+            const nfcBadge = item.tieneNFCTag
+                ? '<span class="badge bg-success"><i class="bi bi-wifi me-1"></i>Sí</span>'
+                : '<span class="badge bg-secondary"><i class="bi bi-wifi-off me-1"></i>No</span>';
+
+            tablaDatos.innerHTML += `
+                    <tr>
+                        <td>${item.idElemento}</td>
+                        <td class="fw-semibold">${item.nombreElemento}</td>
+                        <td>
+                            ${item.marca || 'N/A'}
+                            <br><small class="text-muted">S/N: ${item.serial || 'N/A'}</small>
+                        </td>
+                        <td><span class="badge bg-info text-dark">${tipo}</span></td>
+                        <td>${propietarioInfo}</td>
+                        <td>${nfcBadge}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-warning" onclick="abrirModal(${item.idElemento})">
+                                <i class="bi bi-pencil-fill"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="desactivar(${item.idElemento})">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+        });
+    };
+
+    // LIMPIAR FILTROS
+    window.limpiarFiltros = () => {
+        searchInput.value = '';
+        tipoFilter.value = '';
+        propietarioFilter.value = '';
+        nfcFilter.value = '';
+        aplicarFiltros();
+    };
+
+    // EVENT LISTENERS
+    searchInput.addEventListener('input', aplicarFiltros);
+    tipoFilter.addEventListener('change', aplicarFiltros);
+    propietarioFilter.addEventListener('change', aplicarFiltros);
+    nfcFilter.addEventListener('change', aplicarFiltros);
+
+    // ABRIR MODAL
     window.abrirModal = (id = 0) => {
         document.getElementById('formularioEditor').reset();
         idInput.value = id;
 
-        if (id === 0) { // Crear nuevo
+        if (id === 0) {
             modalTitulo.textContent = 'Crear Nuevo Elemento';
-        }
-        else { // Editar existente
+        } else {
             modalTitulo.textContent = 'Editar Elemento';
             const elemento = listaElementosCompleta.find(e => e.idElemento === id);
             if (elemento) {
@@ -170,7 +242,7 @@
         editorModal.show();
     };
 
-    // --- GUARDAR ---
+    // GUARDAR
     window.guardar = async () => {
         const id = idInput.value;
         const esNuevo = id == 0;
@@ -202,29 +274,24 @@
 
             editorModal.hide();
             cargarDatos();
-        }
-        catch (error) {
+        } catch (error) {
             alert(`Error: ${error.message}`);
         }
     };
 
-    // --- DESACTIVAR ---
+    // DESACTIVAR
     window.desactivar = async (id) => {
         if (!confirm('¿Está seguro de que desea borrar (desactivar) este elemento?')) return;
         try {
             const response = await fetch(`${elementoApiUrl}/${id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Error al borrar.');
             cargarDatos();
-        }
-        catch (error) {
+        } catch (error) {
             alert(error.message);
         }
     };
 
-
-
-
-    // --- Carga inicial de todos los datos ---
+    // CARGA INICIAL
     cargarDatos();
     cargarTiposElemento();
     cargarPropietarios();

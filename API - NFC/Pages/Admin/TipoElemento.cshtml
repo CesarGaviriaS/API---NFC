@@ -74,9 +74,6 @@
                             <th class="py-3">
                                 <i class="bi bi-tag-fill me-1"></i>Nombre del Tipo
                             </th>
-                            <th class="py-3" style="width: 15%;">
-                                <i class="bi bi-box-seam me-1"></i>Total Elementos
-                            </th>
                             <th class="py-3 text-center" style="width: 15%;">
                                 <i class="bi bi-gear-fill me-1"></i>Acciones
                             </th>
@@ -141,26 +138,5 @@
 
 @section Scripts {
     <script src="~/js/admin/tipoElemento.js"></script>
-    <script>
-        // Función para limpiar filtros
-        function limpiarFiltros() {
-            document.getElementById('searchInput').value = '';
-            if (typeof aplicarFiltros === 'function') {
-                aplicarFiltros();
-            }
-        }
-
-        // Event listener para filtro en tiempo real
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('searchInput');
-
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
-                    }
-                });
-            }
-        });
-    </script>
+    
 }

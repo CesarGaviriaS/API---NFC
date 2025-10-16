@@ -270,56 +270,5 @@
 
 @section Scripts {
     <script src="~/js/admin/elemento.js"></script>
-    <script>
-        // Función para limpiar filtros
-        function limpiarFiltros() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('tipoFilter').value = '';
-            document.getElementById('propietarioFilter').value = '';
-            document.getElementById('nfcFilter').value = '';
-            if (typeof aplicarFiltros === 'function') {
-                aplicarFiltros();
-            }
-        }
-
-        // Event listeners para filtros en tiempo real
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('searchInput');
-            const tipoFilter = document.getElementById('tipoFilter');
-            const propietarioFilter = document.getElementById('propietarioFilter');
-            const nfcFilter = document.getElementById('nfcFilter');
-
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
-                    }
-                });
-            }
-
-            if (tipoFilter) {
-                tipoFilter.addEventListener('change', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
-                    }
-                });
-            }
-
-            if (propietarioFilter) {
-                propietarioFilter.addEventListener('change', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
-                    }
-                });
-            }
-
-            if (nfcFilter) {
-                nfcFilter.addEventListener('change', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
-                    }
-                });
-            }
-        });
-    </script>
+   
 }
