@@ -77,6 +77,50 @@ namespace API___NFC.Controllers
             return NoContent();
         }
 
+        //GET: api/usuario/paginated
+        [HttpGet("paginated")]
+        public async Task<ActionResult<object>> GetUsuariosPaginated
+            ([FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string search = "" )
+        {
+            var query =_context.Usuarios.
+                Include(u =>u.Aprendiz).
+                ThenInclude(a => a.Ficha).
+                Include(u => u.Funcionario).
+                Where(u => u.Estado == true);
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(u=>(u.Aprendiz
+                != null &&  u.Aprendiz.Nombre.Contains(search))||
+                (u.Funcionario != null && u.Funcionario.Nombre.Contains(search))||
+                (u.Aprendiz != null && u.Aprendiz.Documento.Contains(search)) ||
+                (u.Funcionario != null && u.Funcionario.Documento.Contains(search)));
+            }
+            var totalRecords = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalRecords/ (double)pageSize);
+
+            // validamos página
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+
+            var usuarios =await query
+                .Skip((page -1) *pageSize).
+                Take(pageSize)
+                .ToListAsync();
+
+            return new
+            {
+                Data = usuarios,
+                Page = page,
+                PageSize = pageSize,
+                TotalRecords = totalRecords,
+                TotalPages = totalPages
+
+            };
+
+        }
         // NOTA: POST (Crear) y PUT (Actualizar) se manejan a través de
         // los controladores de Aprendiz y Funcionario.
     }
