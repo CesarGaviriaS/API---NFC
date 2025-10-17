@@ -1,6 +1,7 @@
 ﻿document.addEventListener('DOMContentLoaded', function () {
     // APIs
     const usuariosApiUrl = '/api/usuario';
+    const usuariosPaginatedApiUrl = '/api/usuario/paginated';
     const aprendizApiUrl = '/api/aprendiz';
     const funcionarioApiUrl = '/api/funcionario';
     const fichasApiUrl = '/api/ficha';
@@ -34,24 +35,149 @@
     let listaUsuariosCompleta = []; // Almacenamos los datos completos
     let listaFichas = []; // Almacenamos las fichas para el filtro
 
-    // --- CARGAR DATOS EN LA TABLA PRINCIPAL ---
-    const cargarDatos = async () => {
+    // Variables globales para paginacion 
+    let paginaActual = 1;
+    let registrosPorPagina = 10;
+    let searchTermActual = '';
+
+    // --- CARGAR DATOS PAGINADOS ---
+    const cargarDatosPaginated = async (pagina = 1, searchTerm = '') => {
+        try {
+            paginaActual = pagina;
+            searchTermActual = searchTerm;
+
+            const params = new URLSearchParams({
+                page: pagina,
+                pageSize: registrosPorPagina
+            });
+
+            if (searchTerm) {
+                params.append('search', searchTerm);
+            }
+
+            const response = await fetch(`${usuariosPaginatedApiUrl}?${params}`);
+            if (!response.ok) throw new Error('Error al cargar datos');
+
+            const data = await response.json();
+            listaUsuariosCompleta = data.data;
+            renderizarTabla(listaUsuariosCompleta);
+            generarPaginacion(data.page, data.totalPages, data.totalRecords);
+
+        } catch (error) {
+            console.error("Error al cargar usuarios paginados:", error);
+            // Fallback: cargar sin paginación
+            await cargarDatosCompletos();
+        }
+    };
+
+    // --- GENERAR PAGINACIÓN ---
+    const generarPaginacion = (paginaActual, totalPaginas, totalRecords) => {
+        let paginacionContainer = document.getElementById('paginacionContainer');
+
+        if (!paginacionContainer) {
+            // Crear contenedor si no existe
+            const tablaParent = document.querySelector('.table-responsive').parentNode;
+            const nuevoContenedor = document.createElement('div');
+            nuevoContenedor.className = 'd-flex justify-content-between align-items-center mt-3';
+            nuevoContenedor.id = 'paginacionContainer';
+            nuevoContenedor.innerHTML = `
+                <div id="infoPaginacion"></div>
+                <nav id="paginacionNav"></nav>
+            `;
+            tablaParent.appendChild(nuevoContenedor);
+            paginacionContainer = nuevoContenedor;
+        }
+
+        const infoPaginacion = document.getElementById('infoPaginacion');
+        const paginacionNav = document.getElementById('paginacionNav');
+
+        // Información de paginación
+        const inicio = ((paginaActual - 1) * registrosPorPagina) + 1;
+        const fin = Math.min(paginaActual * registrosPorPagina, totalRecords);
+
+        infoPaginacion.innerHTML = `
+            <small class="text-muted">
+                Mostrando ${inicio}-${fin} de ${totalRecords} registros
+            </small>
+        `;
+
+        // Botones de paginación
+        let paginacionHTML = '<ul class="pagination pagination-sm mb-0">';
+
+        // Botón anterior
+        paginacionHTML += `
+            <li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1}); return false;">«</a>
+            </li>
+        `;
+
+        // Botones de páginas
+        const paginasAMostrar = 5;
+        let inicioPaginas = Math.max(1, paginaActual - Math.floor(paginasAMostrar / 2));
+        let finPaginas = Math.min(totalPaginas, inicioPaginas + paginasAMostrar - 1);
+
+        // Ajustar si estamos cerca del inicio/final
+        if (finPaginas - inicioPaginas + 1 < paginasAMostrar) {
+            inicioPaginas = Math.max(1, finPaginas - paginasAMostrar + 1);
+        }
+
+        for (let i = inicioPaginas; i <= finPaginas; i++) {
+            paginacionHTML += `
+                <li class="page-item ${i === paginaActual ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i}</a>
+                </li>
+            `;
+        }
+
+        // Botón siguiente
+        paginacionHTML += `
+            <li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual + 1}); return false;">»</a>
+            </li>
+        `;
+
+        paginacionHTML += '</ul>';
+        paginacionNav.innerHTML = paginacionHTML;
+    };
+
+    // --- CAMBIAR PÁGINA ---
+    window.cambiarPagina = (pagina) => {
+        cargarDatosPaginated(pagina, searchTermActual);
+    };
+
+    // --- FUNCIÓN ORIGINAL (PARA COMPATIBILIDAD) ---
+    const cargarDatosCompletos = async () => {
         try {
             const response = await fetch(usuariosApiUrl);
             listaUsuariosCompleta = await response.json();
-            aplicarFiltros(); // Aplicar filtros después de cargar
+            aplicarFiltrosClientes();
         } catch (error) {
             console.error("Error al cargar usuarios:", error);
         }
     };
 
-    // --- APLICAR FILTROS ---
+    // --- APLICAR FILTROS (MODIFICADA PARA PAGINACIÓN) ---
     const aplicarFiltros = () => {
         const searchTerm = searchInput.value.toLowerCase().trim();
         const rolSeleccionado = rolFilter.value;
         const fichaSeleccionada = fichaFilter.value;
 
-        // Filtrar usuarios
+        // Si hay filtros de rol o ficha, usar filtrado cliente
+        // Si solo hay búsqueda de texto, usar paginación del servidor
+        if (rolSeleccionado || fichaSeleccionada) {
+            aplicarFiltrosClientes();
+        } else {
+            // Solo búsqueda de texto - usar paginación servidor
+            cargarDatosPaginated(1, searchTerm);
+        }
+    };
+
+    // --- FILTRADO EN CLIENTE (para compatibilidad con rol/ficha) ---
+    const aplicarFiltrosClientes = () => {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const rolSeleccionado = rolFilter.value;
+        const fichaSeleccionada = fichaFilter.value;
+
         const usuariosFiltrados = listaUsuariosCompleta.filter(user => {
             let rol, nombre, documento, fichaId;
 
@@ -83,6 +209,12 @@
         });
 
         renderizarTabla(usuariosFiltrados);
+
+        // Ocultar paginación cuando filtramos en cliente
+        const paginacionContainer = document.getElementById('paginacionContainer');
+        if (paginacionContainer) {
+            paginacionContainer.style.display = 'none';
+        }
     };
 
     // --- RENDERIZAR TABLA ---
@@ -170,7 +302,12 @@
         searchInput.value = '';
         rolFilter.value = '';
         fichaFilter.value = '';
-        aplicarFiltros();
+        // Mostrar paginación nuevamente
+        const paginacionContainer = document.getElementById('paginacionContainer');
+        if (paginacionContainer) {
+            paginacionContainer.style.display = 'flex';
+        }
+        cargarDatosPaginated(1, '');
     };
 
     // --- EVENT LISTENERS PARA FILTROS EN TIEMPO REAL ---
@@ -211,7 +348,7 @@
         }
     };
 
-    // --- GUARDAR (CREA O ACTUALIZA APRENDIZ/FUNCIONARIO) ---
+    // --- GUARDAR (ACTUALIZADO PARA PAGINACIÓN) ---
     window.guardar = async (tipo) => {
         let url, method, data, modal;
 
@@ -248,21 +385,24 @@
             if (!response.ok) throw new Error(await response.text());
 
             modal.hide();
-            cargarDatos();
+            // Recargar manteniendo la paginación actual
+            cargarDatosPaginated(paginaActual, searchTermActual);
         } catch (error) {
             console.error(`Error al guardar ${tipo}:`, error);
             alert(`Error: ${error.message}`);
         }
     };
 
-    // --- DESACTIVAR (BORRADO LÓGICO DE USUARIO) ---
+    // --- DESACTIVAR (ACTUALIZADO PARA PAGINACIÓN) ---
     window.desactivar = async (idUsuario) => {
         if (!confirm(`¿Está seguro de que desea borrar (desactivar) al usuario con ID ${idUsuario}?`)) return;
 
         try {
             const response = await fetch(`${usuariosApiUrl}/${idUsuario}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Error al borrar el usuario.');
-            cargarDatos();
+
+            // Recargar manteniendo la paginación actual
+            cargarDatosPaginated(paginaActual, searchTermActual);
         } catch (error) {
             console.error(error);
             alert(error.message);
@@ -270,6 +410,6 @@
     };
 
     // --- Carga inicial de datos ---
-    cargarDatos();
+    cargarDatosPaginated(1, ''); // Usar paginación por defecto
     cargarFichas();
 });
