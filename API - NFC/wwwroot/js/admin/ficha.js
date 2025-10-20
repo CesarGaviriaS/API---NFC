@@ -1,6 +1,8 @@
-﻿document.addEventListener('DOMContentLoaded', function () {
+﻿
+document.addEventListener('DOMContentLoaded', function () {
     const fichasApiUrl = '/api/ficha';
     const programasApiUrl = '/api/programa';
+    const fichasPaginatedApiUrl = '/api/ficha/paginated';
     const editorModal = new bootstrap.Modal(document.getElementById('editorModal'));
 
     // Referencias a los inputs del formulario
@@ -20,108 +22,105 @@
     const modalTitulo = document.getElementById('modalTitulo');
     const tablaDatos = document.getElementById('tablaDatos');
 
-    let todasLasFichas = []; // Almacenar todas las fichas para filtrar
+    let paginaActual = 1;
+    let totalPaginas = 1;
+    let totalRegistros = 0;
+    let pageSize = 10;
 
-    // --- CARGAR PROGRAMAS EN EL SELECTOR DEL FORMULARIO ---
+    // --- CARGAR PROGRAMAS ---
     const cargarProgramas = async () => {
         try {
             const response = await fetch(programasApiUrl);
             const programas = await response.json();
 
-            // Limpiar y llenar el select del formulario
             programaIdInput.innerHTML = '<option value="">Seleccione un programa...</option>';
             programas.forEach(prog => {
                 programaIdInput.innerHTML += `<option value="${prog.idPrograma}">${prog.nombrePrograma}</option>`;
             });
 
-            // Limpiar y llenar el select de filtros
             programaFilter.innerHTML = '<option value="">Todos los programas</option>';
             programas.forEach(prog => {
                 programaFilter.innerHTML += `<option value="${prog.idPrograma}">${prog.nombrePrograma}</option>`;
             });
         } catch (error) {
             console.error("Error al cargar programas:", error);
-            programaIdInput.innerHTML = '<option value="">Error al cargar programas</option>';
-            programaFilter.innerHTML = '<option value="">Error al cargar programas</option>';
         }
     };
 
-    // --- CARGAR DATOS DE FICHAS EN LA TABLA ---
-    const cargarDatos = async () => {
+    // --- CARGAR DATOS CON PAGINACIÓN DEL SERVIDOR ---
+    const cargarDatos = async (pagina = 1) => {
         try {
-            const response = await fetch(fichasApiUrl);
-            if (!response.ok) throw new Error('Error al cargar los datos de las fichas.');
+            const params = new URLSearchParams({
+                page: pagina,
+                pageSize: pageSize,
+                search: searchInput.value || ''
+            });
+
+            const response = await fetch(`${fichasPaginatedApiUrl}?${params}`);
+            if (!response.ok) throw new Error('Error al cargar los datos de la ficha.');
+
             const data = await response.json();
 
-            todasLasFichas = data; // Guardar todas las fichas para filtrar
-            aplicarFiltros(); // Aplicar filtros iniciales
+            // Actualizar variables de estado
+            paginaActual = data.page;
+            totalPaginas = data.totalPages;
+            totalRegistros = data.totalRecords;
+
+            // Aplicar filtros locales sobre los datos paginados
+            aplicarFiltrosLocales(data.data);
+            actualizarPaginacion();
         } catch (error) {
             console.error(error);
             mostrarErrorEnTabla(error.message);
         }
     };
 
-    // --- APLICAR FILTROS ---
-    window.aplicarFiltros = function () {
-        const searchTerm = searchInput.value.toLowerCase();
+    // --- APLICAR FILTROS LOCALES (Programa y Estado) ---
+    function aplicarFiltrosLocales(fichas) {
         const programaSeleccionado = programaFilter.value;
         const estadoSeleccionado = estadoFilter.value;
 
-        let fichasFiltradas = todasLasFichas.filter(ficha => {
-            // Filtro por búsqueda en código
-            const coincideBusqueda = !searchTerm ||
-                ficha.codigo.toLowerCase().includes(searchTerm);
-
-            // Filtro por programa
-            const coincidePrograma = !programaSeleccionado ||
-                ficha.idPrograma.toString() === programaSeleccionado;
-
-            // Filtro por estado
+        let fichasFiltradas = fichas.filter(ficha => {
+            const coincidePrograma = !programaSeleccionado || ficha.idPrograma.toString() === programaSeleccionado;
             const coincideEstado = filtrarPorEstado(ficha, estadoSeleccionado);
-
-            return coincideBusqueda && coincidePrograma && coincideEstado;
+            return coincidePrograma && coincideEstado;
         });
 
-        mostrarFichasFiltradas(fichasFiltradas);
+        mostrarFichas(fichasFiltradas);
+    }
+
+    // --- EJECUTAR BÚSQUEDA (recarga desde servidor) ---
+    window.aplicarFiltros = function () {
+        paginaActual = 1; // Reiniciar a la primera página al filtrar
+        cargarDatos(1);
     };
 
     // --- FILTRAR POR ESTADO ---
     function filtrarPorEstado(ficha, estado) {
         if (!estado) return true;
-
         const fechaInicio = ficha.fechaInicio ? new Date(ficha.fechaInicio) : null;
         const fechaFinal = ficha.fechaFinal ? new Date(ficha.fechaFinal) : null;
         const hoy = new Date();
 
         switch (estado) {
             case 'activa':
-                // Ficha activa: tiene fecha de inicio pasada y fecha final futura (o sin fecha final)
-                return fechaInicio && fechaInicio <= hoy &&
-                    (!fechaFinal || fechaFinal >= hoy);
-
+                return fechaInicio && fechaInicio <= hoy && (!fechaFinal || fechaFinal >= hoy);
             case 'finalizada':
-                // Ficha finalizada: tiene fecha final pasada
                 return fechaFinal && fechaFinal < hoy;
-
             case 'proxima':
-                // Ficha próxima: fecha de inicio futura
                 return fechaInicio && fechaInicio > hoy;
-
             default:
                 return true;
         }
     }
 
-    // --- MOSTRAR FICHAS FILTRADAS ---
-    function mostrarFichasFiltradas(fichas) {
+    // --- MOSTRAR FICHAS EN LA TABLA ---
+    function mostrarFichas(fichas) {
         tablaDatos.innerHTML = '';
-
-        // Actualizar contador
-        resultadosContador.textContent = fichas.length;
+        resultadosContador.textContent = `${fichas.length} de ${totalRegistros}`;
 
         if (fichas.length === 0) {
             emptyState.classList.remove('d-none');
-            tablaDatos.innerHTML = '';
             return;
         }
 
@@ -140,11 +139,9 @@
                     <td>${nombrePrograma}</td>
                     <td>${fechaInicio}</td>
                     <td>${fechaFinal}</td>
+                    <td><span class="badge ${estado.clase}">${estado.texto}</span></td>
                     <td>
-                        <span class="badge ${estado.clase}">${estado.texto}</span>
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-warning" onclick="abrirModal(${item.idFicha}, '${item.codigo}', '${item.idPrograma}', '${item.fechaInicio}', '${item.fechaFinal}')">
+                        <button class="btn btn-sm btn-warning" onclick="abrirModal(${item.idFicha}, '${item.codigo}', '${item.idPrograma}', '${item.fechaInicio || ''}', '${item.fechaFinal || ''}')">
                             <i class="bi bi-pencil-fill"></i> Editar
                         </button>
                         <button class="btn btn-sm btn-danger" onclick="desactivar(${item.idFicha})">
@@ -155,28 +152,58 @@
         });
     }
 
+    // --- ACTUALIZAR CONTROLES DE PAGINACIÓN ---
+    function actualizarPaginacion() {
+        const paginacion = document.getElementById('paginacion');
+        if (!paginacion) return;
+
+        paginacion.innerHTML = '';
+
+        // Botón Anterior
+        const anteriorDisabled = paginaActual <= 1 ? 'disabled' : '';
+        paginacion.innerHTML += `
+            <li class="page-item ${anteriorDisabled}">
+                <button class="page-link" onclick="cambiarPagina(${paginaActual - 1})" ${anteriorDisabled}>Anterior</button>
+            </li>`;
+
+        // Números de página
+        const inicio = Math.max(1, paginaActual - 2);
+        const fin = Math.min(totalPaginas, paginaActual + 2);
+
+        for (let i = inicio; i <= fin; i++) {
+            const activa = i === paginaActual ? 'active' : '';
+            paginacion.innerHTML += `
+                <li class="page-item ${activa}">
+                    <button class="page-link" onclick="cambiarPagina(${i})">${i}</button>
+                </li>`;
+        }
+
+        // Botón Siguiente
+        const siguienteDisabled = paginaActual >= totalPaginas ? 'disabled' : '';
+        paginacion.innerHTML += `
+            <li class="page-item ${siguienteDisabled}">
+                <button class="page-link" onclick="cambiarPagina(${paginaActual + 1})" ${siguienteDisabled}>Siguiente</button>
+            </li>`;
+
+        document.getElementById('infoPagina').textContent = `Página ${paginaActual} de ${totalPaginas}`;
+    }
+
+    // --- CAMBIAR DE PÁGINA ---
+    window.cambiarPagina = async (pagina) => {
+        if (pagina < 1 || pagina > totalPaginas) return;
+        await cargarDatos(pagina);
+    };
+
     // --- DETERMINAR ESTADO DE LA FICHA ---
     function determinarEstado(ficha) {
         const fechaInicio = ficha.fechaInicio ? new Date(ficha.fechaInicio) : null;
         const fechaFinal = ficha.fechaFinal ? new Date(ficha.fechaFinal) : null;
         const hoy = new Date();
 
-        if (!fechaInicio && !fechaFinal) {
-            return { texto: 'Sin fecha', clase: 'bg-secondary' };
-        }
-
-        if (fechaInicio && fechaInicio > hoy) {
-            return { texto: 'Próxima', clase: 'bg-info' };
-        }
-
-        if (fechaFinal && fechaFinal < hoy) {
-            return { texto: 'Finalizada', clase: 'bg-danger' };
-        }
-
-        if (fechaInicio && fechaInicio <= hoy && (!fechaFinal || fechaFinal >= hoy)) {
-            return { texto: 'En curso', clase: 'bg-success' };
-        }
-
+        if (!fechaInicio && !fechaFinal) return { texto: 'Sin fecha', clase: 'bg-secondary' };
+        if (fechaInicio && fechaInicio > hoy) return { texto: 'Próxima', clase: 'bg-info' };
+        if (fechaFinal && fechaFinal < hoy) return { texto: 'Finalizada', clase: 'bg-danger' };
+        if (fechaInicio && fechaInicio <= hoy && (!fechaFinal || fechaFinal >= hoy)) return { texto: 'En curso', clase: 'bg-success' };
         return { texto: 'Indefinido', clase: 'bg-warning' };
     }
 
@@ -186,24 +213,21 @@
         emptyState.classList.add('d-none');
     }
 
-    // --- ABRIR EL MODAL ---
+    // --- ABRIR MODAL ---
     window.abrirModal = (id = 0, codigo = '', idPrograma = '', fechaInicio = '', fechaFinal = '') => {
         idInput.value = id;
         codigoInput.value = codigo;
         programaIdInput.value = idPrograma;
-
         fechaInicioInput.value = fechaInicio ? fechaInicio.split('T')[0] : '';
         fechaFinalInput.value = fechaFinal ? fechaFinal.split('T')[0] : '';
-
         modalTitulo.textContent = id === 0 ? 'Crear Nueva Ficha' : 'Editar Ficha';
         editorModal.show();
     };
 
-    // --- GUARDAR (CREAR O ACTUALIZAR) ---
+    // --- GUARDAR FICHA ---
     window.guardar = async () => {
         const id = idInput.value;
         const esNuevo = id == 0;
-
         const data = {
             idFicha: parseInt(id) || 0,
             codigo: codigoInput.value,
@@ -228,22 +252,20 @@
             }
 
             editorModal.hide();
-            await cargarDatos(); // Recargar datos después de guardar
+            await cargarDatos(paginaActual); // Mantener en la página actual
         } catch (error) {
             console.error(error);
             alert(error.message);
         }
     };
 
-    // --- DESACTIVAR (BORRADO LÓGICO) ---
+    // --- DESACTIVAR FICHA ---
     window.desactivar = async (id) => {
-        if (!confirm('¿Está seguro de que desea borrar (desactivar) esta ficha?')) {
-            return;
-        }
+        if (!confirm('¿Está seguro de que desea borrar (desactivar) esta ficha?')) return;
         try {
             const response = await fetch(`${fichasApiUrl}/${id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Error al borrar.');
-            await cargarDatos(); // Recargar datos después de borrar
+            await cargarDatos(paginaActual);
         } catch (error) {
             console.error(error);
             alert(error.message);
@@ -255,10 +277,20 @@
         searchInput.value = '';
         programaFilter.value = '';
         estadoFilter.value = '';
-        aplicarFiltros();
+        paginaActual = 1;
+        cargarDatos(1);
     };
 
-    // --- Carga inicial de datos ---
+    // --- EVENTOS DE FILTROS ---
+    searchInput.addEventListener('input', () => {
+        clearTimeout(window.searchTimeout);
+        window.searchTimeout = setTimeout(() => aplicarFiltros(), 500);
+    });
+
+    programaFilter.addEventListener('change', () => aplicarFiltrosLocales([]));
+    estadoFilter.addEventListener('change', () => aplicarFiltrosLocales([]));
+
+    // --- INICIALIZACIÓN ---
     cargarDatos();
     cargarProgramas();
 });
