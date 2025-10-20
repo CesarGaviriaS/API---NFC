@@ -128,5 +128,46 @@ namespace API___NFC.Controllers
 
             return NoContent();
         }
+
+        [HttpGet("paginated")]
+        public async Task<ActionResult<object>> GetFichaPaginated(
+            [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string search = ""
+        )
+        {
+            var query = _context.Fichas
+                .Include(f => f.Programa)
+                .Where(f => f.Estado == true);
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(f =>
+                (!string.IsNullOrEmpty(f.Codigo) && f.Codigo.Contains(search)) ||
+                (f.Programa != null && !string.IsNullOrEmpty(f.Programa.NombrePrograma) && f.Programa.NombrePrograma.Contains(search)));
+            }
+
+            var totalRecords = await query.CountAsync();
+
+            var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
+
+            if (page < 1) page = 1;
+
+            if (page > totalPages && totalPages > 0) page = totalPages;
+            
+            var fichas = await query.
+                Skip((page - 1) * pageSize).
+                Take(pageSize).
+                ToListAsync();
+
+            return new
+            {
+                Data = fichas,
+                page = page,
+                pageSize = pageSize,
+                TotalRecords = totalRecords,
+                TotalPages = totalPages
+            };
+        }
+
     }
 }
