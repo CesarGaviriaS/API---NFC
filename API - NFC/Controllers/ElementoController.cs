@@ -151,5 +151,52 @@ namespace API___NFC.Controllers
 
             return NoContent();
         }
+
+        // GET: api/elemento/paginated
+        [HttpGet("paginated")]
+        public async Task<ActionResult<object>> GetElementosPaginated(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string search = "")
+        {
+            var query = _context.Elementos
+                .Include(e => e.TipoElemento)
+                .Include(e => e.Propietario)
+                    .ThenInclude(p => p.Aprendiz)
+                .Include(e => e.Propietario)
+                    .ThenInclude(p => p.Funcionario)
+                .Where(e => e.Estado == true);
+
+            // Aplicar búsqueda si existe
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(e =>
+                    e.NombreElemento.Contains(search) ||
+                    (e.Marca != null && e.Marca.Contains(search)) ||
+                    (e.Serial != null && e.Serial.Contains(search))
+                );
+            }
+
+            var totalRecords = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
+
+            // Validar página
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+
+            var elementos = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new
+            {
+                Data = elementos,
+                Page = page,
+                PageSize = pageSize,
+                TotalRecords = totalRecords,
+                TotalPages = totalPages
+            };
+        }
     }
 }
