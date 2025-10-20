@@ -2,6 +2,7 @@
 using API___NFC.Models; 
 using API___NFC.Models.Entity.Inventario;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 namespace API___NFC.Controllers
@@ -96,5 +97,46 @@ namespace API___NFC.Controllers
 
             return NoContent();
         }
+
+        [HttpGet("paginated")]
+        public async Task<ActionResult<object>> GetTiposElementosPaginated(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
+        {
+            var query = _context.TiposElemento.Where(t => t.Estado == true);
+
+            // busqueda si existe 
+            if (!string.IsNullOrEmpty(search))
+            {
+
+                query = query.Where(t =>
+                t.NombreTipoElemento.Contains(search) ||
+                t.IdTipoElemento.ToString().Contains(search));
+            }
+            var totalRecords = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
+
+            // validaciones de pagina
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+
+            var tiposElemntos = await query.
+                OrderBy(t => t.IdTipoElemento).
+                Skip((page - 1) * pageSize).
+                Take(pageSize).
+                ToListAsync();
+
+            return new
+            {
+                Data = tiposElemntos,
+                Page = page,
+                PageSize = pageSize,
+                TotalRecords = totalRecords,
+                TotalPages = totalPages
+            };
+        }
+
     }
 }
+ 
