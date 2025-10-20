@@ -73,5 +73,47 @@ namespace API___NFC.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+
+        [HttpGet("paginated")]
+        public async Task<ActionResult<object>> GetProgramasPaginated(
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? search = null)
+        {
+            var query = _context.Programas.Where(t => t.Estado == true);
+
+            // Búsqueda 
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(p =>
+                    p.NombrePrograma.Contains(search) ||
+                    p.Codigo.Contains(search) ||
+                    p.IdPrograma.ToString().Contains(search)
+                );
+            }
+
+            var totalRecords = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+
+            // Validaciones de página
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+
+            var programas = await query
+                .OrderBy(t => t.IdPrograma)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new
+            {
+                Data = programas,
+                Page = page,
+                PageSize = pageSize,
+                TotalRecords = totalRecords,
+                TotalPages = totalPages
+            };
+        }
     }
-}
+    }
