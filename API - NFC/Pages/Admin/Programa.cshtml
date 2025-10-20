@@ -97,6 +97,31 @@
             </div>
         </div>
     </div>
+
+    <!-- Paginación -->
+    <div class="card border-0 shadow-sm mt-3">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-2">Mostrar:</span>
+                        <select class="form-select form-select-sm w-auto" onchange="cambiarPageSize(this.value)">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span class="text-muted ms-2">registros por página</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div id="paginationContainer" class="d-flex justify-content-end">
+                        <!-- La paginación se genera aquí dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal para crear/editar -->
@@ -151,36 +176,516 @@
 </div>
 
 @section Scripts {
-    <script src="~/js/admin/programa.js"></script>
     <script>
-        // Función para limpiar filtros
-        function limpiarFiltros() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('nivelFilter').value = '';
-            if (typeof aplicarFiltros === 'function') {
-                aplicarFiltros();
-            }
-        }
+                document.addEventListener('DOMContentLoaded', function () {
+            const apiUrl = '/api/programa';
+            const apiUrlPaginated = '/api/programa/paginated';
+            const apiUrlNiveles = '/api/programa/niveles';
 
-        // Event listeners para filtros en tiempo real
-        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar modal solo si existe
+            const editorModalElement = document.getElementById('editorModal');
+            const editorModal = editorModalElement ? new bootstrap.Modal(editorModalElement) : null;
+
+            // Referencias a elementos del DOM
+            const idInput = document.getElementById('idInput');
+            const nombreInput = document.getElementById('nombreInput');
+            const codigoInput = document.getElementById('codigoInput');
+            const nivelInput = document.getElementById('nivelInput');
+            const modalTitulo = document.getElementById('modalTitulo');
+            const tablaDatos = document.getElementById('tablaDatos');
             const searchInput = document.getElementById('searchInput');
             const nivelFilter = document.getElementById('nivelFilter');
+            const resultadosContador = document.getElementById('resultadosContador');
+            const emptyState = document.getElementById('emptyState');
+            const paginationContainer = document.getElementById('paginationContainer');
 
+            // Variables de estado
+            let currentPage = 1;
+            let pageSize = 10;
+            let totalRecords = 0;
+            let totalPages = 0;
+            let currentSearchTerm = '';
+            let currentNivelFilter = '';
+            let searchTimeout = null;
+
+            // ========== FUNCIONES PRINCIPALES ==========
+
+            // Cargar niveles desde el servidor
+            const cargarNiveles = async () => {
+                if (!nivelFilter) return;
+
+                try {
+                    const response = await fetch(apiUrlNiveles);
+                    if (!response.ok) throw new Error('Error al cargar niveles');
+
+                    const niveles = await response.json();
+                    llenarFiltroNiveles(niveles);
+                } catch (error) {
+                    console.error('Error cargando niveles:', error);
+                    // Si falla, cargar niveles por defecto
+                    llenarFiltroNiveles(['Técnico', 'Tecnólogo', 'Profesional', 'Especialización']);
+                }
+            };
+
+            // Llenar filtro de niveles
+            const llenarFiltroNiveles = (niveles) => {
+                if (!nivelFilter) return;
+
+                const currentValue = nivelFilter.value;
+                nivelFilter.innerHTML = '<option value="">Todos los niveles</option>';
+
+                niveles.forEach(nivel => {
+                    if (nivel && nivel.trim() !== '') {
+                        nivelFilter.innerHTML += `<option value="${nivel}">${nivel}</option>`;
+                    }
+                });
+
+                // Restaurar valor si existe
+                if (currentValue) {
+                    nivelFilter.value = currentValue;
+                }
+            };
+
+            // Cargar datos con paginación
+            const cargarDatos = async (page = 1, searchTerm = '', nivel = '') => {
+                try {
+                    // Mostrar estado de carga
+                    mostrarLoading();
+
+                    // Construir URL con parámetros
+                    const params = new URLSearchParams({
+                        page: page.toString(),
+                        pageSize: pageSize.toString()
+                    });
+
+                    if (searchTerm && searchTerm.trim() !== '') {
+                        params.append('search', searchTerm.trim());
+                    }
+
+                    if (nivel && nivel !== '') {
+                        params.append('nivel', nivel);
+                    }
+
+                    const url = `${apiUrlPaginated}?${params.toString()}`;
+                    const response = await fetch(url);
+
+                    if (!response.ok) {
+                        throw new Error(`Error ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    // Actualizar estado
+                    currentPage = data.page;
+                    totalRecords = data.totalRecords;
+                    totalPages = data.totalPages;
+
+                    // Actualizar UI
+                    actualizarTabla(data.data);
+                    actualizarContador(data);
+                    actualizarPaginacion();
+
+                } catch (error) {
+                    console.error('Error cargando datos:', error);
+                    mostrarError('Error al cargar los datos: ' + error.message);
+                }
+            };
+
+            // Mostrar estado de carga
+            const mostrarLoading = () => {
+                if (!tablaDatos) return;
+
+                tablaDatos.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Cargando programas...</p>
+                        </td>
+                    </tr>`;
+
+                if (emptyState) emptyState.classList.add('d-none');
+            };
+
+            // Actualizar tabla con datos
+            const actualizarTabla = (programas) => {
+                if (!tablaDatos) return;
+
+                tablaDatos.innerHTML = '';
+
+                if (!programas || programas.length === 0) {
+                    if (emptyState) emptyState.classList.remove('d-none');
+                    return;
+                }
+
+                if (emptyState) emptyState.classList.add('d-none');
+
+                programas.forEach(item => {
+                    const fila = document.createElement('tr');
+
+                    // Escapar comillas simples para evitar errores en onclick
+                    const nombreEscapado = (item.nombrePrograma || '').replace(/'/g, "\\'");
+                    const codigoEscapado = (item.codigo || '').replace(/'/g, "\\'");
+                    const nivelEscapado = (item.nivelFormacion || '').replace(/'/g, "\\'");
+
+                    fila.innerHTML = `
+                        <td class="fw-semibold">${item.idPrograma || ''}</td>
+                        <td><span class="badge bg-light text-dark">${item.codigo || 'N/A'}</span></td>
+                        <td class="fw-semibold">${item.nombrePrograma || 'N/A'}</td>
+                        <td><span class="badge bg-info">${item.nivelFormacion || 'Sin nivel'}</span></td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-warning me-1" onclick="abrirModalEditor(${item.idPrograma}, '${nombreEscapado}', '${codigoEscapado}', '${nivelEscapado}')">
+                                <i class="bi bi-pencil-fill"></i> Editar
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarPrograma(${item.idPrograma})">
+                                <i class="bi bi-trash-fill"></i> Borrar
+                            </button>
+                        </td>
+                    `;
+                    tablaDatos.appendChild(fila);
+                });
+            };
+
+            // Actualizar contador de resultados
+            const actualizarContador = (data) => {
+                if (!resultadosContador) return;
+
+                const startItem = ((currentPage - 1) * pageSize) + 1;
+                const endItem = Math.min(currentPage * pageSize, totalRecords);
+
+                resultadosContador.textContent = `${startItem}-${endItem} de ${totalRecords}`;
+                resultadosContador.className = `badge py-2 px-3 ${totalRecords > 0 ? 'bg-success' : 'bg-secondary'}`;
+            };
+
+            // Actualizar paginación
+            const actualizarPaginacion = () => {
+                if (!paginationContainer) return;
+
+                paginationContainer.innerHTML = '';
+
+                if (totalPages <= 1) return;
+
+                const ul = document.createElement('ul');
+                ul.className = 'pagination pagination-sm justify-content-center mb-0';
+
+                // Botón Anterior
+                const liPrev = document.createElement('li');
+                liPrev.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+                liPrev.innerHTML = `
+                    <a class="page-link" href="#" ${currentPage > 1 ? `onclick="cambiarPagina(${currentPage - 1})"` : ''}>
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                `;
+                ul.appendChild(liPrev);
+
+                // Números de página
+                const startPage = Math.max(1, currentPage - 2);
+                const endPage = Math.min(totalPages, startPage + 4);
+
+                for (let i = startPage; i <= endPage; i++) {
+                    const li = document.createElement('li');
+                    li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                    li.innerHTML = `<a class="page-link" href="#" onclick="cambiarPagina(${i})">${i}</a>`;
+                    ul.appendChild(li);
+                }
+
+                // Botón Siguiente
+                const liNext = document.createElement('li');
+                liNext.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+                liNext.innerHTML = `
+                    <a class="page-link" href="#" ${currentPage < totalPages ? `onclick="cambiarPagina(${currentPage + 1})"` : ''}>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                `;
+                ul.appendChild(liNext);
+
+                paginationContainer.appendChild(ul);
+            };
+
+            // Mostrar error
+            const mostrarError = (mensaje) => {
+                if (!tablaDatos) return;
+
+                tablaDatos.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-danger py-4">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            ${mensaje}
+                        </td>
+                    </tr>`;
+
+                if (emptyState) emptyState.classList.add('d-none');
+                if (paginationContainer) paginationContainer.innerHTML = '';
+            };
+
+            // ========== FUNCIONES GLOBALES (window) ==========
+
+            // Cambiar página
+            window.cambiarPagina = (nuevaPagina) => {
+                if (nuevaPagina < 1 || nuevaPagina > totalPages) return;
+                currentPage = nuevaPagina;
+                cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
+            };
+
+            // Cambiar tamaño de página
+            window.cambiarPageSize = (nuevoSize) => {
+                const nuevoPageSize = parseInt(nuevoSize);
+                if (nuevoPageSize > 0) {
+                    pageSize = nuevoPageSize;
+                    currentPage = 1;
+                    cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
+                }
+            };
+
+            // Limpiar filtros
+            window.limpiarFiltros = () => {
+                if (searchInput) searchInput.value = '';
+                if (nivelFilter) nivelFilter.value = '';
+                currentSearchTerm = '';
+                currentNivelFilter = '';
+                currentPage = 1;
+                cargarDatos(currentPage);
+            };
+
+            // Abrir modal de editor
+            window.abrirModalEditor = (id = 0, nombre = '', codigo = '', nivel = '') => {
+                if (!editorModal || !idInput || !nombreInput || !codigoInput || !nivelInput || !modalTitulo) return;
+
+                idInput.value = id;
+                nombreInput.value = nombre || '';
+                codigoInput.value = codigo || '';
+                nivelInput.value = nivel || '';
+
+                modalTitulo.textContent = id === 0 ? 'Crear Nuevo Programa' : 'Editar Programa';
+
+                // Limpiar validaciones
+                [nombreInput, codigoInput, nivelInput].forEach(input => {
+                    if (input) input.classList.remove('is-invalid');
+                });
+
+                editorModal.show();
+
+                // Enfocar el primer input
+                setTimeout(() => {
+                    if (nombreInput) nombreInput.focus();
+                }, 500);
+            };
+
+            // Abrir modal para crear nuevo (sin parámetros)
+            window.abrirModal = () => {
+                window.abrirModalEditor();
+            };
+
+            // Validar formulario
+            const validarFormulario = () => {
+                let esValido = true;
+
+                if (!nombreInput || !nombreInput.value.trim()) {
+                    if (nombreInput) nombreInput.classList.add('is-invalid');
+                    esValido = false;
+                } else if (nombreInput) {
+                    nombreInput.classList.remove('is-invalid');
+                }
+
+                if (!codigoInput || !codigoInput.value.trim()) {
+                    if (codigoInput) codigoInput.classList.add('is-invalid');
+                    esValido = false;
+                } else if (codigoInput) {
+                    codigoInput.classList.remove('is-invalid');
+                }
+
+                if (!nivelInput || !nivelInput.value) {
+                    if (nivelInput) nivelInput.classList.add('is-invalid');
+                    esValido = false;
+                } else if (nivelInput) {
+                    nivelInput.classList.remove('is-invalid');
+                }
+
+                return esValido;
+            };
+
+            // Guardar programa
+            window.guardar = async () => {
+                if (!validarFormulario()) {
+                    return;
+                }
+
+                const id = idInput ? idInput.value : 0;
+                const esNuevo = id == 0;
+
+                const data = {
+                    idPrograma: parseInt(id) || 0,
+                    nombrePrograma: nombreInput ? nombreInput.value.trim() : '',
+                    codigo: codigoInput ? codigoInput.value.trim() : '',
+                    nivelFormacion: nivelInput ? nivelInput.value : ''
+                };
+
+                const url = esNuevo ? apiUrl : `${apiUrl}/${id}`;
+                const method = esNuevo ? 'POST' : 'PUT';
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText || `Error ${response.status}: ${response.statusText}`);
+                    }
+
+                    if (editorModal) editorModal.hide();
+
+                    mostrarMensajeExito(esNuevo ? 'Programa creado exitosamente' : 'Programa actualizado exitosamente');
+
+                    // Recargar niveles y datos
+                    await cargarNiveles();
+                    cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
+
+                } catch (error) {
+                    console.error('Error guardando programa:', error);
+                    mostrarError('Error al guardar: ' + error.message);
+                }
+            };
+
+            // Eliminar programa
+            window.eliminarPrograma = async (id) => {
+                if (!id || !confirm('¿Está seguro de que desea borrar (desactivar) este programa?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${apiUrl}/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Error ${response.status}: ${response.statusText}`);
+                    }
+
+                    mostrarMensajeExito('Programa borrado exitosamente');
+
+                    // Recargar niveles y datos
+                    await cargarNiveles();
+                    cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
+
+                } catch (error) {
+                    console.error('Error eliminando programa:', error);
+                    mostrarError('Error al borrar: ' + error.message);
+                }
+            };
+
+            // Alias para compatibilidad
+            window.desactivar = window.eliminarPrograma;
+
+            // Mostrar mensaje de éxito
+            const mostrarMensajeExito = (mensaje) => {
+                // Usar toast de Bootstrap si está disponible, sino alert
+                if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+                    // Crear toast dinámico
+                    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+                    const toastElement = document.createElement('div');
+                    toastElement.className = 'toast align-items-center text-white bg-success border-0';
+                    toastElement.innerHTML = `
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <i class="bi bi-check-circle-fill me-2"></i>${mensaje}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    `;
+                    toastContainer.appendChild(toastElement);
+                    const toast = new bootstrap.Toast(toastElement);
+                    toast.show();
+
+                    // Remover el toast después de que se oculte
+                    toastElement.addEventListener('hidden.bs.toast', () => {
+                        toastElement.remove();
+                    });
+                } else {
+                    alert(mensaje);
+                }
+            };
+
+            // Crear contenedor de toasts si no existe
+            const createToastContainer = () => {
+                const container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.className = 'toast-container position-fixed top-0 end-0 p-3';
+                container.style.zIndex = '9999';
+                document.body.appendChild(container);
+                return container;
+            };
+
+            // ========== EVENT LISTENERS ==========
+
+            // Búsqueda con debounce
             if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        currentSearchTerm = this.value.trim();
+                        currentPage = 1;
+                        cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
+                    }, 500);
+                });
+            }
+
+            // Filtro por nivel
+            if (nivelFilter) {
+                nivelFilter.addEventListener('change', function () {
+                    currentNivelFilter = this.value;
+                    currentPage = 1;
+                    cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
+                });
+            }
+
+            // Permitir Enter en los inputs del modal
+            if (nombreInput) {
+                nombreInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        window.guardar();
                     }
                 });
             }
 
-            if (nivelFilter) {
-                nivelFilter.addEventListener('change', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
+            if (codigoInput) {
+                codigoInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        window.guardar();
                     }
                 });
+            }
+
+            if (nivelInput) {
+                nivelInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        window.guardar();
+                    }
+                });
+            }
+
+            // ========== INICIALIZACIÓN ==========
+
+            // Inicializar la aplicación
+            const inicializar = () => {
+                cargarNiveles();
+                cargarDatos();
+            };
+
+            // Iniciar cuando el DOM esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', inicializar);
+            } else {
+                inicializar();
             }
         });
     </script>
