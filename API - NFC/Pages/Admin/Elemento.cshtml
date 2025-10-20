@@ -25,6 +25,31 @@
         font-size: 0.85rem;
         padding: 0.5rem 0.75rem;
     }
+
+    /* ESTILOS PARA PAGINACIÓN */
+    .pagination .page-item.active .page-link {
+        background-color: #198754;
+        border-color: #198754;
+        color: white;
+    }
+
+    .pagination .page-link {
+        color: #198754;
+        border: 1px solid #dee2e6;
+    }
+
+        .pagination .page-link:hover {
+            color: #146c43;
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
+
+    .pagination .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+        background-color: #fff;
+        border-color: #dee2e6;
+    }
 </style>
 
 <div class="main-content">
@@ -114,6 +139,20 @@
                 <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
                 <p class="text-muted mt-3 fs-5">No se encontraron elementos</p>
                 <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
+            </div>
+
+            <!-- CONTENEDOR DE PAGINACIÓN-->
+            <div id="paginacionContainer" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3">
+                <div id="infoPaginacion">
+                    <small class="text-muted">Cargando...</small>
+                </div>
+                <nav id="paginacionNav">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item disabled">
+                            <span class="page-link">Paginación</span>
+                        </li>
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
@@ -270,5 +309,4 @@
 
 @section Scripts {
     <script src="~/js/admin/elemento.js"></script>
-   
 }
