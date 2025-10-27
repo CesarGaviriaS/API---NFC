@@ -13,5 +13,6 @@ namespace API___NFC.Models.Entity.Users
         public string? Detalle { get; set; }
         public string? EsNatural { get; set; }
         public bool Estado { get; set; } = true;
+        public string Contraseña { get; set; }
     }
 }

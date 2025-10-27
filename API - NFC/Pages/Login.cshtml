@@ -1,0 +1,398 @@
+﻿@page
+@model API___NFC.Pages.LoginModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Registro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #eeee 0%, #eee 100%);
+        }
+
+        .container {
+            position: relative;
+            width: 1000px;
+            height: 600px;
+            background: #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-container {
+            position: absolute;
+            width: 50%;
+            height: 100%;
+            transition: all 0.6s ease-in-out;
+        }
+
+        .sign-in {
+            left: 0;
+            z-index: 2;
+        }
+
+        .sign-up {
+            left: 0;
+            z-index: 1;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .container.active .sign-in {
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .container.active .sign-up {
+            transform: translateX(100%);
+            opacity: 1;
+            z-index: 5;
+            pointer-events: auto;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 0 50px;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+            .social-icons a {
+                width: 45px;
+                height: 45px;
+                border: 1px solid #ddd;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-decoration: none;
+                color: #333;
+                transition: all 0.3s;
+            }
+
+                .social-icons a:hover {
+                    background: #2c5f9e;
+                    color: #fff;
+                    border-color: #2c5f9e;
+                }
+
+        span {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+            .input-group i {
+                position: absolute;
+                left: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: #999;
+            }
+
+        input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            background: #f0f0f0;
+            border: none;
+            outline: none;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+            input:invalid:focus {
+                border: 2px solid #ff6b6b;
+            }
+
+            input:valid:focus {
+                border: 2px solid #2c5f9e;
+            }
+
+            input::placeholder {
+                color: #999;
+            }
+
+        a {
+            color: #2c5f9e;
+            text-decoration: none;
+            font-size: 13px;
+            margin: 15px 0;
+        }
+
+            a:hover {
+                text-decoration: underline;
+            }
+
+        button {
+            background: #2c5f9e;
+            color: #fff;
+            border: none;
+            padding: 12px 45px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+            button:hover {
+                background: #1e4a7a;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 20px rgba(44, 95, 158, 0.4);
+            }
+
+        .toggle-container {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+            transition: transform 0.6s ease-in-out;
+            z-index: 100;
+        }
+
+        .container.active .toggle-container {
+            transform: translateX(-100%);
+        }
+
+        .toggle {
+            background: linear-gradient(to right, rgba(44, 95, 158, 0.95), rgba(30, 74, 122, 0.95)), url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAC0APADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlbaWmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/2Q==');
+            background-size: cover;
+            background-position: center;
+            height: 100%;
+            color: #fff;
+            position: relative;
+            left: -100%;
+            width: 200%;
+            transform: translateX(0);
+            transition: transform 0.6s ease-in-out;
+        }
+
+        .container.active .toggle {
+            transform: translateX(50%);
+        }
+
+        .toggle-panel {
+            position: absolute;
+            width: 50%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 40px;
+            text-align: center;
+            transform: translateX(0);
+            transition: transform 0.6s ease-in-out;
+            background: rgba(44, 95, 158, 0.85);
+            backdrop-filter: blur(5px);
+        }
+
+        .toggle-left {
+            transform: translateX(-200%);
+        }
+
+        .container.active .toggle-left {
+            transform: translateX(0);
+        }
+
+        .toggle-right {
+            right: 0;
+            transform: translateX(0);
+        }
+
+        .container.active .toggle-right {
+            transform: translateX(200%);
+        }
+
+        .toggle-panel h1 {
+            color: #fff;
+            font-size: 36px;
+        }
+
+        .toggle-panel p {
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 20px 0;
+        }
+
+        .toggle-panel button {
+            background: transparent;
+            border: 2px solid #fff;
+        }
+
+            .toggle-panel button:hover {
+                background: #fff;
+                color: #2c5f9e;
+            }
+
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container">
+        <!-- Formulario de Inicio de Sesión -->
+        <div class="form-container sign-in">
+            <form method="post" asp-page-handler="Login">
+                <h1>Iniciar Sesión</h1>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-twitch"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-tiktok"></i></a>
+                </div>
+                <span>Use su correo y contraseña</span>
+
+                @if (TempData["ErrorLogin"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["ErrorLogin"]</div>
+                }
+
+                <div class="input-group">
+                    <i class="far fa-envelope"></i>
+                    <input type="email" name="Email" placeholder="Email" required />
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" name="Password" placeholder="Password" required minlength="6" />
+                </div>
+                <a href="#">¿Olvidaste tu contraseña?</a>
+                <button type="submit">INICIAR SESIÓN</button>
+            </form>
+        </div>
+
+        <!-- Formulario de Registro -->
+        <div class="form-container sign-up">
+            <form method="post" asp-page-handler="Register">
+                <h1>Registrarse</h1>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-twitch"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-tiktok"></i></a>
+                </div>
+                <span>Use su correo electrónico para registrarse</span>
+
+                @if (TempData["ErrorRegister"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["ErrorRegister"]</div>
+                }
+                @if (TempData["SuccessRegister"] != null)
+                {
+                    <div class="alert alert-success">@TempData["SuccessRegister"]</div>
+                }
+
+                <div class="input-group">
+                    <i class="far fa-user"></i>
+                    <input type="text" name="Nombre" placeholder="Nombre" required minlength="2" />
+                </div>
+                <div class="input-group">
+                    <i class="far fa-id-card"></i>
+                    <input type="text" name="Documento" placeholder="Documento" required minlength="5" maxlength="20" />
+                </div>
+                <div class="input-group">
+                    <i class="far fa-envelope"></i>
+                    <input type="email" name="Email" placeholder="Email" required />
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" name="Password" placeholder="Password" required minlength="6" />
+                </div>
+                <button type="submit">REGISTRARSE</button>
+            </form>
+        </div>
+
+        <!-- Panel de Toggle -->
+        <div class="toggle-container">
+            <div class="toggle">
+                <div class="toggle-panel toggle-left">
+                    <h1>¡Bienvenido!</h1>
+                    <p>Ingrese sus datos personales para usar todas las funciones del sitio</p>
+                    <button class="hidden" id="login">Iniciar Sesión</button>
+                </div>
+                <div class="toggle-panel toggle-right">
+                    <h1>¡Hola!</h1>
+                    <p>Regístrese con sus datos personales para usar todas las funciones del sitio</p>
+                    <button class="hidden" id="register">Registrarse</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        const registerBtn = document.getElementById('register');
+        const loginBtn = document.getElementById('login');
+
+        registerBtn.addEventListener('click', () => {
+            container.classList.add('active');
+        });
+
+        loginBtn.addEventListener('click', () => {
+            container.classList.remove('active');
+        });
+    </script>
+</body>
+</html>

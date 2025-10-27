@@ -32,8 +32,8 @@
     const emptyState = document.getElementById('emptyState');
 
     const tablaDatos = document.getElementById('tablaDatos');
-    let listaUsuariosCompleta = []; // Almacenamos los datos completos
-    let listaFichas = []; // Almacenamos las fichas para el filtro
+    let listaUsuariosCompleta = [];
+    let listaFichas = [];
 
     // Variables globales para paginacion 
     let paginaActual = 1;
@@ -65,7 +65,6 @@
 
         } catch (error) {
             console.error("Error al cargar usuarios paginados:", error);
-            // Fallback: cargar sin paginación
             await cargarDatosCompletos();
         }
     };
@@ -75,7 +74,6 @@
         let paginacionContainer = document.getElementById('paginacionContainer');
 
         if (!paginacionContainer) {
-            // Crear contenedor si no existe
             const tablaParent = document.querySelector('.table-responsive').parentNode;
             const nuevoContenedor = document.createElement('div');
             nuevoContenedor.className = 'd-flex justify-content-between align-items-center mt-3';
@@ -91,7 +89,6 @@
         const infoPaginacion = document.getElementById('infoPaginacion');
         const paginacionNav = document.getElementById('paginacionNav');
 
-        // Información de paginación
         const inicio = ((paginaActual - 1) * registrosPorPagina) + 1;
         const fin = Math.min(paginaActual * registrosPorPagina, totalRecords);
 
@@ -101,22 +98,18 @@
             </small>
         `;
 
-        // Botones de paginación
         let paginacionHTML = '<ul class="pagination pagination-sm mb-0">';
 
-        // Botón anterior
         paginacionHTML += `
             <li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
                 <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1}); return false;">«</a>
             </li>
         `;
 
-        // Botones de páginas
         const paginasAMostrar = 5;
         let inicioPaginas = Math.max(1, paginaActual - Math.floor(paginasAMostrar / 2));
         let finPaginas = Math.min(totalPaginas, inicioPaginas + paginasAMostrar - 1);
 
-        // Ajustar si estamos cerca del inicio/final
         if (finPaginas - inicioPaginas + 1 < paginasAMostrar) {
             inicioPaginas = Math.max(1, finPaginas - paginasAMostrar + 1);
         }
@@ -129,7 +122,6 @@
             `;
         }
 
-        // Botón siguiente
         paginacionHTML += `
             <li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
                 <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual + 1}); return false;">»</a>
@@ -162,12 +154,9 @@
         const rolSeleccionado = rolFilter.value;
         const fichaSeleccionada = fichaFilter.value;
 
-        // Si hay filtros de rol o ficha, usar filtrado cliente
-        // Si solo hay búsqueda de texto, usar paginación del servidor
         if (rolSeleccionado || fichaSeleccionada) {
             aplicarFiltrosClientes();
         } else {
-            // Solo búsqueda de texto - usar paginación servidor
             cargarDatosPaginated(1, searchTerm);
         }
     };
@@ -193,15 +182,12 @@
                 fichaId = null;
             }
 
-            // Filtro de búsqueda
             const matchSearch = searchTerm === '' ||
                 nombre.toLowerCase().includes(searchTerm) ||
                 documento.includes(searchTerm);
 
-            // Filtro de rol
             const matchRol = rolSeleccionado === '' || rol === rolSeleccionado;
 
-            // Filtro de ficha
             const matchFicha = fichaSeleccionada === '' ||
                 (fichaId && fichaId.toString() === fichaSeleccionada);
 
@@ -210,7 +196,6 @@
 
         renderizarTabla(usuariosFiltrados);
 
-        // Ocultar paginación cuando filtramos en cliente
         const paginacionContainer = document.getElementById('paginacionContainer');
         if (paginacionContainer) {
             paginacionContainer.style.display = 'none';
@@ -281,13 +266,11 @@
             const response = await fetch(fichasApiUrl);
             listaFichas = await response.json();
 
-            // Llenar select del modal de aprendiz
             aprendizFichaIdInput.innerHTML = '<option value="">Seleccione una ficha...</option>';
             listaFichas.forEach(ficha => {
                 aprendizFichaIdInput.innerHTML += `<option value="${ficha.idFicha}">${ficha.codigo} - ${ficha.programa.nombrePrograma}</option>`;
             });
 
-            // Llenar filtro de fichas
             fichaFilter.innerHTML = '<option value="">Todas las fichas</option>';
             listaFichas.forEach(ficha => {
                 fichaFilter.innerHTML += `<option value="${ficha.idFicha}">${ficha.codigo}</option>`;
@@ -302,7 +285,6 @@
         searchInput.value = '';
         rolFilter.value = '';
         fichaFilter.value = '';
-        // Mostrar paginación nuevamente
         const paginacionContainer = document.getElementById('paginacionContainer');
         if (paginacionContainer) {
             paginacionContainer.style.display = 'flex';
@@ -336,24 +318,34 @@
             document.getElementById('funcionarioForm').reset();
             funcionarioIdInput.value = id;
 
+            const passwordInput = document.getElementById('funcionarioContraseñaInput');
+
             if (id !== 0) {
                 const usuario = listaUsuariosCompleta.find(u => u.funcionario && u.funcionario.idFuncionario === id);
                 if (usuario && usuario.funcionario) {
                     funcionarioNombreInput.value = usuario.funcionario.nombre;
                     funcionarioDocumentoInput.value = usuario.funcionario.documento;
-                    funcionarioDetalleInput.value = usuario.funcionario.detalle;
+                    funcionarioDetalleInput.value = usuario.funcionario.detalle || '';
+
+                    // En modo edición, la contraseña es opcional
+                    passwordInput.removeAttribute('required');
+                    passwordInput.placeholder = 'Dejar en blanco para mantener la actual';
                 }
+            } else {
+                // Modo creación - contraseña requerida
+                passwordInput.setAttribute('required', 'required');
+                passwordInput.placeholder = '';
             }
             funcionarioModal.show();
         }
     };
 
-    // --- GUARDAR (ACTUALIZADO PARA PAGINACIÓN) ---
+    // --- GUARDAR (CON ALERTAS MEJORADAS) ---
     window.guardar = async (tipo) => {
-        let url, method, data, modal;
+        let url, method, data, modal, id;
 
         if (tipo === 'aprendiz') {
-            const id = aprendizIdInput.value;
+            id = aprendizIdInput.value;
             url = id == 0 ? aprendizApiUrl : `${aprendizApiUrl}/${id}`;
             method = id == 0 ? 'POST' : 'PUT';
             modal = aprendizModal;
@@ -361,39 +353,69 @@
                 idAprendiz: parseInt(id) || 0,
                 nombre: aprendizNombreInput.value,
                 documento: aprendizDocumentoInput.value,
-                idFicha: parseInt(aprendizFichaIdInput.value)
+                idFicha: parseInt(aprendizFichaIdInput.value),
+                estado: true
             };
         } else { // funcionario
-            const id = funcionarioIdInput.value;
+            id = funcionarioIdInput.value;
+            const password = funcionarioContraseñaInput.value.trim();
+
             url = id == 0 ? funcionarioApiUrl : `${funcionarioApiUrl}/${id}`;
             method = id == 0 ? 'POST' : 'PUT';
             modal = funcionarioModal;
+
             data = {
                 idFuncionario: parseInt(id) || 0,
                 nombre: funcionarioNombreInput.value,
                 documento: funcionarioDocumentoInput.value,
-                detalle: funcionarioDetalleInput.value
+                detalle: funcionarioDetalleInput.value || '',
+                estado: true
             };
+
+            // Lógica de contraseña
+            if (id == 0) {
+                // Modo CREAR: contraseña obligatoria
+                if (!password) {
+                    alert('La contraseña es requerida para crear un funcionario');
+                    return;
+                }
+                data.contraseña = password;
+            } else {
+                // Modo EDITAR: solo incluir si se proporcionó una nueva
+                if (password) {
+                    data.contraseña = password;
+                }
+            }
         }
 
         try {
+            console.log('Enviando datos:', data);
+
             const response = await fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            if (!response.ok) throw new Error(await response.text());
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error del servidor:', errorText);
+                throw new Error(`Error ${response.status}: ${errorText}`);
+            }
 
             modal.hide();
-            // Recargar manteniendo la paginación actual
             cargarDatosPaginated(paginaActual, searchTermActual);
+
+            // Mensaje de éxito diferenciado
+            alert(id == 0 ? 'Creado exitosamente' : 'Actualizado exitosamente');
+
         } catch (error) {
             console.error(`Error al guardar ${tipo}:`, error);
-            alert(`Error: ${error.message}`);
+            alert(`Error al guardar: ${error.message}`);
         }
     };
 
-    // --- DESACTIVAR (ACTUALIZADO PARA PAGINACIÓN) ---
+    // --- DESACTIVAR ---
     window.desactivar = async (idUsuario) => {
         if (!confirm(`¿Está seguro de que desea borrar (desactivar) al usuario con ID ${idUsuario}?`)) return;
 
@@ -401,7 +423,6 @@
             const response = await fetch(`${usuariosApiUrl}/${idUsuario}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Error al borrar el usuario.');
 
-            // Recargar manteniendo la paginación actual
             cargarDatosPaginated(paginaActual, searchTermActual);
         } catch (error) {
             console.error(error);
@@ -410,6 +431,6 @@
     };
 
     // --- Carga inicial de datos ---
-    cargarDatosPaginated(1, ''); // Usar paginación por defecto
+    cargarDatosPaginated(1, '');
     cargarFichas();
 });

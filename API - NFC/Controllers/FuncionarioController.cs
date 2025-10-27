@@ -20,7 +20,6 @@ namespace API___NFC.Controllers
         }
 
         // GET: api/funcionario
-        // Obtiene todos los funcionarios activos.
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Funcionario>>> GetFuncionarios()
         {
@@ -28,7 +27,6 @@ namespace API___NFC.Controllers
         }
 
         // GET: api/funcionario/5
-        // Obtiene un funcionario específico por su ID.
         [HttpGet("{id}")]
         public async Task<ActionResult<Funcionario>> GetFuncionario(int id)
         {
@@ -43,7 +41,6 @@ namespace API___NFC.Controllers
         }
 
         // POST: api/funcionario
-        // Crea un nuevo Funcionario y su Usuario correspondiente en una transacción.
         [HttpPost]
         public async Task<ActionResult<Funcionario>> PostFuncionario(Funcionario funcionario)
         {
@@ -51,54 +48,94 @@ namespace API___NFC.Controllers
             {
                 try
                 {
+                    // Validar modelo
+                    if (!ModelState.IsValid)
+                    {
+                        return BadRequest(ModelState);
+                    }
+
                     // 1. Crear el Funcionario
                     funcionario.Estado = true;
                     _context.Funcionarios.Add(funcionario);
-                    await _context.SaveChangesAsync(); // Guardamos para obtener el ID del nuevo funcionario
+                    await _context.SaveChangesAsync();
 
-                    // 2. Crear el Usuario que lo "envuelve"
+                    // 2. Crear el Usuario
                     var nuevoUsuario = new Usuario
                     {
-                        IdFuncionario = funcionario.IdFuncionario, // Lo asociamos con el ID que acabamos de crear
+                        IdFuncionario = funcionario.IdFuncionario,
                         IdAprendiz = null,
                         Estado = true
                     };
                     _context.Usuarios.Add(nuevoUsuario);
                     await _context.SaveChangesAsync();
 
-                    // Si todo sale bien, confirmamos la transacción
                     await transaction.CommitAsync();
 
                     return CreatedAtAction(nameof(GetFuncionario), new { id = funcionario.IdFuncionario }, funcionario);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Si algo falla, revertimos todos los cambios
                     await transaction.RollbackAsync();
+                    Console.WriteLine($"Error: {ex.Message}");
+                    Console.WriteLine($"Inner Exception: {ex.InnerException?.Message}");
                     return StatusCode(500, "Ocurrió un error interno al crear el funcionario y el usuario asociado.");
                 }
             }
         }
 
         // PUT: api/funcionario/5
-        // Actualiza un funcionario existente.
         [HttpPut("{id}")]
         public async Task<IActionResult> PutFuncionario(int id, Funcionario funcionario)
         {
+            // Validar modelo
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             if (id != funcionario.IdFuncionario)
             {
                 return BadRequest();
             }
 
-            _context.Entry(funcionario).State = EntityState.Modified;
-            _context.Entry(funcionario).Property(x => x.Estado).IsModified = false;
+            // Buscar el funcionario existente
+            var funcionarioExistente = await _context.Funcionarios.FindAsync(id);
+            if (funcionarioExistente == null)
+            {
+                return NotFound();
+            }
 
-            await _context.SaveChangesAsync();
+            // Actualizar propiedades
+            funcionarioExistente.Nombre = funcionario.Nombre;
+            funcionarioExistente.Documento = funcionario.Documento;
+            funcionarioExistente.Detalle = funcionario.Detalle;
+
+            // Solo actualizar contraseña si se proporciona y no está vacía
+            if (!string.IsNullOrWhiteSpace(funcionario.Contraseña))
+            {
+                funcionarioExistente.Contraseña = funcionario.Contraseña;
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!FuncionarioExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
             return NoContent();
         }
 
         // DELETE: api/funcionario/5
-        // Desactiva un funcionario Y su usuario asociado.
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFuncionario(int id)
         {
@@ -108,7 +145,7 @@ namespace API___NFC.Controllers
                 return NotFound();
             }
 
-            // Buscamos el usuario asociado para también desactivarlo
+            // Buscar usuario asociado
             var usuarioAsociado = await _context.Usuarios.FirstOrDefaultAsync(u => u.IdFuncionario == id);
 
             funcionario.Estado = false;
@@ -119,6 +156,11 @@ namespace API___NFC.Controllers
 
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private bool FuncionarioExists(int id)
+        {
+            return _context.Funcionarios.Any(e => e.IdFuncionario == id);
         }
     }
 }
