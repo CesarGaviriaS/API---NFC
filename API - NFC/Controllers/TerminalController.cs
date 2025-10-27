@@ -1,6 +1,7 @@
 ﻿using API___NFC.Data;
-using API___NFC.Models.Entity; // Asegúrate que este using apunte a tus modelos
+using API___NFC.Models.Entity;
 using API___NFC.Models.Entity.Inventario;
+using API___NFC.Models.Entity.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
@@ -24,56 +25,68 @@ namespace API___NFC.Controllers
         {
             var usuario = await _db.Usuarios
                 .AsNoTracking()
-                .Include(u => u.Funcionario)
-                .Include(u => u.Aprendiz)
-                    .ThenInclude(a => a.Ficha)
-                        .ThenInclude(f => f.Programa)
-                .Include(u => u.Elementos)
-                    .ThenInclude(e => e.TipoElemento)
                 .FirstOrDefaultAsync(u => u.IdUsuario == idUsuario && u.Estado);
 
-            if (usuario == null)
+            if (usuario != null)
             {
-                return NotFound(new { mensaje = $"Usuario con ID {idUsuario} no encontrado o está inactivo." });
-            }
+                // Get elementos owned by this usuario
+                var elementos = await _db.Elementos
+                    .Include(e => e.TipoElemento)
+                    .Where(e => e.IdPropietario == idUsuario && e.TipoPropietario == "Usuario" && e.Estado)
+                    .ToListAsync();
 
-            object userData;
-
-            if (usuario.Funcionario != null)
-            {
-                userData = new
+                var userData = new
                 {
                     usuario.IdUsuario,
-                    Nombre = usuario.Funcionario.Nombre,
-                    Rol = "Funcionario",
-                    Documento = usuario.Funcionario.Documento,
+                    usuario.Nombre,
+                    usuario.Apellido,
+                    Rol = usuario.Rol,
+                    Documento = usuario.NumeroDocumento,
+                    usuario.Correo,
+                    Cargo = usuario.Cargo,
                     Ficha = (string)null,
                     Programa = (string)null,
                     NivelFormacion = (string)null,
-                    Elementos = usuario.Elementos.Where(e => e.Estado).Select(MapElementoData).ToList()
+                    Elementos = elementos.Select(MapElementoData).ToList()
                 };
-            }
-            else if (usuario.Aprendiz != null)
-            {
-                userData = new
-                {
-                    usuario.IdUsuario,
-                    Nombre = usuario.Aprendiz.Nombre,
-                    Rol = "Aprendiz",
-                    Documento = usuario.Aprendiz.Documento,
-                    Ficha = usuario.Aprendiz.Ficha?.Codigo,
-                    Programa = usuario.Aprendiz.Ficha?.Programa?.NombrePrograma,
-                    NivelFormacion = usuario.Aprendiz.Ficha?.Programa?.NivelFormacion,
-                    // --- CORRECCIÓN: Filtrar elementos por Estado = true ---
-                    Elementos = usuario.Elementos.Where(e => e.Estado).Select(MapElementoData).ToList()
-                };
-            }
-            else
-            {
-                return NotFound(new { mensaje = "El usuario no tiene un rol de Aprendiz o Funcionario asignado." });
+
+                return Ok(userData);
             }
 
-            return Ok(userData);
+            // Try to find as Aprendiz
+            var aprendiz = await _db.Aprendices
+                .AsNoTracking()
+                .Include(a => a.Ficha)
+                    .ThenInclude(f => f.Programa)
+                .FirstOrDefaultAsync(a => a.IdAprendiz == idUsuario && a.Estado);
+
+            if (aprendiz != null)
+            {
+                // Get elementos owned by this aprendiz
+                var elementos = await _db.Elementos
+                    .Include(e => e.TipoElemento)
+                    .Where(e => e.IdPropietario == aprendiz.IdAprendiz && e.TipoPropietario == "Aprendiz" && e.Estado)
+                    .ToListAsync();
+
+                var userData = new
+                {
+                    IdUsuario = aprendiz.IdAprendiz,
+                    aprendiz.Nombre,
+                    aprendiz.Apellido,
+                    Rol = "Aprendiz",
+                    Documento = aprendiz.NumeroDocumento,
+                    aprendiz.Correo,
+                    Cargo = (string)null,
+                    Ficha = aprendiz.Ficha?.Codigo,
+                    Programa = aprendiz.Ficha?.Programa?.NombrePrograma,
+                    NivelFormacion = aprendiz.Ficha?.Programa?.NivelFormacion,
+                    Elementos = elementos.Select(MapElementoData).ToList()
+                };
+
+                return Ok(userData);
+            }
+
+            return NotFound(new { mensaje = $"Usuario o Aprendiz con ID {idUsuario} no encontrado o está inactivo." });
         }
 
         private object MapElementoData(Elemento e)
@@ -81,14 +94,12 @@ namespace API___NFC.Controllers
             return new
             {
                 e.IdElemento,
-                e.NombreElemento,
-                e.Serial,
                 e.Marca,
-                e.ImageUrl,
-                e.CaracteristicasTecnicas,
-                e.CaracteristicasFisicas,
-                e.Detalles,
-                Tipo = e.TipoElemento?.NombreTipoElemento ?? "Sin tipo"
+                e.Modelo,
+                e.Serial,
+                ImageUrl = e.ImagenUrl,
+                Descripcion = e.Descripcion,
+                Tipo = e.TipoElemento?.Tipo ?? "Sin tipo"
             };
         }
 

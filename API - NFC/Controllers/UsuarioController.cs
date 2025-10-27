@@ -20,15 +20,11 @@ namespace API___NFC.Controllers
             _context = context;
         }
 
-        // --- MÉTODO AÑADIDO ---
         // GET: api/usuario
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios()
         {
             return await _context.Usuarios
-                .Include(u => u.Aprendiz)
-                    .ThenInclude(a => a.Ficha)
-                .Include(u => u.Funcionario)
                 .Where(u => u.Estado == true)
                 .ToListAsync();
         }
@@ -38,9 +34,6 @@ namespace API___NFC.Controllers
         public async Task<ActionResult<Usuario>> GetUsuario(int id)
         {
             var usuario = await _context.Usuarios
-                .Include(u => u.Aprendiz)
-                    .ThenInclude(a => a.Ficha)
-                .Include(u => u.Funcionario)
                 .FirstOrDefaultAsync(u => u.IdUsuario == id);
 
             if (usuario == null || !usuario.Estado)
@@ -48,6 +41,46 @@ namespace API___NFC.Controllers
                 return NotFound();
             }
             return usuario;
+        }
+
+        // POST: api/usuario
+        [HttpPost]
+        public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
+        {
+            try
+            {
+                usuario.Estado = true;
+                usuario.FechaCreacion = DateTime.Now;
+                usuario.FechaActualizacion = DateTime.Now;
+                
+                _context.Usuarios.Add(usuario);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetUsuario), new { id = usuario.IdUsuario }, usuario);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Ocurrió un error interno al crear el usuario.");
+            }
+        }
+
+        // PUT: api/usuario/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutUsuario(int id, Usuario usuario)
+        {
+            if (id != usuario.IdUsuario)
+            {
+                return BadRequest();
+            }
+
+            usuario.FechaActualizacion = DateTime.Now;
+            
+            _context.Entry(usuario).State = EntityState.Modified;
+            _context.Entry(usuario).Property(x => x.Estado).IsModified = false;
+            _context.Entry(usuario).Property(x => x.FechaCreacion).IsModified = false;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
 
         // DELETE: api/usuario/5
@@ -60,19 +93,9 @@ namespace API___NFC.Controllers
                 return NotFound();
             }
 
-            // También desactivamos el aprendiz o funcionario asociado si existe
-            if (usuario.IdAprendiz.HasValue)
-            {
-                var aprendiz = await _context.Aprendices.FindAsync(usuario.IdAprendiz.Value);
-                if (aprendiz != null) aprendiz.Estado = false;
-            }
-            if (usuario.IdFuncionario.HasValue)
-            {
-                var funcionario = await _context.Funcionarios.FindAsync(usuario.IdFuncionario.Value);
-                if (funcionario != null) funcionario.Estado = false;
-            }
-
             usuario.Estado = false;
+            usuario.FechaActualizacion = DateTime.Now;
+            
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -84,20 +107,18 @@ namespace API___NFC.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string search = "" )
         {
-            var query =_context.Usuarios.
-                Include(u =>u.Aprendiz).
-                ThenInclude(a => a.Ficha).
-                Include(u => u.Funcionario).
-                Where(u => u.Estado == true);
+            var query = _context.Usuarios
+                .Where(u => u.Estado == true);
 
             if (!string.IsNullOrEmpty(search))
             {
-                query = query.Where(u=>(u.Aprendiz
-                != null &&  u.Aprendiz.Nombre.Contains(search))||
-                (u.Funcionario != null && u.Funcionario.Nombre.Contains(search))||
-                (u.Aprendiz != null && u.Aprendiz.Documento.Contains(search)) ||
-                (u.Funcionario != null && u.Funcionario.Documento.Contains(search)));
+                query = query.Where(u => 
+                    u.Nombre.Contains(search) ||
+                    u.Apellido.Contains(search) ||
+                    u.NumeroDocumento.Contains(search) ||
+                    u.Correo.Contains(search));
             }
+            
             var totalRecords = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalRecords/ (double)pageSize);
 
@@ -105,9 +126,9 @@ namespace API___NFC.Controllers
             if (page < 1) page = 1;
             if (page > totalPages && totalPages > 0) page = totalPages;
 
-            var usuarios =await query
-                .Skip((page -1) *pageSize).
-                Take(pageSize)
+            var usuarios = await query
+                .Skip((page -1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return new
@@ -117,11 +138,7 @@ namespace API___NFC.Controllers
                 PageSize = pageSize,
                 TotalRecords = totalRecords,
                 TotalPages = totalPages
-
             };
-
         }
-        // NOTA: POST (Crear) y PUT (Actualizar) se manejan a través de
-        // los controladores de Aprendiz y Funcionario.
     }
 }

@@ -25,10 +25,9 @@ namespace API___NFC.Controllers
         public async Task<ActionResult<IEnumerable<Proceso>>> GetProcesos()
         {
             return await _context.Procesos
-                .Include(p => p.TipoProceso) // Carga el Tipo de Proceso.
-                .Include(p => p.Elemento)    // Carga el Elemento.
-                .Include(p => p.Portador)    // Carga el Usuario (Portador).
-                .Where(p => p.Estado == true)
+                .Include(p => p.TipoProceso)
+                .Include(p => p.Aprendiz)
+                .Include(p => p.Usuario)
                 .ToListAsync();
         }
 
@@ -39,11 +38,11 @@ namespace API___NFC.Controllers
         {
             var proceso = await _context.Procesos
                 .Include(p => p.TipoProceso)
-                .Include(p => p.Elemento)
-                .Include(p => p.Portador)
+                .Include(p => p.Aprendiz)
+                .Include(p => p.Usuario)
                 .FirstOrDefaultAsync(p => p.IdProceso == id);
 
-            if (proceso == null || !proceso.Estado)
+            if (proceso == null)
             {
                 return NotFound();
             }
@@ -57,25 +56,44 @@ namespace API___NFC.Controllers
         public async Task<ActionResult<Proceso>> PostProceso(Proceso proceso)
         {
             // --- Validación de todas las claves foráneas ---
-            if (proceso.IdTipoProceso.HasValue)
+            var tipoProcesoExiste = await _context.TiposProceso.AnyAsync(t => t.IdTipoProceso == proceso.IdTipoProceso && t.Estado);
+            if (!tipoProcesoExiste)
             {
-                var tipoProcesoExiste = await _context.TiposProceso.AnyAsync(t => t.IdTipoProceso == proceso.IdTipoProceso && t.Estado);
-                if (!tipoProcesoExiste) return BadRequest("El Tipo de Proceso no existe o está inactivo.");
+                return BadRequest("El Tipo de Proceso no existe o está inactivo.");
             }
 
-            if (proceso.IdElemento.HasValue)
+            // Validate TipoPersona
+            if (proceso.TipoPersona == "Aprendiz" && proceso.IdAprendiz.HasValue)
             {
-                var elementoExiste = await _context.Elementos.AnyAsync(e => e.IdElemento == proceso.IdElemento && e.Estado);
-                if (!elementoExiste) return BadRequest("El Elemento no existe o está inactivo.");
+                var aprendizExiste = await _context.Aprendices.AnyAsync(a => a.IdAprendiz == proceso.IdAprendiz && a.Estado);
+                if (!aprendizExiste)
+                {
+                    return BadRequest("El Aprendiz no existe o está inactivo.");
+                }
+            }
+            else if (proceso.TipoPersona == "Usuario" && proceso.IdUsuario.HasValue)
+            {
+                var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == proceso.IdUsuario && u.Estado);
+                if (!usuarioExiste)
+                {
+                    return BadRequest("El Usuario no existe o está inactivo.");
+                }
+            }
+            else
+            {
+                return BadRequest("TipoPersona debe ser 'Aprendiz' o 'Usuario' con el ID correspondiente.");
             }
 
-            if (proceso.IdPortador.HasValue)
+            // Validate Guardia exists (IdGuardia refers to Usuario with Rol='Guardia')
+            var guardiaExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == proceso.IdGuardia && u.Rol == "Guardia" && u.Estado);
+            if (!guardiaExiste)
             {
-                var portadorExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == proceso.IdPortador && u.Estado);
-                if (!portadorExiste) return BadRequest("El Portador (Usuario) no existe o está inactivo.");
+                return BadRequest("El Guardia no existe o no tiene el rol correcto.");
             }
 
-            proceso.Estado = true;
+            proceso.TimeStampEntradaSalida = DateTime.Now;
+            proceso.SincronizadoBD = false;
+            
             _context.Procesos.Add(proceso);
             await _context.SaveChangesAsync();
 
@@ -92,10 +110,7 @@ namespace API___NFC.Controllers
                 return BadRequest();
             }
 
-            // (Opcional) Puedes añadir aquí las mismas validaciones de claves foráneas del POST si quieres permitir que se cambien.
-
             _context.Entry(proceso).State = EntityState.Modified;
-            _context.Entry(proceso).Property(x => x.Estado).IsModified = false;
 
             try
             {
@@ -117,7 +132,7 @@ namespace API___NFC.Controllers
         }
 
         // DELETE: api/proceso/5
-        // Desactiva un registro de proceso (borrado lógico).
+        // Elimina un registro de proceso.
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProceso(int id)
         {
@@ -127,7 +142,7 @@ namespace API___NFC.Controllers
                 return NotFound();
             }
 
-            proceso.Estado = false;
+            _context.Procesos.Remove(proceso);
             await _context.SaveChangesAsync();
 
             return NoContent();

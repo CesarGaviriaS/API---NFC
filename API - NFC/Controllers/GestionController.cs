@@ -25,7 +25,8 @@ namespace API___NFC.Controllers
                 .Select(u => new
                 {
                     u.IdUsuario,
-                    Nombre = u.Funcionario != null ? u.Funcionario.Nombre : u.Aprendiz.Nombre
+                    u.Nombre,
+                    u.Apellido
                 })
                 .OrderBy(u => u.Nombre)
                 .ToListAsync();
@@ -36,19 +37,16 @@ namespace API___NFC.Controllers
         [HttpGet("GetElementsByUser")]
         public async Task<IActionResult> GetElementsByUser(int idUsuario)
         {
-            // --- CORRECCIÓN ---
-            // La consulta ahora empieza desde la tabla de Usuarios para encontrar el
-            // usuario correcto y luego navega a su colección de Elementos.
-            // Esto respeta la relación definida en tus modelos y soluciona el error.
-            var elementos = await _db.Usuarios
-                .Where(u => u.IdUsuario == idUsuario && u.Estado) // 1. Encuentra al usuario correcto.
-                .SelectMany(u => u.Elementos.Where(e => e.Estado)) // 2. Selecciona solo sus elementos activos.
+            // Get elementos owned by this usuario
+            var elementos = await _db.Elementos
+                .Where(e => e.IdPropietario == idUsuario && e.TipoPropietario == "Usuario" && e.Estado)
                 .Select(e => new
                 {
                     e.IdElemento,
-                    e.NombreElemento
+                    e.Marca,
+                    e.Modelo
                 })
-                .OrderBy(e => e.NombreElemento)
+                .OrderBy(e => e.Marca)
                 .ToListAsync();
 
             return Ok(elementos);

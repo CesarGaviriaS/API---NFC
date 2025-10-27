@@ -44,42 +44,26 @@ namespace API___NFC.Controllers
         [HttpPost]
         public async Task<ActionResult<Funcionario>> PostFuncionario(Funcionario funcionario)
         {
-            using (var transaction = await _context.Database.BeginTransactionAsync())
+            try
             {
-                try
+                // Validar modelo
+                if (!ModelState.IsValid)
                 {
-                    // Validar modelo
-                    if (!ModelState.IsValid)
-                    {
-                        return BadRequest(ModelState);
-                    }
-
-                    // 1. Crear el Funcionario
-                    funcionario.Estado = true;
-                    _context.Funcionarios.Add(funcionario);
-                    await _context.SaveChangesAsync();
-
-                    // 2. Crear el Usuario
-                    var nuevoUsuario = new Usuario
-                    {
-                        IdFuncionario = funcionario.IdFuncionario,
-                        IdAprendiz = null,
-                        Estado = true
-                    };
-                    _context.Usuarios.Add(nuevoUsuario);
-                    await _context.SaveChangesAsync();
-
-                    await transaction.CommitAsync();
-
-                    return CreatedAtAction(nameof(GetFuncionario), new { id = funcionario.IdFuncionario }, funcionario);
+                    return BadRequest(ModelState);
                 }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    Console.WriteLine($"Error: {ex.Message}");
-                    Console.WriteLine($"Inner Exception: {ex.InnerException?.Message}");
-                    return StatusCode(500, "Ocurrió un error interno al crear el funcionario y el usuario asociado.");
-                }
+
+                // Create the Funcionario (legacy table)
+                funcionario.Estado = true;
+                _context.Funcionarios.Add(funcionario);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetFuncionario), new { id = funcionario.IdFuncionario }, funcionario);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"Inner Exception: {ex.InnerException?.Message}");
+                return StatusCode(500, "Ocurrió un error interno al crear el funcionario.");
             }
         }
 
@@ -145,14 +129,7 @@ namespace API___NFC.Controllers
                 return NotFound();
             }
 
-            // Buscar usuario asociado
-            var usuarioAsociado = await _context.Usuarios.FirstOrDefaultAsync(u => u.IdFuncionario == id);
-
             funcionario.Estado = false;
-            if (usuarioAsociado != null)
-            {
-                usuarioAsociado.Estado = false;
-            }
 
             await _context.SaveChangesAsync();
             return NoContent();

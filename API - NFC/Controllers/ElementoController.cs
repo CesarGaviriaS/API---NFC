@@ -25,10 +25,6 @@ namespace API___NFC.Controllers
         {
             return await _context.Elementos
                 .Include(e => e.TipoElemento)
-                .Include(e => e.Propietario)
-                    .ThenInclude(u => u.Aprendiz)
-                .Include(e => e.Propietario)
-                    .ThenInclude(u => u.Funcionario)
                 .Where(e => e.Estado == true)
                 .ToListAsync();
         }
@@ -39,10 +35,6 @@ namespace API___NFC.Controllers
         {
             var elemento = await _context.Elementos
                 .Include(e => e.TipoElemento)
-                .Include(e => e.Propietario)
-                    .ThenInclude(u => u.Aprendiz)
-                .Include(e => e.Propietario)
-                    .ThenInclude(u => u.Funcionario)
                 .FirstOrDefaultAsync(e => e.IdElemento == id);
 
             if (elemento == null || !elemento.Estado)
@@ -59,25 +51,38 @@ namespace API___NFC.Controllers
         public async Task<ActionResult<Elemento>> PostElemento(Elemento elemento)
         {
             // --- Validación de Claves Foráneas ---
-            if (elemento.IdTipoElemento.HasValue)
+            var tipoElementoExiste = await _context.TiposElemento.AnyAsync(t => t.IdTipoElemento == elemento.IdTipoElemento && t.Estado);
+            if (!tipoElementoExiste)
             {
-                var tipoElementoExiste = await _context.TiposElemento.AnyAsync(t => t.IdTipoElemento == elemento.IdTipoElemento && t.Estado);
-                if (!tipoElementoExiste)
-                {
-                    return BadRequest("El Tipo de Elemento especificado no existe o está inactivo.");
-                }
+                return BadRequest("El Tipo de Elemento especificado no existe o está inactivo.");
             }
 
-            if (elemento.IdPropietario.HasValue)
+            // Validate TipoPropietario and IdPropietario
+            if (elemento.TipoPropietario == "Aprendiz")
             {
-                var propietarioExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == elemento.IdPropietario && u.Estado);
-                if (!propietarioExiste)
+                var aprendizExiste = await _context.Aprendices.AnyAsync(a => a.IdAprendiz == elemento.IdPropietario && a.Estado);
+                if (!aprendizExiste)
                 {
-                    return BadRequest("El Propietario (Usuario) especificado no existe o está inactivo.");
+                    return BadRequest("El Aprendiz especificado no existe o está inactivo.");
                 }
+            }
+            else if (elemento.TipoPropietario == "Usuario")
+            {
+                var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == elemento.IdPropietario && u.Estado);
+                if (!usuarioExiste)
+                {
+                    return BadRequest("El Usuario especificado no existe o está inactivo.");
+                }
+            }
+            else
+            {
+                return BadRequest("TipoPropietario debe ser 'Aprendiz' o 'Usuario'.");
             }
 
             elemento.Estado = true;
+            elemento.FechaCreacion = DateTime.Now;
+            elemento.FechaActualizacion = DateTime.Now;
+            
             _context.Elementos.Add(elemento);
             await _context.SaveChangesAsync();
 
@@ -95,26 +100,39 @@ namespace API___NFC.Controllers
             }
 
             // --- Validación de Claves Foráneas (similar a POST) ---
-            if (elemento.IdTipoElemento.HasValue)
+            var tipoElementoExiste = await _context.TiposElemento.AnyAsync(t => t.IdTipoElemento == elemento.IdTipoElemento && t.Estado);
+            if (!tipoElementoExiste)
             {
-                var tipoElementoExiste = await _context.TiposElemento.AnyAsync(t => t.IdTipoElemento == elemento.IdTipoElemento && t.Estado);
-                if (!tipoElementoExiste)
-                {
-                    return BadRequest("El Tipo de Elemento especificado no existe o está inactivo.");
-                }
+                return BadRequest("El Tipo de Elemento especificado no existe o está inactivo.");
             }
 
-            if (elemento.IdPropietario.HasValue)
+            // Validate TipoPropietario and IdPropietario
+            if (elemento.TipoPropietario == "Aprendiz")
             {
-                var propietarioExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == elemento.IdPropietario && u.Estado);
-                if (!propietarioExiste)
+                var aprendizExiste = await _context.Aprendices.AnyAsync(a => a.IdAprendiz == elemento.IdPropietario && a.Estado);
+                if (!aprendizExiste)
                 {
-                    return BadRequest("El Propietario (Usuario) especificado no existe o está inactivo.");
+                    return BadRequest("El Aprendiz especificado no existe o está inactivo.");
                 }
             }
+            else if (elemento.TipoPropietario == "Usuario")
+            {
+                var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == elemento.IdPropietario && u.Estado);
+                if (!usuarioExiste)
+                {
+                    return BadRequest("El Usuario especificado no existe o está inactivo.");
+                }
+            }
+            else
+            {
+                return BadRequest("TipoPropietario debe ser 'Aprendiz' o 'Usuario'.");
+            }
 
+            elemento.FechaActualizacion = DateTime.Now;
+            
             _context.Entry(elemento).State = EntityState.Modified;
             _context.Entry(elemento).Property(x => x.Estado).IsModified = false;
+            _context.Entry(elemento).Property(x => x.FechaCreacion).IsModified = false;
 
             try
             {
@@ -147,6 +165,7 @@ namespace API___NFC.Controllers
             }
 
             elemento.Estado = false;
+            elemento.FechaActualizacion = DateTime.Now;
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -161,18 +180,14 @@ namespace API___NFC.Controllers
         {
             var query = _context.Elementos
                 .Include(e => e.TipoElemento)
-                .Include(e => e.Propietario)
-                    .ThenInclude(p => p.Aprendiz)
-                .Include(e => e.Propietario)
-                    .ThenInclude(p => p.Funcionario)
                 .Where(e => e.Estado == true);
 
             // Aplicar búsqueda si existe
             if (!string.IsNullOrEmpty(search))
             {
                 query = query.Where(e =>
-                    e.NombreElemento.Contains(search) ||
                     (e.Marca != null && e.Marca.Contains(search)) ||
+                    (e.Modelo != null && e.Modelo.Contains(search)) ||
                     (e.Serial != null && e.Serial.Contains(search))
                 );
             }
