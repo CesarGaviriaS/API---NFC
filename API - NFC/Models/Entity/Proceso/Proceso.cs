@@ -1,5 +1,4 @@
-﻿using API___NFC.Models.Entity.Inventario;
-using API___NFC.Models.Entity.Users;
+﻿using API___NFC.Models.Entity.Users;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -10,19 +9,39 @@ namespace API___NFC.Models.Entity.Proceso
     {
         [Key]
         public int IdProceso { get; set; }
-        public int? IdTipoProceso { get; set; }
-        public string? TimeStampActual { get; set; }
-        public int? IdElemento { get; set; }
-        public string? RequiereOtroProceso { get; set; }
-        public int? IdPortador { get; set; }
-        [ForeignKey("IdPortador")]
-        public virtual Usuario? Portador { get; set; }
-
-        [ForeignKey("IdElemento")]
-        public virtual Elemento? Elemento { get; set; }
+        
+        [Required]
+        public int IdTipoProceso { get; set; }
+        
+        [Required]
+        [MaxLength(20)]
+        public string TipoPersona { get; set; } = string.Empty;
+        
+        [Required]
+        public int IdGuardia { get; set; }
+        
+        public DateTime TimeStampEntradaSalida { get; set; } = DateTime.Now;
+        
+        public bool RequiereOtrosProcesos { get; set; } = false;
+        
+        public int? IdProceso_Relacionado { get; set; }
+        
+        [Column(TypeName = "text")]
+        public string? Observaciones { get; set; }
+        
+        public bool SincronizadoBD { get; set; } = false;
+        
+        public int? IdAprendiz { get; set; }
+        
+        public int? IdUsuario { get; set; }
 
         [ForeignKey("IdTipoProceso")]
         public virtual TipoProceso? TipoProceso { get; set; }
-        public bool Estado { get; set; } = true;
+        
+        [ForeignKey("IdAprendiz")]
+        public virtual Aprendiz? Aprendiz { get; set; }
+        
+        [ForeignKey("IdUsuario")]
+        public virtual Usuario? Usuario { get; set; }
     }
 }

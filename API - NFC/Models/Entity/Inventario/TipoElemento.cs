@@ -9,8 +9,15 @@ namespace API___NFC.Models.Entity.Inventario
         [Key]
         public int IdTipoElemento { get; set; }
 
-        [Column("TipoElemento")] // Especifica el nombre exacto de la columna
-        public string? NombreTipoElemento { get; set; }
+        [Required]
+        [MaxLength(100)]
+        [Column("Tipo")]
+        public string Tipo { get; set; } = string.Empty;
+        
+        public bool RequiereNFC { get; set; } = false;
+        
         public bool Estado { get; set; } = true;
+        
+        public DateTime FechaCreacion { get; set; } = DateTime.Now;
     }
 }

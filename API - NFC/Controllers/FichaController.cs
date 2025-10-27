@@ -53,16 +53,16 @@ namespace API___NFC.Controllers
         public async Task<ActionResult<Ficha>> PostFicha(Ficha ficha)
         {
             // Validamos que el programa al que se asocia exista y esté activo.
-            if (ficha.IdPrograma.HasValue)
+            var programaExiste = await _context.Programas.AnyAsync(p => p.IdPrograma == ficha.IdPrograma && p.Estado);
+            if (!programaExiste)
             {
-                var programaExiste = await _context.Programas.AnyAsync(p => p.IdPrograma == ficha.IdPrograma && p.Estado);
-                if (!programaExiste)
-                {
-                    return BadRequest("El Programa especificado no existe o está inactivo.");
-                }
+                return BadRequest("El Programa especificado no existe o está inactivo.");
             }
 
             ficha.Estado = true;
+            ficha.FechaCreacion = DateTime.Now;
+            ficha.FechaActualizacion = DateTime.Now;
+            
             _context.Fichas.Add(ficha);
             await _context.SaveChangesAsync();
 
@@ -79,19 +79,19 @@ namespace API___NFC.Controllers
                 return BadRequest("El ID de la URL no coincide con el ID de la ficha.");
             }
 
-            // Validamos que el programa al que se asocia exista y esté activo (si se está cambiando).
-            if (ficha.IdPrograma.HasValue)
+            // Validamos que el programa al que se asocia exista y esté activo.
+            var programaExiste = await _context.Programas.AnyAsync(p => p.IdPrograma == ficha.IdPrograma && p.Estado);
+            if (!programaExiste)
             {
-                var programaExiste = await _context.Programas.AnyAsync(p => p.IdPrograma == ficha.IdPrograma && p.Estado);
-                if (!programaExiste)
-                {
-                    return BadRequest("El Programa especificado no existe o está inactivo.");
-                }
+                return BadRequest("El Programa especificado no existe o está inactivo.");
             }
 
+            ficha.FechaActualizacion = DateTime.Now;
+            
             _context.Entry(ficha).State = EntityState.Modified;
             // Nos aseguramos de no modificar el estado en una actualización normal.
             _context.Entry(ficha).Property(x => x.Estado).IsModified = false;
+            _context.Entry(ficha).Property(x => x.FechaCreacion).IsModified = false;
 
             try
             {

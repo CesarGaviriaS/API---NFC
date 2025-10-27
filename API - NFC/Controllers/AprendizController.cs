@@ -49,49 +49,31 @@ namespace API___NFC.Controllers
         }
 
         // POST: api/aprendiz
-        // Crea un nuevo Aprendiz y su Usuario correspondiente en una transacción.
+        // Crea un nuevo Aprendiz.
         [HttpPost]
         public async Task<ActionResult<Aprendiz>> PostAprendiz(Aprendiz aprendiz)
         {
-            // --- Lógica de Creación en Dos Pasos ---
-            // Usamos una transacción para asegurar que ambas operaciones (crear Aprendiz y crear Usuario)
-            // se completen con éxito, o ninguna lo haga.
-            using (var transaction = await _context.Database.BeginTransactionAsync())
+            try
             {
-                try
+                // Validar que la Ficha existe
+                var fichaExiste = await _context.Fichas.AnyAsync(f => f.IdFicha == aprendiz.IdFicha && f.Estado);
+                if (!fichaExiste)
                 {
-                    // 1. Validar y crear el Aprendiz
-                    if (aprendiz.IdFicha.HasValue)
-                    {
-                        var fichaExiste = await _context.Fichas.AnyAsync(f => f.IdFicha == aprendiz.IdFicha && f.Estado);
-                        if (!fichaExiste) return BadRequest("La Ficha especificada no existe o está inactiva.");
-                    }
-
-                    aprendiz.Estado = true;
-                    _context.Aprendices.Add(aprendiz);
-                    await _context.SaveChangesAsync(); // Guardamos para obtener el ID del nuevo aprendiz
-
-                    // 2. Crear el Usuario que lo "envuelve"
-                    var nuevoUsuario = new Usuario
-                    {
-                        IdAprendiz = aprendiz.IdAprendiz, // Lo asociamos con el ID que acabamos de crear
-                        IdFuncionario = null,
-                        Estado = true
-                    };
-                    _context.Usuarios.Add(nuevoUsuario);
-                    await _context.SaveChangesAsync();
-
-                    // Si todo sale bien, confirmamos la transacción
-                    await transaction.CommitAsync();
-
-                    return CreatedAtAction(nameof(GetAprendiz), new { id = aprendiz.IdAprendiz }, aprendiz);
+                    return BadRequest("La Ficha especificada no existe o está inactiva.");
                 }
-                catch (Exception)
-                {
-                    // Si algo falla, revertimos todos los cambios
-                    await transaction.RollbackAsync();
-                    return StatusCode(500, "Ocurrió un error interno al crear el aprendiz y el usuario asociado.");
-                }
+
+                aprendiz.Estado = true;
+                aprendiz.FechaCreacion = DateTime.Now;
+                aprendiz.FechaActualizacion = DateTime.Now;
+                
+                _context.Aprendices.Add(aprendiz);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetAprendiz), new { id = aprendiz.IdAprendiz }, aprendiz);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Ocurrió un error interno al crear el aprendiz.");
             }
         }
 
@@ -105,15 +87,18 @@ namespace API___NFC.Controllers
                 return BadRequest();
             }
 
+            aprendiz.FechaActualizacion = DateTime.Now;
+            
             _context.Entry(aprendiz).State = EntityState.Modified;
             _context.Entry(aprendiz).Property(x => x.Estado).IsModified = false;
+            _context.Entry(aprendiz).Property(x => x.FechaCreacion).IsModified = false;
 
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
         // DELETE: api/aprendiz/5
-        // Desactiva un aprendiz Y su usuario asociado.
+        // Desactiva un aprendiz.
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAprendiz(int id)
         {
@@ -123,14 +108,8 @@ namespace API___NFC.Controllers
                 return NotFound();
             }
 
-            // Buscamos el usuario asociado para también desactivarlo
-            var usuarioAsociado = await _context.Usuarios.FirstOrDefaultAsync(u => u.IdAprendiz == id);
-
             aprendiz.Estado = false;
-            if (usuarioAsociado != null)
-            {
-                usuarioAsociado.Estado = false;
-            }
+            aprendiz.FechaActualizacion = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return NoContent();

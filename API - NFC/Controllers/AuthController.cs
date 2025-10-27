@@ -27,7 +27,37 @@ namespace API___NFC.Controllers
         {
             try
             {
-                // Buscar funcionario por documento
+                // Try to find as Usuario first
+                var usuario = await _context.Usuarios
+                    .FirstOrDefaultAsync(u => u.NumeroDocumento == request.Documento && u.Estado);
+
+                if (usuario != null)
+                {
+                    // Verificar contraseña (deberías usar hash en producción)
+                    if (usuario.Contraseña != request.Contraseña)
+                    {
+                        return Unauthorized(new { message = "Contraseña incorrecta" });
+                    }
+
+                    // Generar token JWT
+                    var userToken = GenerateJwtTokenUsuario(usuario);
+
+                    return Ok(new
+                    {
+                        Token = userToken,
+                        User = new
+                        {
+                            Id = usuario.IdUsuario,
+                            Documento = usuario.NumeroDocumento,
+                            Nombre = usuario.Nombre,
+                            Apellido = usuario.Apellido,
+                            Tipo = "Usuario",
+                            Rol = usuario.Rol
+                        }
+                    });
+                }
+
+                // Fallback: Try Funcionario (legacy)
                 var funcionario = await _context.Funcionarios
                     .FirstOrDefaultAsync(f => f.Documento == request.Documento && f.Estado);
 
@@ -36,28 +66,18 @@ namespace API___NFC.Controllers
                     return Unauthorized(new { message = "Usuario no encontrado o inactivo" });
                 }
 
-                // Verificar contraseña (deberías usar hash en producción)
+                // Verificar contraseña
                 if (funcionario.Contraseña != request.Contraseña)
                 {
                     return Unauthorized(new { message = "Contraseña incorrecta" });
                 }
 
-                // Buscar usuario relacionado
-                var usuario = await _context.Usuarios
-                    .Include(u => u.Funcionario)
-                    .FirstOrDefaultAsync(u => u.IdFuncionario == funcionario.IdFuncionario && u.Estado);
-
-                if (usuario == null)
-                {
-                    return Unauthorized(new { message = "Usuario no configurado correctamente" });
-                }
-
                 // Generar token JWT
-                var token = GenerateJwtToken(funcionario);
+                var funcToken = GenerateJwtToken(funcionario);
 
                 return Ok(new
                 {
-                    Token = token,
+                    Token = funcToken,
                     User = new
                     {
                         Id = funcionario.IdFuncionario,
@@ -98,6 +118,38 @@ namespace API___NFC.Controllers
             {
                 claims.Add(new Claim(ClaimTypes.Name, funcionario.Nombre));
             }
+
+            var token = new JwtSecurityToken(
+                issuer: jwtSettings["Issuer"] ?? "DefaultIssuer",
+                audience: jwtSettings["Audience"] ?? "DefaultAudience",
+                claims: claims,
+                expires: DateTime.Now.AddHours(2),
+                signingCredentials: creds);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        private string GenerateJwtTokenUsuario(Usuario usuario)
+        {
+            var jwtSettings = _configuration.GetSection("Jwt");
+            var keyString = jwtSettings["Key"];
+
+            if (string.IsNullOrEmpty(keyString))
+            {
+                throw new Exception("JWT Key no está configurado");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, usuario.IdUsuario.ToString()),
+                new Claim("TipoUsuario", "Usuario"),
+                new Claim("Rol", usuario.Rol),
+                new Claim("Documento", usuario.NumeroDocumento),
+                new Claim(ClaimTypes.Name, $"{usuario.Nombre} {usuario.Apellido}")
+            };
 
             var token = new JwtSecurityToken(
                 issuer: jwtSettings["Issuer"] ?? "DefaultIssuer",

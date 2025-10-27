@@ -109,10 +109,9 @@ namespace API___NFC.Controllers
             // busqueda si existe 
             if (!string.IsNullOrEmpty(search))
             {
-
                 query = query.Where(t =>
-                t.NombreTipoElemento.Contains(search) ||
-                t.IdTipoElemento.ToString().Contains(search));
+                    t.Tipo.Contains(search) ||
+                    t.IdTipoElemento.ToString().Contains(search));
             }
             var totalRecords = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
