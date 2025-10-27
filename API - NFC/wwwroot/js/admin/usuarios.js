@@ -21,6 +21,7 @@
     const funcionarioIdInput = document.getElementById('funcionarioIdInput');
     const funcionarioNombreInput = document.getElementById('funcionarioNombreInput');
     const funcionarioDocumentoInput = document.getElementById('funcionarioDocumentoInput');
+    const funcionarioContraseñaInput = document.getElementById('funcionarioContraseñaInput');
     const funcionarioDetalleInput = document.getElementById('funcionarioDetalleInput');
     const funcionarioModalTitulo = document.getElementById('funcionarioModalTitulo');
 
@@ -318,8 +319,6 @@
             document.getElementById('funcionarioForm').reset();
             funcionarioIdInput.value = id;
 
-            const passwordInput = document.getElementById('funcionarioContraseñaInput');
-
             if (id !== 0) {
                 const usuario = listaUsuariosCompleta.find(u => u.funcionario && u.funcionario.idFuncionario === id);
                 if (usuario && usuario.funcionario) {
@@ -328,13 +327,13 @@
                     funcionarioDetalleInput.value = usuario.funcionario.detalle || '';
 
                     // En modo edición, la contraseña es opcional
-                    passwordInput.removeAttribute('required');
-                    passwordInput.placeholder = 'Dejar en blanco para mantener la actual';
+                    funcionarioContraseñaInput.removeAttribute('required');
+                    funcionarioContraseñaInput.placeholder = 'Dejar en blanco para mantener la actual';
                 }
             } else {
                 // Modo creación - contraseña requerida
-                passwordInput.setAttribute('required', 'required');
-                passwordInput.placeholder = '';
+                funcionarioContraseñaInput.setAttribute('required', 'required');
+                funcionarioContraseñaInput.placeholder = '';
             }
             funcionarioModal.show();
         }
