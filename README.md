@@ -9,10 +9,9 @@ API - NFC es un sistema integral que permite la gestión y seguimiento de elemen
 ## ✨ Características Principales
 
 ### 🔐 Sistema de Autenticación
-- Autenticación basada en JWT (JSON Web Tokens)
+- Autenticación basada en JWT (JSON Web Tokens) con validez de 2 horas
+- Sesiones con cookies con expiración deslizante de 60 minutos
 - Login para funcionarios con validación de documentos y contraseñas
-- Sesiones con cookies y expiración configurable
-- Tokens JWT con validez de 2 horas
 - Control de acceso basado en roles
 
 ### 📡 Integración NFC con SignalR
@@ -293,7 +292,7 @@ La aplicación estará disponible en:
 
 1. **Contraseñas en texto plano**: Actualmente las contraseñas se almacenan y comparan sin encriptación
    - Implementar hash de contraseñas con BCrypt o Argon2
-   - La dependencia BCrypt.Net-Next ya está incluida en el proyecto
+   - Nota: La dependencia BCrypt.Net-Next está incluida en el proyecto pero aún no implementada en el código
    
 2. **Gestión de secretos**:
    - Usar variables de entorno o Azure Key Vault para claves sensibles
