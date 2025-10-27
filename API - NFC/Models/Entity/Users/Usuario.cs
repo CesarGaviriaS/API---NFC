@@ -13,11 +13,11 @@ namespace API___NFC.Models.Entity.Users
         public int? IdFuncionario { get; set; }
         public int? IdAprendiz { get; set; }
 
-        // Propiedades de Navegación con la guía de la clave foránea
-        [ForeignKey("IdFuncionario")] // <-- ¡Ajuste!
+       
+        [ForeignKey("IdFuncionario")] 
         public virtual Funcionario? Funcionario { get; set; }
 
-        [ForeignKey("IdAprendiz")] // <-- ¡Ajuste!
+        [ForeignKey("IdAprendiz")]
         public virtual Aprendiz? Aprendiz { get; set; }
 
         public virtual ICollection<Elemento> Elementos { get; set; } = new List<Elemento>();
