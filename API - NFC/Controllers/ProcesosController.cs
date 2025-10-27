@@ -1,5 +1,6 @@
 ﻿using API___NFC.Data;
 using API___NFC.Models;
+using API___NFC.Models.Constants;
 using API___NFC.Models.Entity.Proceso;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -63,7 +64,7 @@ namespace API___NFC.Controllers
             }
 
             // Validate TipoPersona
-            if (proceso.TipoPersona == "Aprendiz" && proceso.IdAprendiz.HasValue)
+            if (proceso.TipoPersona == AppConstants.PersonTypes.Aprendiz && proceso.IdAprendiz.HasValue)
             {
                 var aprendizExiste = await _context.Aprendices.AnyAsync(a => a.IdAprendiz == proceso.IdAprendiz && a.Estado);
                 if (!aprendizExiste)
@@ -71,7 +72,7 @@ namespace API___NFC.Controllers
                     return BadRequest("El Aprendiz no existe o está inactivo.");
                 }
             }
-            else if (proceso.TipoPersona == "Usuario" && proceso.IdUsuario.HasValue)
+            else if (proceso.TipoPersona == AppConstants.PersonTypes.Usuario && proceso.IdUsuario.HasValue)
             {
                 var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == proceso.IdUsuario && u.Estado);
                 if (!usuarioExiste)
@@ -85,7 +86,7 @@ namespace API___NFC.Controllers
             }
 
             // Validate Guardia exists (IdGuardia refers to Usuario with Rol='Guardia')
-            var guardiaExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == proceso.IdGuardia && u.Rol == "Guardia" && u.Estado);
+            var guardiaExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == proceso.IdGuardia && u.Rol == AppConstants.Roles.Guardia && u.Estado);
             if (!guardiaExiste)
             {
                 return BadRequest("El Guardia no existe o no tiene el rol correcto.");

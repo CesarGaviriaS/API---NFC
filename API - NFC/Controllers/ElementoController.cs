@@ -1,5 +1,6 @@
 ﻿using API___NFC.Data;
 using API___NFC.Models;
+using API___NFC.Models.Constants;
 using API___NFC.Models.Entity.Inventario;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -58,7 +59,7 @@ namespace API___NFC.Controllers
             }
 
             // Validate TipoPropietario and IdPropietario
-            if (elemento.TipoPropietario == "Aprendiz")
+            if (elemento.TipoPropietario == AppConstants.OwnerTypes.Aprendiz)
             {
                 var aprendizExiste = await _context.Aprendices.AnyAsync(a => a.IdAprendiz == elemento.IdPropietario && a.Estado);
                 if (!aprendizExiste)
@@ -66,7 +67,7 @@ namespace API___NFC.Controllers
                     return BadRequest("El Aprendiz especificado no existe o está inactivo.");
                 }
             }
-            else if (elemento.TipoPropietario == "Usuario")
+            else if (elemento.TipoPropietario == AppConstants.OwnerTypes.Usuario)
             {
                 var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == elemento.IdPropietario && u.Estado);
                 if (!usuarioExiste)
@@ -107,7 +108,7 @@ namespace API___NFC.Controllers
             }
 
             // Validate TipoPropietario and IdPropietario
-            if (elemento.TipoPropietario == "Aprendiz")
+            if (elemento.TipoPropietario == AppConstants.OwnerTypes.Aprendiz)
             {
                 var aprendizExiste = await _context.Aprendices.AnyAsync(a => a.IdAprendiz == elemento.IdPropietario && a.Estado);
                 if (!aprendizExiste)
@@ -115,7 +116,7 @@ namespace API___NFC.Controllers
                     return BadRequest("El Aprendiz especificado no existe o está inactivo.");
                 }
             }
-            else if (elemento.TipoPropietario == "Usuario")
+            else if (elemento.TipoPropietario == AppConstants.OwnerTypes.Usuario)
             {
                 var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == elemento.IdPropietario && u.Estado);
                 if (!usuarioExiste)

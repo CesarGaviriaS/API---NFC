@@ -1,4 +1,5 @@
 ﻿using API___NFC.Data;
+using API___NFC.Models.Constants;
 using API___NFC.Models.Entity;
 using API___NFC.Models.Entity.Inventario;
 using API___NFC.Models.Entity.Users;
@@ -32,7 +33,7 @@ namespace API___NFC.Controllers
                 // Get elementos owned by this usuario
                 var elementos = await _db.Elementos
                     .Include(e => e.TipoElemento)
-                    .Where(e => e.IdPropietario == idUsuario && e.TipoPropietario == "Usuario" && e.Estado)
+                    .Where(e => e.IdPropietario == idUsuario && e.TipoPropietario == AppConstants.OwnerTypes.Usuario && e.Estado)
                     .ToListAsync();
 
                 var userData = new
@@ -65,7 +66,7 @@ namespace API___NFC.Controllers
                 // Get elementos owned by this aprendiz
                 var elementos = await _db.Elementos
                     .Include(e => e.TipoElemento)
-                    .Where(e => e.IdPropietario == aprendiz.IdAprendiz && e.TipoPropietario == "Aprendiz" && e.Estado)
+                    .Where(e => e.IdPropietario == aprendiz.IdAprendiz && e.TipoPropietario == AppConstants.OwnerTypes.Aprendiz && e.Estado)
                     .ToListAsync();
 
                 var userData = new

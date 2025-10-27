@@ -1,4 +1,5 @@
 ﻿using API___NFC.Data;
+using API___NFC.Models.Constants;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
@@ -39,7 +40,7 @@ namespace API___NFC.Controllers
         {
             // Get elementos owned by this usuario
             var elementos = await _db.Elementos
-                .Where(e => e.IdPropietario == idUsuario && e.TipoPropietario == "Usuario" && e.Estado)
+                .Where(e => e.IdPropietario == idUsuario && e.TipoPropietario == AppConstants.OwnerTypes.Usuario && e.Estado)
                 .Select(e => new
                 {
                     e.IdElemento,
