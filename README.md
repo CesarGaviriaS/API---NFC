@@ -11,7 +11,8 @@ API - NFC es un sistema integral que permite la gestión y seguimiento de elemen
 ### 🔐 Sistema de Autenticación
 - Autenticación basada en JWT (JSON Web Tokens)
 - Login para funcionarios con validación de documentos y contraseñas
-- Sesiones con cookies y expiración configurable (60 minutos por defecto)
+- Sesiones con cookies y expiración configurable
+- Tokens JWT con validez de 2 horas
 - Control de acceso basado en roles
 
 ### 📡 Integración NFC con SignalR
@@ -126,7 +127,6 @@ El sistema incluye páginas Razor para:
 - **Base de Datos**: SQL Server (Entity Framework Core)
 - **Comunicación en Tiempo Real**: SignalR
 - **Autenticación**: JWT + Cookies
-- **Encriptación**: BCrypt.Net-Next
 - **API Documentation**: Swagger/OpenAPI
 - **Frontend**: Razor Pages
 
@@ -284,18 +284,27 @@ La aplicación estará disponible en:
 
 ### Características de Seguridad Implementadas:
 - Autenticación JWT con expiración de tokens (2 horas)
-- Validación de contraseñas (se recomienda hash en producción)
 - CORS configurado para permitir credenciales
 - HTTPS redirection habilitado
 - Protección de rutas con autorización
 
-### Recomendaciones:
-⚠️ **IMPORTANTE**: El código actual almacena contraseñas en texto plano. En producción, se debe:
-- Implementar hash de contraseñas con BCrypt
-- Usar variables de entorno para claves sensibles
-- Implementar rate limiting
-- Añadir validación de fuerza de contraseñas
-- Implementar 2FA para accesos críticos
+### Recomendaciones de Seguridad:
+⚠️ **IMPORTANTE**: El código actual tiene las siguientes limitaciones de seguridad que deben abordarse en producción:
+
+1. **Contraseñas en texto plano**: Actualmente las contraseñas se almacenan y comparan sin encriptación
+   - Implementar hash de contraseñas con BCrypt o Argon2
+   - La dependencia BCrypt.Net-Next ya está incluida en el proyecto
+   
+2. **Gestión de secretos**:
+   - Usar variables de entorno o Azure Key Vault para claves sensibles
+   - No almacenar claves JWT en archivos de configuración versionados
+   
+3. **Mejoras adicionales recomendadas**:
+   - Implementar rate limiting en endpoints de autenticación
+   - Añadir validación de fuerza de contraseñas
+   - Implementar 2FA para accesos críticos
+   - Agregar logging de intentos de autenticación fallidos
+   - Implementar políticas de bloqueo de cuentas
 
 ## 📊 Modelo de Datos
 
