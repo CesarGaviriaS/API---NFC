@@ -1,135 +1,71 @@
-﻿using API___NFC.Data;
-using API___NFC.Models;
-using API___NFC.Models.Entity.Proceso;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
+using ApiNfc.Data;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using API___NFC.Models;
 
-namespace API___NFC.Controllers
+namespace ApiNfc.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class ProcesoController : ControllerBase
+    [Route("api/[controller]")]
+    public class ProcesosController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly NfcDbContext _context;
+        public ProcesosController(NfcDbContext context) => _context = context;
 
-        public ProcesoController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        // GET: api/proceso
-        // Obtiene todos los procesos activos, incluyendo todas sus relaciones.
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Proceso>>> GetProcesos()
+        public async Task<ActionResult<IEnumerable<Proceso>>> GetAll()
         {
             return await _context.Procesos
-                .Include(p => p.TipoProceso) // Carga el Tipo de Proceso.
-                .Include(p => p.Elemento)    // Carga el Elemento.
-                .Include(p => p.Portador)    // Carga el Usuario (Portador).
-                .Where(p => p.Estado == true)
+                .Include(p => p.TipoProceso)
+                .Include(p => p.Aprendiz)
+                .Include(p => p.Usuario)
                 .ToListAsync();
         }
 
-        // GET: api/proceso/5
-        // Obtiene un proceso específico por su ID.
         [HttpGet("{id}")]
         public async Task<ActionResult<Proceso>> GetProceso(int id)
         {
-            var proceso = await _context.Procesos
+            var item = await _context.Procesos
                 .Include(p => p.TipoProceso)
-                .Include(p => p.Elemento)
-                .Include(p => p.Portador)
+                .Include(p => p.Aprendiz)
+                .Include(p => p.Usuario)
+                .Include(p => p.ElementoProcesos)
                 .FirstOrDefaultAsync(p => p.IdProceso == id);
-
-            if (proceso == null || !proceso.Estado)
-            {
-                return NotFound();
-            }
-
-            return proceso;
+            if (item == null) return NotFound();
+            return item;
         }
 
-        // POST: api/proceso
-        // Crea un nuevo registro de proceso.
         [HttpPost]
-        public async Task<ActionResult<Proceso>> PostProceso(Proceso proceso)
+        public async Task<ActionResult<Proceso>> Create(Proceso proceso)
         {
-            // --- Validación de todas las claves foráneas ---
-            if (proceso.IdTipoProceso.HasValue)
-            {
-                var tipoProcesoExiste = await _context.TiposProceso.AnyAsync(t => t.IdTipoProceso == proceso.IdTipoProceso && t.Estado);
-                if (!tipoProcesoExiste) return BadRequest("El Tipo de Proceso no existe o está inactivo.");
-            }
-
-            if (proceso.IdElemento.HasValue)
-            {
-                var elementoExiste = await _context.Elementos.AnyAsync(e => e.IdElemento == proceso.IdElemento && e.Estado);
-                if (!elementoExiste) return BadRequest("El Elemento no existe o está inactivo.");
-            }
-
-            if (proceso.IdPortador.HasValue)
-            {
-                var portadorExiste = await _context.Usuarios.AnyAsync(u => u.IdUsuario == proceso.IdPortador && u.Estado);
-                if (!portadorExiste) return BadRequest("El Portador (Usuario) no existe o está inactivo.");
-            }
-
-            proceso.Estado = true;
             _context.Procesos.Add(proceso);
             await _context.SaveChangesAsync();
-
             return CreatedAtAction(nameof(GetProceso), new { id = proceso.IdProceso }, proceso);
         }
 
-        // PUT: api/proceso/5
-        // Actualiza un proceso existente.
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProceso(int id, Proceso proceso)
+        public async Task<IActionResult> Update(int id, Proceso proceso)
         {
-            if (id != proceso.IdProceso)
-            {
-                return BadRequest();
-            }
-
-            // (Opcional) Puedes añadir aquí las mismas validaciones de claves foráneas del POST si quieres permitir que se cambien.
-
+            if (id != proceso.IdProceso) return BadRequest();
             _context.Entry(proceso).State = EntityState.Modified;
-            _context.Entry(proceso).Property(x => x.Estado).IsModified = false;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
+            try { await _context.SaveChangesAsync(); }
             catch (DbUpdateConcurrencyException)
             {
-                if (!_context.Procesos.Any(e => e.IdProceso == id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                if (!await _context.Procesos.AnyAsync(p => p.IdProceso == id)) return NotFound();
+                throw;
             }
-
             return NoContent();
         }
 
-        // DELETE: api/proceso/5
-        // Desactiva un registro de proceso (borrado lógico).
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteProceso(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var proceso = await _context.Procesos.FindAsync(id);
-            if (proceso == null)
-            {
-                return NotFound();
-            }
-
-            proceso.Estado = false;
+            var item = await _context.Procesos.FindAsync(id);
+            if (item == null) return NotFound();
+            _context.Procesos.Remove(item);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
     }

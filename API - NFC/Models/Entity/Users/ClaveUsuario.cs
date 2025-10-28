@@ -1,6 +1,7 @@
 ﻿using API___NFC.Models.Entity.Users;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using API___NFC.Models;
 
 public class ClaveUsuario
 {

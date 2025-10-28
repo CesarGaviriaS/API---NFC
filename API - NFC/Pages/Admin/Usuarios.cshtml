@@ -6,6 +6,7 @@
 }
 
 <style>
+    /* (estilos iguales a los que ya tenías, compactados) */
     .badge-role {
         font-size: 0.75rem;
         padding: 0.5rem 1rem;
@@ -21,7 +22,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-    /* ESTILOS PARA PAGINACIÓN */
     .pagination .page-item.active .page-link {
         background-color: #198754;
         border-color: #198754;
@@ -50,70 +50,49 @@
 <div class="main-content">
     <partial name="_AdminSubNav" />
 
-    <!-- Header con título y botón -->
     <div class="card border-0 shadow-sm mb-3 bg-success text-white">
-        <div class="card-body py-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h3 class="mb-0"><i class="bi bi-people-fill me-2"></i>@ViewData["Title"]</h3>
-                </div>
-                <div class="btn-group">
-                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-plus-circle-fill me-2"></i>Crear Usuario
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li>
-                            <a class="dropdown-item" href="#" onclick="abrirModal('aprendiz')">
-                                <i class="bi bi-mortarboard-fill me-2 text-primary"></i>Aprendiz
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="#" onclick="abrirModal('funcionario')">
-                                <i class="bi bi-person-badge-fill me-2 text-warning"></i>Funcionario
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+        <div class="card-body py-3 d-flex justify-content-between align-items-center">
+            <h3 class="mb-0"><i class="bi bi-people-fill me-2"></i>@ViewData["Title"]</h3>
+            <div class="btn-group">
+                <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-plus-circle-fill me-2"></i>Crear Usuario
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                    <li><a class="dropdown-item" href="#" onclick="abrirModal('aprendiz')"><i class="bi bi-mortarboard-fill me-2 text-primary"></i>Aprendiz</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="abrirModal('funcionario')"><i class="bi bi-person-badge-fill me-2 text-warning"></i>Funcionario</a></li>
+                </ul>
             </div>
         </div>
     </div>
 
-    <!-- Filtros compactos -->
+    <!-- filtros -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body py-2">
             <div class="row g-2 align-items-center">
                 <div class="col-md-5">
-                    <input type="text"
-                           class="form-control form-control-sm"
-                           id="searchInput"
-                           placeholder="🔍 Buscar por nombre o documento...">
+                    <input id="searchInput" class="form-control form-control-sm" placeholder="🔍 Buscar por nombre o documento..." />
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" id="rolFilter">
+                    <select id="rolFilter" class="form-select form-select-sm">
                         <option value="">Todos los roles</option>
                         <option value="Aprendiz">Aprendiz</option>
                         <option value="Funcionario">Funcionario</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select form-select-sm" id="fichaFilter">
-                        <option value="">Todas las fichas</option>
-                        <!-- Se llenará dinámicamente -->
-                    </select>
+                    <select id="fichaFilter" class="form-select form-select-sm"><option value="">Todas las fichas</option></select>
                 </div>
                 <div class="col-md-2">
-                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
-                        <i class="bi bi-x-circle"></i> Limpiar
-                    </button>
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()"><i class="bi bi-x-circle"></i> Limpiar</button>
                 </div>
                 <div class="col-md-1 text-center">
-                    <span class="badge bg-success py-2 px-3" id="resultadosContador">0</span>
+                    <span id="resultadosContador" class="badge bg-success py-2 px-3">0</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabla moderna con Bootstrap -->
+    <!-- tabla -->
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -125,132 +104,84 @@
                             <th class="py-3"><i class="bi bi-person-fill me-1"></i>Nombre</th>
                             <th class="py-3"><i class="bi bi-card-text me-1"></i>Documento</th>
                             <th class="py-3"><i class="bi bi-info-circle me-1"></i>Ficha / Detalle</th>
-                            <th class="py-3 text-center" style="width: 15%;">
-                                <i class="bi bi-gear-fill me-1"></i>Acciones
-                            </th>
+                            <th class="py-3 text-center" style="width:15%"><i class="bi bi-gear-fill me-1"></i>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaDatos">
-                        <!-- Se llenará dinámicamente -->
-                    </tbody>
+                    <tbody id="tablaDatos"><tr><td colspan="6" class="text-center">Cargando...</td></tr></tbody>
                 </table>
             </div>
 
-            <!-- Estado vacío -->
             <div id="emptyState" class="text-center py-5 d-none">
                 <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
                 <p class="text-muted mt-3 fs-5">No se encontraron usuarios</p>
-                <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
             </div>
 
-            <!-- CONTENEDOR DE PAGINACIÓN -->
             <div id="paginacionContainer" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3">
-                <div id="infoPaginacion">
-                    <small class="text-muted">Cargando...</small>
-                </div>
-                <nav id="paginacionNav">
-                    <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item disabled">
-                            <span class="page-link">Paginación</span>
-                        </li>
-                    </ul>
-                </nav>
+                <div id="infoPaginacion"><small class="text-muted">Cargando...</small></div>
+                <nav id="paginacionNav"><ul class="pagination pagination-sm mb-0"><li class="page-item disabled"><span class="page-link">Paginación</span></li></ul></nav>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ========= MODAL PARA APRENDIZ ========= -->
-<div class="modal fade" id="aprendizModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+<!-- Modal unificado dinámico -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="aprendizModalTitulo">
-                    <i class="bi bi-mortarboard-fill me-2"></i>Aprendiz
-                </h5>
+                <h5 class="modal-title" id="userModalTitle"><i class="bi bi-person-fill me-2"></i> Usuario</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="aprendizForm">
-                    <input type="hidden" id="aprendizIdInput">
+                <form id="userForm">
+                    <input type="hidden" id="userIdInput" value="0" />
                     <div class="mb-3">
-                        <label for="aprendizNombreInput" class="form-label fw-semibold">
-                            <i class="bi bi-person me-1"></i>Nombre Completo
-                        </label>
-                        <input type="text" class="form-control form-control-lg" id="aprendizNombreInput" required>
+                        <label class="form-label fw-semibold"><i class="bi bi-tags me-1"></i>Rol</label>
+                        <select id="userRoleSelect" class="form-select" required>
+                            <option value="">Seleccione un rol...</option>
+                            <option value="Aprendiz">Aprendiz</option>
+                            <option value="Funcionario">Funcionario</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="aprendizDocumentoInput" class="form-label fw-semibold">
-                            <i class="bi bi-card-text me-1"></i>Documento
-                        </label>
-                        <input type="text" class="form-control form-control-lg" id="aprendizDocumentoInput" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="aprendizFichaIdInput" class="form-label fw-semibold">
-                            <i class="bi bi-bookmark-fill me-1"></i>Ficha
-                        </label>
-                        <select id="aprendizFichaIdInput" class="form-select form-select-lg" required></select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle me-1"></i>Cerrar
-                </button>
-                <button type="button" class="btn btn-success" onclick="guardar('aprendiz')">
-                    <i class="bi bi-check-circle me-1"></i>Guardar Cambios
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- ========= MODAL PARA FUNCIONARIO ========= -->
-<div class="modal fade" id="funcionarioModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title" id="funcionarioModalTitulo">
-                    <i class="bi bi-person-badge-fill me-2"></i>Funcionario
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-4">
-                <form id="funcionarioForm">
-                    <input type="hidden" id="funcionarioIdInput">
-                    <div class="mb-3">
-                        <label for="funcionarioNombreInput" class="form-label fw-semibold">
-                            <i class="bi bi-person me-1"></i>Nombre Completo
-                        </label>
-                        <input type="text" class="form-control form-control-lg" id="funcionarioNombreInput" required>
+                    <div id="commonFields">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold"><i class="bi bi-person me-1"></i>Nombre completo</label>
+                            <input type="text" id="userNombreInput" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold"><i class="bi bi-card-text me-1"></i>Documento</label>
+                            <input type="text" id="userDocumentoInput" class="form-control" required />
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="funcionarioDocumentoInput" class="form-label fw-semibold">
-                            <i class="bi bi-card-text me-1"></i>Documento
-                        </label>
-                        <input type="text" class="form-control form-control-lg" id="funcionarioDocumentoInput" required>
+
+                    <div id="dynamicFields">
+                        <!-- Aquí el JS insertará los campos según rol y configuración -->
+                        <div id="aprendizFields" class="d-none">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-bookmark-fill me-1"></i>Ficha</label>
+                                <select id="aprendizFichaSelect" class="form-select"></select>
+                            </div>
+                            <!-- Si necesitas más campos de aprendiz los agrega el JS -->
+                        </div>
+
+                        <div id="funcionarioFields" class="d-none">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-briefcase me-1"></i>Cargo / Detalle</label>
+                                <input type="text" id="funcionarioCargoInput" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-lock-fill me-1"></i>Contraseña</label>
+                                <input type="password" id="funcionarioPasswordInput" class="form-control" placeholder="Dejar vacío para no cambiar (edición)" />
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="funcionarioContraseñaInput" class="form-label fw-semibold">
-                            <i class="bi bi-lock-fill me-1"></i>Contraseña 
-                        </label>
-                        <input type="password" class="form-control form-control-lg" id="funcionarioContraseñaInput" >
-                    </div>
-                    <div class="mb-3">
-                        <label for="funcionarioDetalleInput" class="form-label fw-semibold">
-                            <i class="bi bi-briefcase me-1"></i>Detalle (Cargo, etc.)
-                        </label>
-                        <input type="text" class="form-control form-control-lg" id="funcionarioDetalleInput">
-                    </div>
+
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle me-1"></i>Cerrar
-                </button>
-                <button type="button" class="btn btn-success" onclick="guardar('funcionario')">
-                    <i class="bi bi-check-circle me-1"></i>Guardar Cambios
-                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i>Cerrar</button>
+                <button type="button" id="userSaveBtn" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Guardar</button>
             </div>
         </div>
     </div>
@@ -259,46 +190,12 @@
 @section Scripts {
     <script src="~/js/admin/usuarios.js"></script>
     <script>
-        // Función para limpiar filtros
+        // helpers para compatibilidad
         function limpiarFiltros() {
             document.getElementById('searchInput').value = '';
             document.getElementById('rolFilter').value = '';
             document.getElementById('fichaFilter').value = '';
-            // Llamar a la función de filtrado (implementar en usuarios.js)
-            if (typeof aplicarFiltros === 'function') {
-                aplicarFiltros();
-            }
+            if (typeof aplicarFiltros === 'function') aplicarFiltros();
         }
-
-        // Event listeners para filtros en tiempo real
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('searchInput');
-            const rolFilter = document.getElementById('rolFilter');
-            const fichaFilter = document.getElementById('fichaFilter');
-
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
-                    }
-                });
-            }
-
-            if (rolFilter) {
-                rolFilter.addEventListener('change', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
-                    }
-                });
-            }
-
-            if (fichaFilter) {
-                fichaFilter.addEventListener('change', function() {
-                    if (typeof aplicarFiltros === 'function') {
-                        aplicarFiltros();
-                    }
-                });
-            }
-        });
     </script>
 }

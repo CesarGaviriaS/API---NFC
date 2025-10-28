@@ -1,113 +1,93 @@
-﻿using API___NFC.Data;
-using API___NFC.Models;
-using API___NFC.Models.Entity.Users;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ApiNfc.Data;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using API___NFC.Models;
 
-namespace API___NFC.Controllers
+namespace ApiNfc.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class UsuarioController : ControllerBase
+    [Route("api/[controller]")]
+    public class UsuariosController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly NfcDbContext _context;
+        public UsuariosController(NfcDbContext context) => _context = context;
 
-        public UsuarioController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        // --- MÉTODO AÑADIDO ---
-        // GET: api/usuario
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios()
+        public async Task<ActionResult<IEnumerable<Usuario>>> GetAll()
         {
-            return await _context.Usuarios
-                .Include(u => u.Aprendiz)
-                    .ThenInclude(a => a.Ficha)
-                .Include(u => u.Funcionario)
-                .Where(u => u.Estado == true)
-                .ToListAsync();
+            return await _context.Usuarios.ToListAsync();
         }
 
-        // GET: api/usuario/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Usuario>> GetUsuario(int id)
         {
-            var usuario = await _context.Usuarios
-                .Include(u => u.Aprendiz)
-                    .ThenInclude(a => a.Ficha)
-                .Include(u => u.Funcionario)
-                .FirstOrDefaultAsync(u => u.IdUsuario == id);
-
-            if (usuario == null || !usuario.Estado)
-            {
-                return NotFound();
-            }
-            return usuario;
+            var item = await _context.Usuarios.FindAsync(id);
+            if (item == null) return NotFound();
+            return item;
         }
 
-        // DELETE: api/usuario/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUsuario(int id)
+        [HttpPost]
+        public async Task<ActionResult<Usuario>> Create(Usuario usuario)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
-            if (usuario == null)
-            {
-                return NotFound();
-            }
-
-            // También desactivamos el aprendiz o funcionario asociado si existe
-            if (usuario.IdAprendiz.HasValue)
-            {
-                var aprendiz = await _context.Aprendices.FindAsync(usuario.IdAprendiz.Value);
-                if (aprendiz != null) aprendiz.Estado = false;
-            }
-            if (usuario.IdFuncionario.HasValue)
-            {
-                var funcionario = await _context.Funcionarios.FindAsync(usuario.IdFuncionario.Value);
-                if (funcionario != null) funcionario.Estado = false;
-            }
-
-            usuario.Estado = false;
+            _context.Usuarios.Add(usuario);
             await _context.SaveChangesAsync();
+            return CreatedAtAction(nameof(GetUsuario), new { id = usuario.IdUsuario }, usuario);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, Usuario usuario)
+        {
+            if (id != usuario.IdUsuario) return BadRequest();
+            _context.Entry(usuario).State = EntityState.Modified;
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!await _context.Usuarios.AnyAsync(u => u.IdUsuario == id)) return NotFound();
+                throw;
+            }
             return NoContent();
         }
 
-        //GET: api/usuario/paginated
-        [HttpGet("paginated")]
-        public async Task<ActionResult<object>> GetUsuariosPaginated
-            ([FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string search = "" )
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            var query =_context.Usuarios.
-                Include(u =>u.Aprendiz).
-                ThenInclude(a => a.Ficha).
-                Include(u => u.Funcionario).
-                Where(u => u.Estado == true);
+            var item = await _context.Usuarios.FindAsync(id);
+            if (item == null) return NotFound();
+            _context.Usuarios.Remove(item);
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+        // Método paginated (extraído del archivo)
+        [HttpGet("paginated")]
+        public async Task<ActionResult<object>> GetUsuariosPaginated(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string search = "")
+        {
+            var query = _context.Usuarios.AsQueryable();
 
             if (!string.IsNullOrEmpty(search))
             {
-                query = query.Where(u=>(u.Aprendiz
-                != null &&  u.Aprendiz.Nombre.Contains(search))||
-                (u.Funcionario != null && u.Funcionario.Nombre.Contains(search))||
-                (u.Aprendiz != null && u.Aprendiz.Documento.Contains(search)) ||
-                (u.Funcionario != null && u.Funcionario.Documento.Contains(search)));
+                query = query.Where(u =>
+                    (u.Nombre != null && u.Nombre.Contains(search)) ||
+                    (u.Apellido != null && u.Apellido.Contains(search)) ||
+                    (u.Correo != null && u.Correo.Contains(search)) ||
+                    (u.NumeroDocumento != null && u.NumeroDocumento.Contains(search))
+                );
             }
-            var totalRecords = await query.CountAsync();
-            var totalPages = (int)Math.Ceiling(totalRecords/ (double)pageSize);
 
-            // validamos página
+            var totalRecords = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalRecords / (double)pageSize);
+
             if (page < 1) page = 1;
             if (page > totalPages && totalPages > 0) page = totalPages;
 
-            var usuarios =await query
-                .Skip((page -1) *pageSize).
-                Take(pageSize)
+            var usuarios = await query
+                .OrderBy(u => u.IdUsuario)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return new
@@ -117,11 +97,7 @@ namespace API___NFC.Controllers
                 PageSize = pageSize,
                 TotalRecords = totalRecords,
                 TotalPages = totalPages
-
             };
-
         }
-        // NOTA: POST (Crear) y PUT (Actualizar) se manejan a través de
-        // los controladores de Aprendiz y Funcionario.
     }
 }

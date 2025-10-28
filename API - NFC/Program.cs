@@ -1,82 +1,61 @@
-using Microsoft.EntityFrameworkCore;
-using API___NFC.Data;
 using API___NFC.Hubs;
-using Microsoft.AspNetCore.Identity; // <-- A—ADIDO: Necesario para Identity
-using Microsoft.AspNetCore.Authentication.Cookies; // <-- A—ADIDO: Necesario para la autenticaciÛn por Cookies
+using ApiNfc.Data;
+
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-//Comentario x de persona x
-// --- SECCI”N DE SERVICIOS ---
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
-
-// Controlador con manejo de ciclos de referencia
-builder.Services.AddControllers().AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-});
-
-// --- INICIO DE LA SECCI”N A—ADIDA ---
-
-
-
-// 2. ConfiguraciÛn del esquema de autenticaciÛn
-// Le dice a la aplicaciÛn C”MO verificar si un usuario ha iniciado sesiÛn.
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        // Ruta a la que se redirigir· si un usuario no autenticado intenta acceder a un recurso protegido.
-        // Aseg˙rate que esta ruta sea correcta para tu proyecto (usualmente est· en /Areas/Identity/Pages/Account/Login)
-        options.LoginPath = "/Identity/Account/Login";
-        options.AccessDeniedPath = "/Identity/Account/AccessDenied";
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
-        options.SlidingExpiration = true;
-    });
-
-// --- FIN DE LA SECCI”N A—ADIDA ---
-
+// Services
 builder.Services.AddRazorPages();
-builder.Services.AddSignalR();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase);
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyHeader()
-              .AllowAnyMethod()
-              .SetIsOriginAllowed(origin => true)
-              .AllowCredentials();
-    });
-});
-
+// Swagger (opcional)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// --- SECCI”N DE CONFIGURACI”N DE LA APP (MIDDLEWARE) ---
+// DbContext
+builder.Services.AddDbContext<NfcDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// SignalR
+builder.Services.AddSignalR();
+
+// CORS (si lo necesitas)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
-app.UseRouting();
 app.UseStaticFiles();
+app.UseRouting();
+app.UseCors("AllowAll");
+app.UseAuthorization();
 
-// --- LÕNEAS CORREGIDAS Y ORDENADAS ---
-// Es crucial que el orden sea este:
-app.UseAuthentication(); // <-- PRIMERO, identifica quiÈn es el usuario a travÈs de la cookie.
-app.UseAuthorization();  // <-- SEGUNDO, una vez identificado, verifica si tiene permisos.
-
-
-app.MapControllers();
-app.MapHub<NfcHub>("/nfcHub");
+// Map endpoints
 app.MapRazorPages();
+app.MapControllers();
+
+// Map SignalR hub (aseg√∫rate que Hub class y namespace coinciden)
+app.MapHub<NfcHub>("/nfcHub");
+
+// Redirect root to Terminal
+app.MapGet("/", (HttpContext ctx) =>
+{
+    ctx.Response.Redirect("/Terminal");
+    return Task.CompletedTask;
+});
 
 app.Run();
-

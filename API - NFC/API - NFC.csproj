@@ -21,6 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Models\Entity\Academico\" />
+    <Folder Include="Models\Entity\Inventario\" />
+    <Folder Include="Models\Entity\Proceso\" />
     <Folder Include="Pages\Admin\DataGestion\" />
     <Folder Include="Pages\Admin\GestionNFC\" />
   </ItemGroup>
