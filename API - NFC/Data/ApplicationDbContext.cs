@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using API___NFC.Models;
+using API___NFC.Models.Entity.Users;
 
 namespace ApiNfc.Data
 {
@@ -11,6 +12,8 @@ namespace ApiNfc.Data
         public DbSet<Elemento> Elementos { get; set; }
         public DbSet<ElementoProceso> ElementoProcesos { get; set; }
         public DbSet<Ficha> Fichas { get; set; }
+        public DbSet<Funcionario> Funcionarios { get; set; }
+        public DbSet<Guardia> Guardias { get; set; }
         public DbSet<Proceso> Procesos { get; set; }
         public DbSet<Programa> Programas { get; set; }
         public DbSet<RegistroNFC> RegistrosNFC { get; set; }
@@ -179,6 +182,29 @@ namespace ApiNfc.Data
                 entity.HasIndex(e => e.Correo).IsUnique();
                 entity.HasIndex(e => e.NumeroDocumento).IsUnique();
                 entity.HasIndex(e => e.CodigoBarras).IsUnique();
+            });
+
+            // Funcionario
+            modelBuilder.Entity<Funcionario>(entity =>
+            {
+                entity.ToTable("Funcionario");
+                entity.HasKey(e => e.IdFuncionario);
+                entity.Property(e => e.Nombre).HasMaxLength(100).HasColumnType("varchar(100)").IsRequired(false);
+                entity.Property(e => e.Documento).HasMaxLength(20).HasColumnType("varchar(20)").IsRequired(false);
+                entity.Property(e => e.Detalle).HasMaxLength(200).HasColumnType("varchar(200)").IsRequired(false);
+                entity.Property(e => e.EsNatural).HasMaxLength(10).HasColumnType("varchar(10)").IsRequired(false);
+                entity.Property(e => e.Estado).HasDefaultValue(true);
+                entity.Property(e => e.Contraseña).IsRequired().HasMaxLength(255).HasColumnType("varchar(255)");
+            });
+
+            // Guardia
+            modelBuilder.Entity<Guardia>(entity =>
+            {
+                entity.ToTable("Guardia");
+                entity.HasKey(e => e.IdGuardia);
+                entity.Property(e => e.Nombre).HasMaxLength(100).HasColumnType("varchar(100)").IsRequired(false);
+                entity.Property(e => e.Documento).HasMaxLength(20).HasColumnType("varchar(20)").IsRequired(false);
+                entity.Property(e => e.Estado).HasDefaultValue(true);
             });
         }
     }
