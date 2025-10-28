@@ -3,13 +3,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // ---------- CONFIG (adapta las rutas si tu API es singular/plural) ----------
     const api = (window.AppRoutes && window.AppRoutes.api) ? window.AppRoutes.api : {
         usuarios: '/api/usuarios',
-        aprendiz: '/api/aprendiz',
+        aprendiz: '/api/aprendices',
         funcionario: '/api/funcionario',
         fichas: '/api/ficha'
     };
     const usuariosApiBase = api.usuarios || '/api/usuarios';
     const fichasApiUrl = api.fichas || '/api/ficha';
-    const aprendizApiUrl = api.aprendiz || '/api/aprendiz';
+    const aprendizApiUrl = api.aprendiz || '/api/aprendices';
     const funcionarioApiUrl = api.funcionario || '/api/funcionario';
 
     // ---------- ELEMENTOS DEL DOM ----------

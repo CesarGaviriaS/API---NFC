@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace API___NFC.Models
+namespace API___NFC.Models.Entity.Users
 {
     [Table("Guardia")]
     public class Guardia
