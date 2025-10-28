@@ -145,13 +145,34 @@
                     </div>
 
                     <div id="commonFields">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold"><i class="bi bi-person me-1"></i>Nombre completo</label>
-                            <input type="text" id="userNombreInput" class="form-control" required />
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-person me-1"></i>Nombre</label>
+                                <input type="text" id="userNombreInput" class="form-control" required />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-person me-1"></i>Apellido</label>
+                                <input type="text" id="userApellidoInput" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-file-text me-1"></i>Tipo Documento</label>
+                                <select id="userTipoDocumentoSelect" class="form-select">
+                                    <option value="CC">CC</option>
+                                    <option value="TI">TI</option>
+                                    <option value="CE">CE</option>
+                                    <option value="PA">PA</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-card-text me-1"></i>Número Documento</label>
+                                <input type="text" id="userDocumentoInput" class="form-control" required />
+                            </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold"><i class="bi bi-card-text me-1"></i>Documento</label>
-                            <input type="text" id="userDocumentoInput" class="form-control" required />
+                            <label class="form-label fw-semibold"><i class="bi bi-envelope me-1"></i>Correo</label>
+                            <input type="email" id="userCorreoInput" class="form-control" />
                         </div>
                     </div>
 
@@ -159,10 +180,17 @@
                         <!-- Aquí el JS insertará los campos según rol y configuración -->
                         <div id="aprendizFields" class="d-none">
                             <div class="mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-upc-scan me-1"></i>Código de Barras</label>
+                                <input type="text" id="aprendizCodigoBarrasInput" class="form-control" />
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label fw-semibold"><i class="bi bi-bookmark-fill me-1"></i>Ficha</label>
                                 <select id="aprendizFichaSelect" class="form-select"></select>
                             </div>
-                            <!-- Si necesitas más campos de aprendiz los agrega el JS -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"><i class="bi bi-telephone me-1"></i>Teléfono</label>
+                                <input type="text" id="aprendizTelefonoInput" class="form-control" />
+                            </div>
                         </div>
 
                         <div id="funcionarioFields" class="d-none">

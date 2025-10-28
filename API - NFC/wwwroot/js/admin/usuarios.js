@@ -28,10 +28,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const userIdInput = document.getElementById('userIdInput');
     const userRoleSelect = document.getElementById('userRoleSelect');
     const userNombreInput = document.getElementById('userNombreInput');
+    const userApellidoInput = document.getElementById('userApellidoInput');
+    const userTipoDocumentoSelect = document.getElementById('userTipoDocumentoSelect');
     const userDocumentoInput = document.getElementById('userDocumentoInput');
+    const userCorreoInput = document.getElementById('userCorreoInput');
 
     const aprendizFields = document.getElementById('aprendizFields');
     const aprendizFichaSelect = document.getElementById('aprendizFichaSelect');
+    const aprendizCodigoBarrasInput = document.getElementById('aprendizCodigoBarrasInput');
+    const aprendizTelefonoInput = document.getElementById('aprendizTelefonoInput');
     const funcionarioFields = document.getElementById('funcionarioFields');
     const funcionarioCargoInput = document.getElementById('funcionarioCargoInput');
     const funcionarioPasswordInput = document.getElementById('funcionarioPasswordInput');
@@ -77,11 +82,17 @@ document.addEventListener('DOMContentLoaded', function () {
             user.aprendiz = {
                 idAprendiz: get(rawApr, 'idAprendiz', 'IdAprendiz', 'id', 'Id'),
                 nombre: get(rawApr, 'nombre', 'Nombre'),
-                documento: get(rawApr, 'documento', 'NumeroDocumento', 'numeroDocumento'),
+                apellido: get(rawApr, 'apellido', 'Apellido'),
+                tipoDocumento: get(rawApr, 'tipoDocumento', 'TipoDocumento'),
+                numeroDocumento: get(rawApr, 'numeroDocumento', 'NumeroDocumento'),
+                correo: get(rawApr, 'correo', 'Correo'),
+                codigoBarras: get(rawApr, 'codigoBarras', 'CodigoBarras'),
+                telefono: get(rawApr, 'telefono', 'Telefono'),
                 idFicha: get(rawApr, 'idFicha', 'IdFicha')
             };
             user.nombre = user.aprendiz.nombre;
-            user.documento = user.aprendiz.documento;
+            user.apellido = user.aprendiz.apellido;
+            user.documento = user.aprendiz.numeroDocumento;
             user.detalle = get(rawApr, 'ficha.codigo', 'ficha.Codigo') || null;
             return user;
         }
@@ -91,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function () {
             user.funcionario = {
                 idFuncionario: get(rawFunc, 'idFuncionario', 'IdFuncionario', 'id', 'Id'),
                 nombre: get(rawFunc, 'nombre', 'Nombre'),
-                documento: get(rawFunc, 'documento', 'NumeroDocumento', 'numeroDocumento'),
+                documento: get(rawFunc, 'documento', 'Documento'),
                 detalle: get(rawFunc, 'detalle', 'Detalle', 'cargo', 'Cargo')
             };
             user.nombre = user.funcionario.nombre;
@@ -301,7 +312,12 @@ document.addEventListener('DOMContentLoaded', function () {
             // reset
             userRoleSelect.value = (tipo === 'aprendiz') ? 'Aprendiz' : (tipo === 'funcionario') ? 'Funcionario' : '';
             userNombreInput.value = '';
+            userApellidoInput.value = '';
+            userTipoDocumentoSelect.value = 'CC';
             userDocumentoInput.value = '';
+            userCorreoInput.value = '';
+            aprendizCodigoBarrasInput.value = '';
+            aprendizTelefonoInput.value = '';
             funcionarioCargoInput.value = '';
             funcionarioPasswordInput.value = '';
             aprendizFichaSelect.value = '';
@@ -315,8 +331,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     mostrarCamposPorRol(userRoleSelect.value);
                     userNombreInput.value = u.nombre || '';
                     userDocumentoInput.value = u.documento || '';
-                    if (u.aprendiz) aprendizFichaSelect.value = u.aprendiz.idFicha || '';
-                    if (u.funcionario) funcionarioCargoInput.value = u.funcionario.detalle || '';
+                    if (u.aprendiz) {
+                        userApellidoInput.value = u.aprendiz.apellido || '';
+                        userTipoDocumentoSelect.value = u.aprendiz.tipoDocumento || 'CC';
+                        userCorreoInput.value = u.aprendiz.correo || '';
+                        aprendizCodigoBarrasInput.value = u.aprendiz.codigoBarras || '';
+                        aprendizTelefonoInput.value = u.aprendiz.telefono || '';
+                        aprendizFichaSelect.value = u.aprendiz.idFicha || '';
+                    }
+                    if (u.funcionario) {
+                        funcionarioCargoInput.value = u.funcionario.detalle || '';
+                    }
                 }
             }
             if (userModal) userModal.show();
@@ -332,20 +357,58 @@ document.addEventListener('DOMContentLoaded', function () {
         const id = parseInt(userIdInput.value || 0);
         const role = userRoleSelect.value;
         const nombre = (userNombreInput.value || '').trim();
-        const documento = (userDocumentoInput.value || '').trim();
-        if (!role || !nombre || !documento) { alert('Complete los campos obligatorios.'); return; }
+        const apellido = (userApellidoInput.value || '').trim();
+        const tipoDocumento = userTipoDocumentoSelect.value;
+        const numeroDocumento = (userDocumentoInput.value || '').trim();
+        const correo = (userCorreoInput.value || '').trim();
+        
+        if (!role || !nombre || !numeroDocumento) { 
+            alert('Complete los campos obligatorios: Rol, Nombre y Número de Documento.'); 
+            return; 
+        }
 
         let url, method = id === 0 ? 'POST' : 'PUT', payload = null;
         if (role === 'Aprendiz') {
             const idFicha = aprendizFichaSelect.value || null;
+            const codigoBarras = (aprendizCodigoBarrasInput.value || '').trim() || `BAR${numeroDocumento}`;
+            const telefono = (aprendizTelefonoInput.value || '').trim();
+            
+            if (!apellido || !correo) {
+                alert('Para Aprendices, los campos Apellido y Correo son obligatorios.');
+                return;
+            }
+            
             url = id === 0 ? aprendizApiUrl : `${aprendizApiUrl}/${id}`;
-            payload = { idAprendiz: id || 0, nombre, documento, idFicha: idFicha ? parseInt(idFicha) : null, estado: true };
+            payload = { 
+                idAprendiz: id || 0, 
+                nombre, 
+                apellido,
+                tipoDocumento,
+                numeroDocumento,
+                correo,
+                codigoBarras,
+                telefono: telefono || null,
+                idFicha: idFicha ? parseInt(idFicha) : 0,
+                estado: true 
+            };
         } else {
             const cargo = funcionarioCargoInput.value.trim();
             const password = funcionarioPasswordInput.value.trim();
+            
+            if (!password && id === 0) {
+                alert('Para crear un Funcionario, la contraseña es obligatoria.');
+                return;
+            }
+            
             url = id === 0 ? funcionarioApiUrl : `${funcionarioApiUrl}/${id}`;
-            payload = { idFuncionario: id || 0, nombre, documento, detalle: cargo, estado: true };
-            if (password) payload.contrasena = password;
+            payload = { 
+                idFuncionario: id || 0, 
+                nombre, 
+                documento: numeroDocumento, 
+                detalle: cargo || null, 
+                estado: true 
+            };
+            if (password) payload.contraseña = password;
         }
 
         try {
