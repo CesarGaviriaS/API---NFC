@@ -1,89 +1,73 @@
-﻿using API___NFC.Data;
-using API___NFC.Models;
-using API___NFC.Models.Entity.Academico;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ApiNfc.Data;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using API___NFC.Models;
 
-namespace API___NFC.Controllers
+namespace ApiNfc.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class ProgramaController : ControllerBase
+    [Route("api/[controller]")]
+    public class ProgramasController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly NfcDbContext _context;
+        public ProgramasController(NfcDbContext context) => _context = context;
 
-        public ProgramaController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        // GET: api/programa
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Programa>>> GetProgramas()
+        public async Task<ActionResult<IEnumerable<Programa>>> GetAll()
         {
-            return await _context.Programas.Where(p => p.Estado == true).ToListAsync();
+            return await _context.Programas.ToListAsync();
         }
 
-        // GET: api/programa/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Programa>> GetPrograma(int id)
         {
-            var programa = await _context.Programas.FindAsync(id);
-            if (programa == null || !programa.Estado)
-            {
-                return NotFound();
-            }
-            return programa;
+            var item = await _context.Programas.FindAsync(id);
+            if (item == null) return NotFound();
+            return item;
         }
 
-        // POST: api/programa
         [HttpPost]
-        public async Task<ActionResult<Programa>> PostPrograma(Programa programa)
+        public async Task<ActionResult<Programa>> Create(Programa programa)
         {
-            programa.Estado = true;
             _context.Programas.Add(programa);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetPrograma), new { id = programa.IdPrograma }, programa);
         }
 
-        // PUT: api/programa/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutPrograma(int id, Programa programa)
+        public async Task<IActionResult> Update(int id, Programa programa)
         {
-            if (id != programa.IdPrograma)
-            {
-                return BadRequest();
-            }
+            if (id != programa.IdPrograma) return BadRequest();
             _context.Entry(programa).State = EntityState.Modified;
-            _context.Entry(programa).Property(x => x.Estado).IsModified = false;
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        // DELETE: api/programa/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePrograma(int id)
-        {
-            var programa = await _context.Programas.FindAsync(id);
-            if (programa == null)
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateConcurrencyException)
             {
-                return NotFound();
+                if (!await _context.Programas.AnyAsync(p => p.IdPrograma == id)) return NotFound();
+                throw;
             }
-            programa.Estado = false;
-            await _context.SaveChangesAsync();
             return NoContent();
         }
 
-
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var item = await _context.Programas.FindAsync(id);
+            if (item == null) return NotFound();
+            _context.Programas.Remove(item);
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+        // Método paginated (extraído del archivo)
         [HttpGet("paginated")]
         public async Task<ActionResult<object>> GetProgramasPaginated(
-    [FromQuery] int page = 1,
-    [FromQuery] int pageSize = 10,
-    [FromQuery] string? search = null)
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
         {
-            var query = _context.Programas.Where(t => t.Estado == true);
+            var query = _context.Programas.Where(p => p.Estado == true);
 
-            // Búsqueda 
             if (!string.IsNullOrEmpty(search))
             {
                 query = query.Where(p =>
@@ -96,12 +80,11 @@ namespace API___NFC.Controllers
             var totalRecords = await query.CountAsync();
             var totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 
-            // Validaciones de página
             if (page < 1) page = 1;
             if (page > totalPages && totalPages > 0) page = totalPages;
 
             var programas = await query
-                .OrderBy(t => t.IdPrograma)
+                .OrderBy(p => p.IdPrograma)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -116,4 +99,4 @@ namespace API___NFC.Controllers
             };
         }
     }
-    }
+}

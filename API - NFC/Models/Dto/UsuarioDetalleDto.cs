@@ -1,4 +1,4 @@
-﻿using API___NFC.Models.Entity.Inventario;
+﻿
 using System.Xml.Linq;
 
 namespace API___NFC.Models.Dto

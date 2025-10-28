@@ -1,75 +1,62 @@
-﻿using API___NFC.Data;
-using API___NFC.Models;
-using API___NFC.Models.Entity.Proceso;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ApiNfc.Data;
 
-namespace API___NFC.Controllers
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using API___NFC.Models;
+
+namespace ApiNfc.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class TipoProcesoController : ControllerBase
+    [Route("api/[controller]")]
+    public class TipoProcesosController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly NfcDbContext _context;
+        public TipoProcesosController(NfcDbContext context) => _context = context;
 
-        public TipoProcesoController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        // GET: api/tipoproceso
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<TipoProceso>>> GetTiposProceso()
+        public async Task<ActionResult<IEnumerable<TipoProceso>>> GetAll()
         {
-            return await _context.TiposProceso.Where(t => t.Estado == true).ToListAsync();
+            return await _context.TipoProcesos.ToListAsync();
         }
 
-        // GET: api/tipoproceso/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<TipoProceso>> GetTipoProceso(int id)
+        public async Task<ActionResult<TipoProceso>> Get(int id)
         {
-            var tipoProceso = await _context.TiposProceso.FindAsync(id);
-            if (tipoProceso == null || !tipoProceso.Estado)
-            {
-                return NotFound();
-            }
-            return tipoProceso;
+            var item = await _context.TipoProcesos.FindAsync(id);
+            if (item == null) return NotFound();
+            return item;
         }
 
-        // POST: api/tipoproceso
         [HttpPost]
-        public async Task<ActionResult<TipoProceso>> PostTipoProceso(TipoProceso tipoProceso)
+        public async Task<ActionResult<TipoProceso>> Create(TipoProceso tp)
         {
-            tipoProceso.Estado = true;
-            _context.TiposProceso.Add(tipoProceso);
+            _context.TipoProcesos.Add(tp);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetTipoProceso), new { id = tipoProceso.IdTipoProceso }, tipoProceso);
+            return CreatedAtAction(nameof(Get), new { id = tp.IdTipoProceso }, tp);
         }
 
-        // PUT: api/tipoproceso/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutTipoProceso(int id, TipoProceso tipoProceso)
+        public async Task<IActionResult> Update(int id, TipoProceso tp)
         {
-            if (id != tipoProceso.IdTipoProceso)
+            if (id != tp.IdTipoProceso) return BadRequest();
+            _context.Entry(tp).State = EntityState.Modified;
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateConcurrencyException)
             {
-                return BadRequest();
+                if (!await _context.TipoProcesos.AnyAsync(x => x.IdTipoProceso == id)) return NotFound();
+                throw;
             }
-            _context.Entry(tipoProceso).State = EntityState.Modified;
-            _context.Entry(tipoProceso).Property(x => x.Estado).IsModified = false;
-            await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        // DELETE: api/tipoproceso/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTipoProceso(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var tipoProceso = await _context.TiposProceso.FindAsync(id);
-            if (tipoProceso == null)
-            {
-                return NotFound();
-            }
-            tipoProceso.Estado = false;
+            var item = await _context.TipoProcesos.FindAsync(id);
+            if (item == null) return NotFound();
+            _context.TipoProcesos.Remove(item);
             await _context.SaveChangesAsync();
             return NoContent();
         }

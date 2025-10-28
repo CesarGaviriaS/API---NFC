@@ -1,436 +1,380 @@
-﻿document.addEventListener('DOMContentLoaded', function () {
-    // APIs
-    const usuariosApiUrl = '/api/usuario';
-    const usuariosPaginatedApiUrl = '/api/usuario/paginated';
-    const aprendizApiUrl = '/api/aprendiz';
-    const funcionarioApiUrl = '/api/funcionario';
-    const fichasApiUrl = '/api/ficha';
+﻿// usuarios.js - dinámico y robusto para nuevos campos de DB
+document.addEventListener('DOMContentLoaded', function () {
+    // ---------- CONFIG (adapta las rutas si tu API es singular/plural) ----------
+    const api = (window.AppRoutes && window.AppRoutes.api) ? window.AppRoutes.api : {
+        usuarios: '/api/usuarios',
+        aprendiz: '/api/aprendiz',
+        funcionario: '/api/funcionario',
+        fichas: '/api/ficha'
+    };
+    const usuariosApiBase = api.usuarios || '/api/usuarios';
+    const fichasApiUrl = api.fichas || '/api/ficha';
+    const aprendizApiUrl = api.aprendiz || '/api/aprendiz';
+    const funcionarioApiUrl = api.funcionario || '/api/funcionario';
 
-    // Modales
-    const aprendizModal = new bootstrap.Modal(document.getElementById('aprendizModal'));
-    const funcionarioModal = new bootstrap.Modal(document.getElementById('funcionarioModal'));
-
-    // Formulario Aprendiz
-    const aprendizIdInput = document.getElementById('aprendizIdInput');
-    const aprendizNombreInput = document.getElementById('aprendizNombreInput');
-    const aprendizDocumentoInput = document.getElementById('aprendizDocumentoInput');
-    const aprendizFichaIdInput = document.getElementById('aprendizFichaIdInput');
-    const aprendizModalTitulo = document.getElementById('aprendizModalTitulo');
-
-    // Formulario Funcionario
-    const funcionarioIdInput = document.getElementById('funcionarioIdInput');
-    const funcionarioNombreInput = document.getElementById('funcionarioNombreInput');
-    const funcionarioDocumentoInput = document.getElementById('funcionarioDocumentoInput');
-    const funcionarioDetalleInput = document.getElementById('funcionarioDetalleInput');
-    const funcionarioModalTitulo = document.getElementById('funcionarioModalTitulo');
-
-    // Elementos de filtrado
+    // ---------- ELEMENTOS DEL DOM ----------
+    const tablaDatos = document.getElementById('tablaDatos');
     const searchInput = document.getElementById('searchInput');
     const rolFilter = document.getElementById('rolFilter');
     const fichaFilter = document.getElementById('fichaFilter');
     const resultadosContador = document.getElementById('resultadosContador');
     const emptyState = document.getElementById('emptyState');
 
-    const tablaDatos = document.getElementById('tablaDatos');
-    let listaUsuariosCompleta = [];
-    let listaFichas = [];
+    // modal unificado init tolerante
+    const userModalEl = document.getElementById('userModal');
+    const userModal = userModalEl ? (typeof bootstrap !== 'undefined' ? new bootstrap.Modal(userModalEl) : null) : null;
 
-    // Variables globales para paginacion 
+    const userModalTitle = document.getElementById('userModalTitle');
+    const userIdInput = document.getElementById('userIdInput');
+    const userRoleSelect = document.getElementById('userRoleSelect');
+    const userNombreInput = document.getElementById('userNombreInput');
+    const userDocumentoInput = document.getElementById('userDocumentoInput');
+
+    const aprendizFields = document.getElementById('aprendizFields');
+    const aprendizFichaSelect = document.getElementById('aprendizFichaSelect');
+    const funcionarioFields = document.getElementById('funcionarioFields');
+    const funcionarioCargoInput = document.getElementById('funcionarioCargoInput');
+    const funcionarioPasswordInput = document.getElementById('funcionarioPasswordInput');
+
+    const userSaveBtn = document.getElementById('userSaveBtn');
+
+    // ---------- ESTADO ----------
     let paginaActual = 1;
     let registrosPorPagina = 10;
     let searchTermActual = '';
+    let listaUsuariosCompleta = [];
+    let listaUsuariosPagina = [];
+    let listaFichas = [];
 
-    // --- CARGAR DATOS PAGINADOS ---
-    const cargarDatosPaginated = async (pagina = 1, searchTerm = '') => {
+    // ---------- HELPERS ----------
+    function get(obj, ...paths) {
+        for (const p of paths) {
+            if (!p) continue;
+            const parts = p.split('.');
+            let cur = obj;
+            let ok = true;
+            for (const part of parts) {
+                if (cur == null) { ok = false; break; }
+                if (part in cur) { cur = cur[part]; continue; }
+                const lower = part.charAt(0).toLowerCase() + part.slice(1);
+                if (lower in cur) { cur = cur[lower]; continue; }
+                const upper = part.charAt(0).toUpperCase() + part.slice(1);
+                if (upper in cur) { cur = cur[upper]; continue; }
+                ok = false; break;
+            }
+            if (ok && cur !== undefined) return cur;
+        }
+        return undefined;
+    }
+
+    function normalizeUser(raw) {
+        const user = {};
+        user.idUsuario = get(raw, 'idUsuario', 'IdUsuario', 'id', 'Id');
+        user.role = get(raw, 'rol', 'Rol', 'role', 'Role') || (raw.aprendiz ? 'Aprendiz' : (raw.funcionario ? 'Funcionario' : undefined));
+
+        const rawApr = get(raw, 'aprendiz', 'Aprendiz');
+        if (rawApr) {
+            user.aprendiz = {
+                idAprendiz: get(rawApr, 'idAprendiz', 'IdAprendiz', 'id', 'Id'),
+                nombre: get(rawApr, 'nombre', 'Nombre'),
+                documento: get(rawApr, 'documento', 'NumeroDocumento', 'numeroDocumento'),
+                idFicha: get(rawApr, 'idFicha', 'IdFicha')
+            };
+            user.nombre = user.aprendiz.nombre;
+            user.documento = user.aprendiz.documento;
+            user.detalle = get(rawApr, 'ficha.codigo', 'ficha.Codigo') || null;
+            return user;
+        }
+
+        const rawFunc = get(raw, 'funcionario', 'Funcionario');
+        if (rawFunc) {
+            user.funcionario = {
+                idFuncionario: get(rawFunc, 'idFuncionario', 'IdFuncionario', 'id', 'Id'),
+                nombre: get(rawFunc, 'nombre', 'Nombre'),
+                documento: get(rawFunc, 'documento', 'NumeroDocumento', 'numeroDocumento'),
+                detalle: get(rawFunc, 'detalle', 'Detalle', 'cargo', 'Cargo')
+            };
+            user.nombre = user.funcionario.nombre;
+            user.documento = user.funcionario.documento;
+            user.detalle = user.funcionario.detalle;
+            return user;
+        }
+
+        user.nombre = get(raw, 'nombre', 'Nombre', 'fullName', 'FullName') || `${get(raw, 'nombre', 'Nombre') || ''} ${get(raw, 'apellido', 'Apellido') || ''}`.trim();
+        user.documento = get(raw, 'numeroDocumento', 'NumeroDocumento', 'documento', 'Documento') || '';
+        user.detalle = get(raw, 'cargo', 'Cargo', 'detalle', 'Detalle') || (get(raw, 'ficha.codigo', 'ficha.Codigo') || null);
+        user.raw = raw;
+        return user;
+    }
+
+    // ---------- PAGINADO ----------
+    async function cargarDatosPaginated(pagina = 1, searchTerm = '') {
+        paginaActual = pagina;
+        searchTermActual = searchTerm;
+        const params = new URLSearchParams({ page: pagina, pageSize: registrosPorPagina });
+        if (searchTerm) params.append('search', searchTerm);
+
         try {
-            paginaActual = pagina;
-            searchTermActual = searchTerm;
-
-            const params = new URLSearchParams({
-                page: pagina,
-                pageSize: registrosPorPagina
-            });
-
-            if (searchTerm) {
-                params.append('search', searchTerm);
+            let url;
+            if (window.AppRoutes && window.AppRoutes.paginatedUrl && window.AppRoutes.api && window.AppRoutes.api.usuarios) {
+                url = window.AppRoutes.paginatedUrl(window.AppRoutes.api.usuarios, pagina, registrosPorPagina, searchTerm);
+            } else {
+                url = `${usuariosApiBase}/paginated?${params.toString()}`;
             }
 
-            const response = await fetch(`${usuariosPaginatedApiUrl}?${params}`);
-            if (!response.ok) throw new Error('Error al cargar datos');
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Error al obtener paginado');
+            const raw = await res.json();
+            const arr = raw.data || raw || [];
+            listaUsuariosPagina = (arr || []).map(u => normalizeUser(u));
+            listaUsuariosCompleta = listaUsuariosPagina.slice();
+            renderizarTabla(listaUsuariosPagina);
 
-            const data = await response.json();
-            listaUsuariosCompleta = data.data;
-            renderizarTabla(listaUsuariosCompleta);
-            generarPaginacion(data.page, data.totalPages, data.totalRecords);
-
-        } catch (error) {
-            console.error("Error al cargar usuarios paginados:", error);
+            const pageVal = get(raw, 'page', 'Page') || pagina;
+            const pageSizeVal = get(raw, 'pageSize', 'PageSize') || registrosPorPagina;
+            const totalPages = get(raw, 'totalPages', 'TotalPages') || Math.ceil((get(raw, 'totalRecords', 'TotalRecords') || listaUsuariosPagina.length) / pageSizeVal);
+            const totalRecords = get(raw, 'totalRecords', 'TotalRecords') || listaUsuariosPagina.length;
+            generarPaginacion(pageVal, totalPages, totalRecords);
+        } catch (err) {
+            console.error('paginado falla, fallback:', err);
             await cargarDatosCompletos();
         }
-    };
+    }
 
-    // --- GENERAR PAGINACIÓN ---
-    const generarPaginacion = (paginaActual, totalPaginas, totalRecords) => {
-        let paginacionContainer = document.getElementById('paginacionContainer');
-
-        if (!paginacionContainer) {
-            const tablaParent = document.querySelector('.table-responsive').parentNode;
-            const nuevoContenedor = document.createElement('div');
-            nuevoContenedor.className = 'd-flex justify-content-between align-items-center mt-3';
-            nuevoContenedor.id = 'paginacionContainer';
-            nuevoContenedor.innerHTML = `
-                <div id="infoPaginacion"></div>
-                <nav id="paginacionNav"></nav>
-            `;
-            tablaParent.appendChild(nuevoContenedor);
-            paginacionContainer = nuevoContenedor;
-        }
-
-        const infoPaginacion = document.getElementById('infoPaginacion');
-        const paginacionNav = document.getElementById('paginacionNav');
-
-        const inicio = ((paginaActual - 1) * registrosPorPagina) + 1;
-        const fin = Math.min(paginaActual * registrosPorPagina, totalRecords);
-
-        infoPaginacion.innerHTML = `
-            <small class="text-muted">
-                Mostrando ${inicio}-${fin} de ${totalRecords} registros
-            </small>
-        `;
-
-        let paginacionHTML = '<ul class="pagination pagination-sm mb-0">';
-
-        paginacionHTML += `
-            <li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1}); return false;">«</a>
-            </li>
-        `;
-
-        const paginasAMostrar = 5;
-        let inicioPaginas = Math.max(1, paginaActual - Math.floor(paginasAMostrar / 2));
-        let finPaginas = Math.min(totalPaginas, inicioPaginas + paginasAMostrar - 1);
-
-        if (finPaginas - inicioPaginas + 1 < paginasAMostrar) {
-            inicioPaginas = Math.max(1, finPaginas - paginasAMostrar + 1);
-        }
-
-        for (let i = inicioPaginas; i <= finPaginas; i++) {
-            paginacionHTML += `
-                <li class="page-item ${i === paginaActual ? 'active' : ''}">
-                    <a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i}</a>
-                </li>
-            `;
-        }
-
-        paginacionHTML += `
-            <li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
-                <a class="page-link" href="#" onclick="cambiarPagina(${paginaActual + 1}); return false;">»</a>
-            </li>
-        `;
-
-        paginacionHTML += '</ul>';
-        paginacionNav.innerHTML = paginacionHTML;
-    };
-
-    // --- CAMBIAR PÁGINA ---
-    window.cambiarPagina = (pagina) => {
-        cargarDatosPaginated(pagina, searchTermActual);
-    };
-
-    // --- FUNCIÓN ORIGINAL (PARA COMPATIBILIDAD) ---
-    const cargarDatosCompletos = async () => {
+    async function cargarDatosCompletos() {
         try {
-            const response = await fetch(usuariosApiUrl);
-            listaUsuariosCompleta = await response.json();
+            const res = await fetch(usuariosApiBase);
+            if (!res.ok) throw new Error('Error al cargar lista');
+            const raw = await res.json();
+            const arr = raw.data || raw || [];
+            listaUsuariosCompleta = (arr || []).map(u => normalizeUser(u));
             aplicarFiltrosClientes();
-        } catch (error) {
-            console.error("Error al cargar usuarios:", error);
+        } catch (err) {
+            console.error(err);
+            tablaDatos.innerHTML = '';
+            resultadosContador.textContent = 0;
+            emptyState.classList.remove('d-none');
         }
-    };
+    }
 
-    // --- APLICAR FILTROS (MODIFICADA PARA PAGINACIÓN) ---
-    const aplicarFiltros = () => {
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        const rolSeleccionado = rolFilter.value;
-        const fichaSeleccionada = fichaFilter.value;
+    // ---------- FILTRADO ----------
+    function aplicarFiltros() {
+        const searchTerm = (searchInput.value || '').toLowerCase().trim();
+        const rolSeleccionado = (rolFilter.value || '').trim();
+        const fichaSeleccionada = (fichaFilter.value || '').trim();
 
         if (rolSeleccionado || fichaSeleccionada) {
+            if (!listaUsuariosCompleta || listaUsuariosCompleta.length === 0) { cargarDatosCompletos(); return; }
             aplicarFiltrosClientes();
         } else {
             cargarDatosPaginated(1, searchTerm);
         }
-    };
+    }
 
-    // --- FILTRADO EN CLIENTE (para compatibilidad con rol/ficha) ---
-    const aplicarFiltrosClientes = () => {
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        const rolSeleccionado = rolFilter.value;
-        const fichaSeleccionada = fichaFilter.value;
+    function aplicarFiltrosClientes() {
+        const searchTerm = (searchInput.value || '').toLowerCase().trim();
+        const rolSeleccionado = (rolFilter.value || '').trim();
+        const fichaSeleccionada = (fichaFilter.value || '').trim();
 
-        const usuariosFiltrados = listaUsuariosCompleta.filter(user => {
-            let rol, nombre, documento, fichaId;
+        const filtered = (listaUsuariosCompleta || []).filter(user => {
+            const nombre = (user.nombre || '').toLowerCase();
+            const documento = (user.documento || '') + '';
+            const rol = (user.role || '') + '';
+            const fichaId = (user.aprendiz && user.aprendiz.idFicha) || get(user.raw || {}, 'idFicha', 'IdFicha');
 
-            if (user.aprendiz) {
-                rol = 'Aprendiz';
-                nombre = user.aprendiz.nombre;
-                documento = user.aprendiz.documento;
-                fichaId = user.aprendiz.idFicha;
-            } else if (user.funcionario) {
-                rol = 'Funcionario';
-                nombre = user.funcionario.nombre;
-                documento = user.funcionario.documento;
-                fichaId = null;
-            }
-
-            const matchSearch = searchTerm === '' ||
-                nombre.toLowerCase().includes(searchTerm) ||
-                documento.includes(searchTerm);
-
-            const matchRol = rolSeleccionado === '' || rol === rolSeleccionado;
-
-            const matchFicha = fichaSeleccionada === '' ||
-                (fichaId && fichaId.toString() === fichaSeleccionada);
-
+            const matchSearch = !searchTerm || nombre.includes(searchTerm) || (documento && documento.includes(searchTerm));
+            const matchRol = !rolSeleccionado || rol === rolSeleccionado;
+            const matchFicha = !fichaSeleccionada || (fichaId && fichaId.toString() === fichaSeleccionada);
             return matchSearch && matchRol && matchFicha;
         });
 
-        renderizarTabla(usuariosFiltrados);
+        renderizarTabla(filtered);
+        const pagContainer = document.getElementById('paginacionContainer');
+        if (pagContainer) pagContainer.style.display = 'none';
+    }
 
-        const paginacionContainer = document.getElementById('paginacionContainer');
-        if (paginacionContainer) {
-            paginacionContainer.style.display = 'none';
-        }
-    };
-
-    // --- RENDERIZAR TABLA ---
-    const renderizarTabla = (usuarios) => {
+    // ---------- RENDER TABLA ----------
+    function renderizarTabla(users) {
         tablaDatos.innerHTML = '';
-        resultadosContador.textContent = usuarios.length;
-
-        if (usuarios.length === 0) {
-            emptyState.classList.remove('d-none');
-            return;
-        }
-
+        resultadosContador.textContent = users.length || 0;
+        if (!users || users.length === 0) { emptyState.classList.remove('d-none'); return; }
         emptyState.classList.add('d-none');
 
-        usuarios.forEach(user => {
-            let rol, nombre, documento, detalle, editId, badgeClass;
-
-            if (user.aprendiz) {
-                rol = 'Aprendiz';
-                nombre = user.aprendiz.nombre;
-                documento = user.aprendiz.documento;
-                detalle = user.aprendiz.ficha ? user.aprendiz.ficha.codigo : 'Sin Ficha';
-                editId = user.aprendiz.idAprendiz;
-                badgeClass = 'bg-primary';
-            } else if (user.funcionario) {
-                rol = 'Funcionario';
-                nombre = user.funcionario.nombre;
-                documento = user.funcionario.documento;
-                detalle = user.funcionario.detalle || 'N/A';
-                editId = user.funcionario.idFuncionario;
-                badgeClass = 'bg-warning text-dark';
-            }
-
+        users.forEach(user => {
+            const rol = user.role || (user.aprendiz ? 'Aprendiz' : (user.funcionario ? 'Funcionario' : 'SinRol'));
+            const nombre = user.nombre || '';
+            const documento = user.documento || '';
+            const detalle = user.detalle || '';
+            const editId = (user.aprendiz && user.aprendiz.idAprendiz) || (user.funcionario && user.funcionario.idFuncionario) || user.idUsuario || 0;
+            const badgeClass = rol === 'Aprendiz' ? 'bg-primary' : 'bg-warning text-dark';
             const rolBadge = rol === 'Aprendiz'
                 ? `<span class="badge ${badgeClass} badge-role"><i class="bi bi-mortarboard-fill me-1"></i>${rol}</span>`
                 : `<span class="badge ${badgeClass} badge-role"><i class="bi bi-person-badge-fill me-1"></i>${rol}</span>`;
-
             const infoAdicional = rol === 'Aprendiz'
-                ? `<span class="badge bg-success bg-opacity-10 text-success">${detalle}</span>`
-                : `<span class="text-muted">${detalle}</span>`;
+                ? `<span class="badge bg-success bg-opacity-10 text-success">${detalle || 'Sin ficha'}</span>`
+                : `<span class="text-muted">${detalle || 'N/A'}</span>`;
 
             tablaDatos.innerHTML += `
                 <tr>
-                    <td class="fw-semibold">${user.idUsuario}</td>
+                    <td class="fw-semibold">${user.idUsuario || ''}</td>
                     <td>${rolBadge}</td>
                     <td class="fw-semibold">${nombre}</td>
                     <td><span class="badge bg-light text-dark">${documento}</span></td>
                     <td>${infoAdicional}</td>
                     <td class="text-center">
-                        <button class="btn btn-sm btn-primary" onclick="abrirModal('${rol.toLowerCase()}', ${editId})">
-                            <i class="bi bi-pencil-fill"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="desactivar(${user.idUsuario})">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="abrirModal('${(rol || '').toLowerCase()}', ${editId})"><i class="bi bi-pencil-fill"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="desactivar(${user.idUsuario || 0})"><i class="bi bi-trash-fill"></i></button>
                     </td>
                 </tr>`;
         });
-    };
+    }
 
-    // --- CARGAR FICHAS PARA EL SELECTOR Y FILTRO ---
-    const cargarFichas = async () => {
+    // ---------- PAGINACIÓN ----------
+    function generarPaginacion(page, totalPages, totalRecords) {
+        let paginacionContainer = document.getElementById('paginacionContainer');
+        if (!paginacionContainer) {
+            const tablaParent = document.querySelector('.table-responsive').parentNode;
+            const nuevoContenedor = document.createElement('div');
+            nuevoContenedor.className = 'd-flex justify-content-between align-items-center mt-3';
+            nuevoContenedor.id = 'paginacionContainer';
+            nuevoContenedor.innerHTML = `<div id="infoPaginacion"></div><nav id="paginacionNav"></nav>`;
+            tablaParent.appendChild(nuevoContenedor);
+            paginacionContainer = nuevoContenedor;
+        }
+        const infoPaginacion = document.getElementById('infoPaginacion');
+        const paginacionNav = document.getElementById('paginacionNav');
+
+        const inicio = ((paginaActual - 1) * registrosPorPagina) + 1;
+        const fin = Math.min(paginaActual * registrosPorPagina, totalRecords || 0);
+        infoPaginacion.innerHTML = `<small class="text-muted">Mostrando ${isNaN(inicio) ? 0 : inicio}-${isNaN(fin) ? 0 : fin} de ${totalRecords || 0} registros</small>`;
+
+        let pagHTML = '<ul class="pagination pagination-sm mb-0">';
+        pagHTML += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${paginaActual - 1}); return false;">«</a></li>`;
+        const paginasAMostrar = 5;
+        let inicioPag = Math.max(1, paginaActual - Math.floor(paginasAMostrar / 2));
+        let finPag = Math.min(totalPages, inicioPag + paginasAMostrar - 1);
+        if (finPag - inicioPag + 1 < paginasAMostrar) inicioPag = Math.max(1, finPag - paginasAMostrar + 1);
+
+        for (let i = inicioPag; i <= finPag; i++) {
+            pagHTML += `<li class="page-item ${i === paginaActual ? 'active' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i}</a></li>`;
+        }
+        pagHTML += `<li class="page-item ${paginaActual === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${paginaActual + 1}); return false;">»</a></li>`;
+        pagHTML += '</ul>';
+        paginacionNav.innerHTML = pagHTML;
+    }
+
+    window.cambiarPagina = (p) => cargarDatosPaginated(p, searchTermActual);
+
+    // ---------- CARGAR FICHAS ----------
+    async function cargarFichas() {
         try {
-            const response = await fetch(fichasApiUrl);
-            listaFichas = await response.json();
-
-            aprendizFichaIdInput.innerHTML = '<option value="">Seleccione una ficha...</option>';
-            listaFichas.forEach(ficha => {
-                aprendizFichaIdInput.innerHTML += `<option value="${ficha.idFicha}">${ficha.codigo} - ${ficha.programa.nombrePrograma}</option>`;
-            });
-
+            const res = await fetch(fichasApiUrl);
+            if (!res.ok) throw new Error('Error cargando fichas');
+            const raw = await res.json();
+            const arr = raw.data || raw || [];
+            listaFichas = arr;
+            aprendizFichaSelect.innerHTML = '<option value="">Seleccione una ficha...</option>';
             fichaFilter.innerHTML = '<option value="">Todas las fichas</option>';
-            listaFichas.forEach(ficha => {
-                fichaFilter.innerHTML += `<option value="${ficha.idFicha}">${ficha.codigo}</option>`;
+            arr.forEach(f => {
+                const id = get(f, 'idFicha', 'IdFicha', 'id', 'Id');
+                const codigo = get(f, 'codigo', 'Codigo') || '';
+                const prog = get(f, 'programa.nombrePrograma', 'programa.NombrePrograma') || '';
+                aprendizFichaSelect.innerHTML += `<option value="${id}">${codigo} - ${prog}</option>`;
+                fichaFilter.innerHTML += `<option value="${id}">${codigo}</option>`;
             });
-        } catch (error) {
-            console.error("Error al cargar fichas:", error);
-        }
-    };
+        } catch (err) { console.error(err); }
+    }
 
-    // --- LIMPIAR FILTROS ---
-    window.limpiarFiltros = () => {
-        searchInput.value = '';
-        rolFilter.value = '';
-        fichaFilter.value = '';
-        const paginacionContainer = document.getElementById('paginacionContainer');
-        if (paginacionContainer) {
-            paginacionContainer.style.display = 'flex';
-        }
-        cargarDatosPaginated(1, '');
-    };
+    // ---------- MODAL: mostrar/ocultar campos ----------
+    function mostrarCamposPorRol(rol) {
+        if (!rol) { aprendizFields.classList.add('d-none'); funcionarioFields.classList.add('d-none'); return; }
+        if (rol === 'Aprendiz') { aprendizFields.classList.remove('d-none'); funcionarioFields.classList.add('d-none'); }
+        else if (rol === 'Funcionario') { funcionarioFields.classList.remove('d-none'); aprendizFields.classList.add('d-none'); }
+        else { aprendizFields.classList.add('d-none'); funcionarioFields.classList.add('d-none'); }
+    }
 
-    // --- EVENT LISTENERS PARA FILTROS EN TIEMPO REAL ---
-    searchInput.addEventListener('input', aplicarFiltros);
-    rolFilter.addEventListener('change', aplicarFiltros);
-    fichaFilter.addEventListener('change', aplicarFiltros);
-
-    // --- ABRIR EL MODAL CORRESPONDIENTE ---
-    window.abrirModal = (tipo, id = 0) => {
-        if (tipo === 'aprendiz') {
-            aprendizModalTitulo.textContent = id === 0 ? 'Crear Nuevo Aprendiz' : 'Editar Aprendiz';
-            document.getElementById('aprendizForm').reset();
-            aprendizIdInput.value = id;
+    // ---------- GLOBALS: abrirModal, guardar, desactivar ----------
+    window.abrirModal = function (tipo, id = 0) {
+        try {
+            userModalTitle.textContent = id === 0 ? 'Crear Usuario' : 'Editar Usuario';
+            userIdInput.value = id || 0;
+            // reset
+            userRoleSelect.value = (tipo === 'aprendiz') ? 'Aprendiz' : (tipo === 'funcionario') ? 'Funcionario' : '';
+            userNombreInput.value = '';
+            userDocumentoInput.value = '';
+            funcionarioCargoInput.value = '';
+            funcionarioPasswordInput.value = '';
+            aprendizFichaSelect.value = '';
+            mostrarCamposPorRol(userRoleSelect.value);
 
             if (id !== 0) {
-                const usuario = listaUsuariosCompleta.find(u => u.aprendiz && u.aprendiz.idAprendiz === id);
-                if (usuario && usuario.aprendiz) {
-                    aprendizNombreInput.value = usuario.aprendiz.nombre;
-                    aprendizDocumentoInput.value = usuario.aprendiz.documento;
-                    aprendizFichaIdInput.value = usuario.aprendiz.idFicha;
+                const u = (listaUsuariosCompleta || []).find(x => (x.aprendiz && get(x, 'aprendiz.idAprendiz') == id) || (x.funcionario && get(x, 'funcionario.idFuncionario') == id) || x.idUsuario == id)
+                    || (listaUsuariosPagina || []).find(x => x.idUsuario == id);
+                if (u) {
+                    userRoleSelect.value = u.role || userRoleSelect.value;
+                    mostrarCamposPorRol(userRoleSelect.value);
+                    userNombreInput.value = u.nombre || '';
+                    userDocumentoInput.value = u.documento || '';
+                    if (u.aprendiz) aprendizFichaSelect.value = u.aprendiz.idFicha || '';
+                    if (u.funcionario) funcionarioCargoInput.value = u.funcionario.detalle || '';
                 }
             }
-            aprendizModal.show();
-        } else if (tipo === 'funcionario') {
-            funcionarioModalTitulo.textContent = id === 0 ? 'Crear Nuevo Funcionario' : 'Editar Funcionario';
-            document.getElementById('funcionarioForm').reset();
-            funcionarioIdInput.value = id;
-
-            const passwordInput = document.getElementById('funcionarioContraseñaInput');
-
-            if (id !== 0) {
-                const usuario = listaUsuariosCompleta.find(u => u.funcionario && u.funcionario.idFuncionario === id);
-                if (usuario && usuario.funcionario) {
-                    funcionarioNombreInput.value = usuario.funcionario.nombre;
-                    funcionarioDocumentoInput.value = usuario.funcionario.documento;
-                    funcionarioDetalleInput.value = usuario.funcionario.detalle || '';
-
-                    // En modo edición, la contraseña es opcional
-                    passwordInput.removeAttribute('required');
-                    passwordInput.placeholder = 'Dejar en blanco para mantener la actual';
-                }
-            } else {
-                // Modo creación - contraseña requerida
-                passwordInput.setAttribute('required', 'required');
-                passwordInput.placeholder = '';
-            }
-            funcionarioModal.show();
+            if (userModal) userModal.show();
+            else console.warn('userModal no inicializado, no se puede mostrar dialog');
+        } catch (err) {
+            console.error('abrirModal error', err);
         }
     };
 
-    // --- GUARDAR (CON ALERTAS MEJORADAS) ---
-    window.guardar = async (tipo) => {
-        let url, method, data, modal, id;
+    userRoleSelect && userRoleSelect.addEventListener('change', (e) => mostrarCamposPorRol(e.target.value));
 
-        if (tipo === 'aprendiz') {
-            id = aprendizIdInput.value;
-            url = id == 0 ? aprendizApiUrl : `${aprendizApiUrl}/${id}`;
-            method = id == 0 ? 'POST' : 'PUT';
-            modal = aprendizModal;
-            data = {
-                idAprendiz: parseInt(id) || 0,
-                nombre: aprendizNombreInput.value,
-                documento: aprendizDocumentoInput.value,
-                idFicha: parseInt(aprendizFichaIdInput.value),
-                estado: true
-            };
-        } else { // funcionario
-            id = funcionarioIdInput.value;
-            const password = funcionarioContraseñaInput.value.trim();
+    userSaveBtn && userSaveBtn.addEventListener('click', async () => {
+        const id = parseInt(userIdInput.value || 0);
+        const role = userRoleSelect.value;
+        const nombre = (userNombreInput.value || '').trim();
+        const documento = (userDocumentoInput.value || '').trim();
+        if (!role || !nombre || !documento) { alert('Complete los campos obligatorios.'); return; }
 
-            url = id == 0 ? funcionarioApiUrl : `${funcionarioApiUrl}/${id}`;
-            method = id == 0 ? 'POST' : 'PUT';
-            modal = funcionarioModal;
-
-            data = {
-                idFuncionario: parseInt(id) || 0,
-                nombre: funcionarioNombreInput.value,
-                documento: funcionarioDocumentoInput.value,
-                detalle: funcionarioDetalleInput.value || '',
-                estado: true
-            };
-
-            // Lógica de contraseña
-            if (id == 0) {
-                // Modo CREAR: contraseña obligatoria
-                if (!password) {
-                    alert('La contraseña es requerida para crear un funcionario');
-                    return;
-                }
-                data.contraseña = password;
-            } else {
-                // Modo EDITAR: solo incluir si se proporcionó una nueva
-                if (password) {
-                    data.contraseña = password;
-                }
-            }
+        let url, method = id === 0 ? 'POST' : 'PUT', payload = null;
+        if (role === 'Aprendiz') {
+            const idFicha = aprendizFichaSelect.value || null;
+            url = id === 0 ? aprendizApiUrl : `${aprendizApiUrl}/${id}`;
+            payload = { idAprendiz: id || 0, nombre, documento, idFicha: idFicha ? parseInt(idFicha) : null, estado: true };
+        } else {
+            const cargo = funcionarioCargoInput.value.trim();
+            const password = funcionarioPasswordInput.value.trim();
+            url = id === 0 ? funcionarioApiUrl : `${funcionarioApiUrl}/${id}`;
+            payload = { idFuncionario: id || 0, nombre, documento, detalle: cargo, estado: true };
+            if (password) payload.contrasena = password;
         }
 
         try {
-            console.log('Enviando datos:', data);
-
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Error del servidor:', errorText);
-                throw new Error(`Error ${response.status}: ${errorText}`);
-            }
-
-            modal.hide();
-            cargarDatosPaginated(paginaActual, searchTermActual);
-
-            // Mensaje de éxito diferenciado
-            alert(id == 0 ? 'Creado exitosamente' : 'Actualizado exitosamente');
-
-        } catch (error) {
-            console.error(`Error al guardar ${tipo}:`, error);
-            alert(`Error al guardar: ${error.message}`);
+            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!res.ok) { const txt = await res.text(); throw new Error(txt || `Error ${res.status}`); }
+            if (userModal) userModal.hide();
+            await cargarDatosPaginated(paginaActual, searchTermActual);
+            alert(id === 0 ? 'Creado correctamente' : 'Actualizado correctamente');
+        } catch (err) {
+            console.error('Error guardar usuario:', err);
+            alert('Error al guardar: ' + (err.message || err));
         }
-    };
+    });
 
-    // --- DESACTIVAR ---
-    window.desactivar = async (idUsuario) => {
-        if (!confirm(`¿Está seguro de que desea borrar (desactivar) al usuario con ID ${idUsuario}?`)) return;
-
+    window.desactivar = async function (idUsuario) {
+        if (!confirm(`¿Desea desactivar al usuario ID ${idUsuario}?`)) return;
         try {
-            const response = await fetch(`${usuariosApiUrl}/${idUsuario}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Error al borrar el usuario.');
-
-            cargarDatosPaginated(paginaActual, searchTermActual);
-        } catch (error) {
-            console.error(error);
-            alert(error.message);
-        }
+            const res = await fetch(`${usuariosApiBase}/${idUsuario}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Error al desactivar');
+            await cargarDatosPaginated(paginaActual, searchTermActual);
+        } catch (err) { console.error(err); alert('Error: ' + (err.message || err)); }
     };
 
-    // --- Carga inicial de datos ---
-    cargarDatosPaginated(1, '');
+    // ---------- Listeners filtros ----------
+    searchInput && searchInput.addEventListener('input', aplicarFiltros);
+    rolFilter && rolFilter.addEventListener('change', aplicarFiltros);
+    fichaFilter && fichaFilter.addEventListener('change', aplicarFiltros);
+
+    // ---------- Init ----------
     cargarFichas();
+    cargarDatosPaginated(1, '');
 });
