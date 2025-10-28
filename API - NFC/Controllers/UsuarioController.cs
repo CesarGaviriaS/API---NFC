@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using API___NFC.Models;
 using API___NFC.Models.Entity.Users;
+using API___NFC.Models.Dto;
 
 namespace ApiNfc.Controllers
 {
@@ -16,8 +17,8 @@ namespace ApiNfc.Controllers
         private readonly NfcDbContext _context;
         public UsuariosController(NfcDbContext context) => _context = context;
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> GetAll()
+        // Helper method to create unified list
+        private async Task<List<UnifiedUsuarioDto>> GetUnifiedUsuariosList()
         {
             // Get Aprendices
             var aprendices = await _context.Aprendices
@@ -32,31 +33,30 @@ namespace ApiNfc.Controllers
                 .ToListAsync();
 
             // Create unified list
-            var unifiedList = new List<object>();
+            var unifiedList = new List<UnifiedUsuarioDto>();
 
             foreach (var aprendiz in aprendices)
             {
-                unifiedList.Add(new
+                unifiedList.Add(new UnifiedUsuarioDto
                 {
                     IdUsuario = aprendiz.IdAprendiz,
                     Rol = "Aprendiz",
-                    Aprendiz = new
+                    Aprendiz = new AprendizDto
                     {
                         IdAprendiz = aprendiz.IdAprendiz,
                         Nombre = aprendiz.Nombre,
                         Apellido = aprendiz.Apellido,
                         TipoDocumento = aprendiz.TipoDocumento,
                         NumeroDocumento = aprendiz.NumeroDocumento,
-                        Documento = aprendiz.NumeroDocumento,
                         Correo = aprendiz.Correo,
                         CodigoBarras = aprendiz.CodigoBarras,
                         Telefono = aprendiz.Telefono,
                         IdFicha = aprendiz.IdFicha,
-                        Ficha = aprendiz.Ficha != null ? new
+                        Ficha = aprendiz.Ficha != null ? new FichaSimpleDto
                         {
                             IdFicha = aprendiz.Ficha.IdFicha,
                             Codigo = aprendiz.Ficha.Codigo,
-                            Programa = aprendiz.Ficha.Programa != null ? new
+                            Programa = aprendiz.Ficha.Programa != null ? new ProgramaSimpleDto
                             {
                                 NombrePrograma = aprendiz.Ficha.Programa.NombrePrograma
                             } : null
@@ -67,11 +67,11 @@ namespace ApiNfc.Controllers
 
             foreach (var funcionario in funcionarios)
             {
-                unifiedList.Add(new
+                unifiedList.Add(new UnifiedUsuarioDto
                 {
                     IdUsuario = funcionario.IdFuncionario,
                     Rol = "Funcionario",
-                    Funcionario = new
+                    Funcionario = new FuncionarioDto
                     {
                         IdFuncionario = funcionario.IdFuncionario,
                         Nombre = funcionario.Nombre,
@@ -81,6 +81,13 @@ namespace ApiNfc.Controllers
                 });
             }
 
+            return unifiedList;
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<UnifiedUsuarioDto>>> GetAll()
+        {
+            var unifiedList = await GetUnifiedUsuariosList();
             return Ok(unifiedList);
         }
 
@@ -130,67 +137,8 @@ namespace ApiNfc.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string search = "")
         {
-            // Get Aprendices
-            var aprendices = await _context.Aprendices
-                .Include(a => a.Ficha)
-                .ThenInclude(f => f.Programa)
-                .Where(a => a.Estado == true)
-                .ToListAsync();
-
-            // Get Funcionarios
-            var funcionarios = await _context.Funcionarios
-                .Where(f => f.Estado == true)
-                .ToListAsync();
-
-            // Create unified list
-            var unifiedList = new List<object>();
-
-            foreach (var aprendiz in aprendices)
-            {
-                unifiedList.Add(new
-                {
-                    IdUsuario = aprendiz.IdAprendiz,
-                    Rol = "Aprendiz",
-                    Aprendiz = new
-                    {
-                        IdAprendiz = aprendiz.IdAprendiz,
-                        Nombre = aprendiz.Nombre,
-                        Apellido = aprendiz.Apellido,
-                        TipoDocumento = aprendiz.TipoDocumento,
-                        NumeroDocumento = aprendiz.NumeroDocumento,
-                        Documento = aprendiz.NumeroDocumento,
-                        Correo = aprendiz.Correo,
-                        CodigoBarras = aprendiz.CodigoBarras,
-                        Telefono = aprendiz.Telefono,
-                        IdFicha = aprendiz.IdFicha,
-                        Ficha = aprendiz.Ficha != null ? new
-                        {
-                            IdFicha = aprendiz.Ficha.IdFicha,
-                            Codigo = aprendiz.Ficha.Codigo,
-                            Programa = aprendiz.Ficha.Programa != null ? new
-                            {
-                                NombrePrograma = aprendiz.Ficha.Programa.NombrePrograma
-                            } : null
-                        } : null
-                    }
-                });
-            }
-
-            foreach (var funcionario in funcionarios)
-            {
-                unifiedList.Add(new
-                {
-                    IdUsuario = funcionario.IdFuncionario,
-                    Rol = "Funcionario",
-                    Funcionario = new
-                    {
-                        IdFuncionario = funcionario.IdFuncionario,
-                        Nombre = funcionario.Nombre,
-                        Documento = funcionario.Documento,
-                        Detalle = funcionario.Detalle
-                    }
-                });
-            }
+            // Get unified list
+            var unifiedList = await GetUnifiedUsuariosList();
 
             // Apply search filter
             if (!string.IsNullOrEmpty(search))
@@ -198,20 +146,18 @@ namespace ApiNfc.Controllers
                 search = search.ToLower();
                 unifiedList = unifiedList.Where(u =>
                 {
-                    var obj = u as dynamic;
-                    if (obj.Rol == "Aprendiz")
+                    if (u.Rol == "Aprendiz" && u.Aprendiz != null)
                     {
-                        var aprendiz = obj.Aprendiz;
-                        return (aprendiz.Nombre?.ToString()?.ToLower()?.Contains(search) ?? false) ||
-                               (aprendiz.Apellido?.ToString()?.ToLower()?.Contains(search) ?? false) ||
-                               (aprendiz.NumeroDocumento?.ToString()?.Contains(search) ?? false);
+                        return (u.Aprendiz.Nombre?.ToLower()?.Contains(search) ?? false) ||
+                               (u.Aprendiz.Apellido?.ToLower()?.Contains(search) ?? false) ||
+                               (u.Aprendiz.NumeroDocumento?.Contains(search) ?? false);
                     }
-                    else
+                    else if (u.Rol == "Funcionario" && u.Funcionario != null)
                     {
-                        var func = obj.Funcionario;
-                        return (func.Nombre?.ToString()?.ToLower()?.Contains(search) ?? false) ||
-                               (func.Documento?.ToString()?.Contains(search) ?? false);
+                        return (u.Funcionario.Nombre?.ToLower()?.Contains(search) ?? false) ||
+                               (u.Funcionario.Documento?.Contains(search) ?? false);
                     }
+                    return false;
                 }).ToList();
             }
 
