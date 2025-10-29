@@ -1,19 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace API___NFC.Models
 {
     public class Programa
     {
+        [Key]
         public int IdPrograma { get; set; }
-        public string NombrePrograma { get; set; }
-        public string Codigo { get; set; }
-        public string NivelFormacion { get; set; } // Operario, Especialización, Tecnólogo, Técnico
+
+        [Required, MaxLength(200)]
+        public string NombrePrograma { get; set; } = null!;
+
+        [Required, MaxLength(50)]
+        public string Codigo { get; set; } = null!;
+
+        [Required, MaxLength(30)]
+        public string NivelFormacion { get; set; } = null!;
+
         public bool? Estado { get; set; }
         public DateTime? FechaCreacion { get; set; }
         public DateTime? FechaActualizacion { get; set; }
 
-        // Navegación
-        public virtual ICollection<Ficha> Fichas { get; set; } = new List<Ficha>();
+        // ✅ Inicializa la colección y marca como nullable
+        [JsonIgnore]
+        public virtual ICollection<Ficha>? Fichas { get; set; } = new List<Ficha>();
     }
 }
