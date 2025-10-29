@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace API___NFC.Models
 {
@@ -23,7 +24,9 @@ namespace API___NFC.Models
         [Required, MaxLength(150)]
         public string Correo { get; set; }
 
+        [JsonIgnore]
         [Required, MaxLength(255)]
+
         public string Contraseña { get; set; }
 
         [Required, MaxLength(20)]

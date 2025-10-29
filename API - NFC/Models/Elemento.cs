@@ -1,8 +1,8 @@
-﻿
-
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace API___NFC.Models
 {
@@ -16,33 +16,33 @@ namespace API___NFC.Models
         public int IdPropietario { get; set; }
 
         [Required, MaxLength(20)]
-        public string TipoPropietario { get; set; }
+        public string TipoPropietario { get; set; } = null!;
 
         [MaxLength(100)]
-        public string Marca { get; set; }
+        public string? Marca { get; set; }  // ✅ Nullable
 
         [MaxLength(100)]
-        public string Modelo { get; set; }
+        public string? Modelo { get; set; }  // ✅ Nullable
 
         [Required, MaxLength(150)]
-        public string Serial { get; set; }
+        public string Serial { get; set; } = null!;
 
         [MaxLength(100)]
-        public string CodigoNFC { get; set; }
+        public string? CodigoNFC { get; set; }  // ✅ Nullable
 
-        public string Descripcion { get; set; } // text
+        public string? Descripcion { get; set; }  // ✅ Nullable
 
         [MaxLength(255)]
-        public string ImagenUrl { get; set; }
+        public string? ImagenUrl { get; set; }  // ✅ Nullable
 
         public bool? Estado { get; set; }
-
         public DateTime? FechaCreacion { get; set; }
-
         public DateTime? FechaActualizacion { get; set; }
 
         // Navigation
         [ForeignKey("IdTipoElemento")]
-        public virtual TipoElemento TipoElemento { get; set; }
+        [JsonIgnore]
+        [ValidateNever]  // ✅ Añade esto
+        public virtual TipoElemento? TipoElemento { get; set; }  // ✅ Nullable
     }
 }
