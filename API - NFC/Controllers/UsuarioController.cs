@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using API_NFC.Data;
@@ -21,27 +20,32 @@ namespace API___NFC.Controllers
             _context = context;
         }
 
-        // GET: api/Usuario
+        // ✅ GET: api/Usuario (solo activos)
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios()
         {
-            return await _context.Usuario.ToListAsync();
+            return await _context.Usuario
+                .Where(u => u.Estado == true)
+                .AsNoTracking()
+                .OrderBy(u => u.Nombre)
+                .ToListAsync();
         }
 
-        // GET: api/Usuario/5
+        // ✅ GET: api/Usuario/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Usuario>> GetUsuario(int id)
         {
-            var usuario = await _context.Usuario.FindAsync(id);
+            var usuario = await _context.Usuario
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.IdUsuario == id);
 
             if (usuario == null)
-            {
-                return NotFound();
-            }
+                return NotFound("Usuario no encontrado.");
 
-            return usuario;
+            return Ok(usuario);
         }
 
+        // ✅ PUT: api/Usuario/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUsuario(int id, [FromBody] Usuario usuario)
         {
@@ -52,58 +56,75 @@ namespace API___NFC.Controllers
             if (existing == null)
                 return NotFound();
 
-            // Actualizar campos
+            // 🔹 Validar duplicado de documento o correo
+            if (await _context.Usuario.AnyAsync(u =>
+                    (u.NumeroDocumento == usuario.NumeroDocumento || u.Correo == usuario.Correo) &&
+                    u.IdUsuario != id))
+            {
+                return Conflict("Ya existe un usuario con ese número de documento o correo electrónico.");
+            }
+
+            // 🔹 Actualizar campos
             existing.Nombre = usuario.Nombre;
             existing.Apellido = usuario.Apellido;
             existing.TipoDocumento = usuario.TipoDocumento;
             existing.NumeroDocumento = usuario.NumeroDocumento;
             existing.Correo = usuario.Correo;
-            existing.Contraseña = usuario.Contraseña;
+            existing.Contraseña = usuario.Contraseña; // ⚠️ En producción, encriptar antes de guardar
             existing.Rol = usuario.Rol;
             existing.CodigoBarras = usuario.CodigoBarras;
             existing.Cargo = usuario.Cargo;
             existing.Telefono = usuario.Telefono;
             existing.FotoUrl = usuario.FotoUrl;
-            existing.Estado = usuario.Estado;
+            existing.Estado = usuario.Estado ?? true;
             existing.FechaActualizacion = DateTime.Now;
 
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
-        // POST: api/Usuario
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        // ✅ POST: api/Usuario
         [HttpPost]
         public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // 🔹 Validar duplicados
+            if (await _context.Usuario.AnyAsync(u =>
+                    u.NumeroDocumento == usuario.NumeroDocumento ||
+                    u.Correo == usuario.Correo))
+            {
+                return Conflict("Ya existe un usuario con ese número de documento o correo electrónico.");
+            }
+
+            usuario.Estado ??= true;
+            usuario.FechaCreacion = DateTime.Now;
+            usuario.FechaActualizacion = DateTime.Now;
+
             _context.Usuario.Add(usuario);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetUsuario", new { id = usuario.IdUsuario }, usuario);
+            return CreatedAtAction(nameof(GetUsuario), new { id = usuario.IdUsuario }, usuario);
         }
 
-        // DELETE: api/Usuario/5
+        // ✅ DELETE (Soft Delete): api/Usuario/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUsuario(int id)
         {
             var usuario = await _context.Usuario.FindAsync(id);
             if (usuario == null)
-            {
                 return NotFound();
-            }
 
-            _context.Usuario.Remove(usuario);
+            usuario.Estado = false;
+            usuario.FechaActualizacion = DateTime.Now;
+
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
-        private bool UsuarioExists(int id)
-        {
-            return _context.Usuario.Any(e => e.IdUsuario == id);
-        }
-        // GET: api/Usuario/paged?pageNumber=1&pageSize=10
+        // ✅ GET Paginado
         [HttpGet("paged")]
         public async Task<ActionResult> GetUsuariosPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -112,12 +133,15 @@ namespace API___NFC.Controllers
             const int maxPageSize = 100;
             if (pageSize > maxPageSize) pageSize = maxPageSize;
 
-            var totalCount = await _context.Usuario.CountAsync();
+            var query = _context.Usuario
+                .Where(u => u.Estado == true)
+                .AsNoTracking()
+                .OrderBy(u => u.Nombre);
+
+            var totalCount = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
-            var items = await _context.Usuario
-                .AsNoTracking()
-                .OrderBy(u => u.IdUsuario)
+            var items = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -140,6 +164,11 @@ namespace API___NFC.Controllers
                 metadata.TotalCount,
                 metadata.TotalPages
             });
+        }
+
+        private bool UsuarioExists(int id)
+        {
+            return _context.Usuario.Any(e => e.IdUsuario == id);
         }
     }
 }
