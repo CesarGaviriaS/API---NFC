@@ -47,7 +47,7 @@ app.UseAuthorization();
 app.MapRazorPages();
 app.MapControllers();
 
-// Map SignalR hub (asegúrate que Hub class y namespace coinciden)
+// Map SignalR hub (asegÃºrate que Hub class y namespace coinciden)
 app.MapHub<NfcHub>("/nfcHub");
 
 // Redirect root to Terminal
