@@ -1,18 +1,36 @@
-﻿using System;
+﻿
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace API___NFC.Models
 {
     public class RegistroNFC
     {
+        [Key]
         public int IdRegistro { get; set; }
-        public int IdAprendiz { get; set; }
-        public int IdUsuario { get; set; }
-        public string TipoRegistro { get; set; } // nvarchar(50)
-        public DateTime? FechaRegistro { get; set; }
-        public string Estado { get; set; } // nvarchar(20)
 
-        // Navegación
+        public int IdAprendiz { get; set; }
+
+        public int IdUsuario { get; set; }
+
+        [Required, MaxLength(50)]
+        public string TipoRegistro { get; set; }
+
+        public DateTime? FechaRegistro { get; set; }
+
+        [MaxLength(20)]
+        public string Estado { get; set; }
+
+        // Navigation
+        [ForeignKey("IdAprendiz")]
+        [JsonIgnore]
+        
         public virtual Aprendiz Aprendiz { get; set; }
+
+        [ForeignKey("IdUsuario")]
+        [JsonIgnore]
         public virtual Usuario Usuario { get; set; }
     }
 }

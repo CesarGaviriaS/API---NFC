@@ -12,59 +12,54 @@ namespace API___NFC.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsuarioController : ControllerBase
+    public class ProgramasController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
 
-        public UsuarioController(ApplicationDbContext context)
+        public ProgramasController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        // GET: api/Usuario
+        // GET: api/Programas
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios()
+        public async Task<ActionResult<IEnumerable<Programa>>> GetPrograma()
         {
-            return await _context.Usuario.ToListAsync();
+            return await _context.Programa.ToListAsync();
         }
 
-        // GET: api/Usuario/5
+        // GET: api/Programas/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Usuario>> GetUsuario(int id)
+        public async Task<ActionResult<Programa>> GetPrograma(int id)
         {
-            var usuario = await _context.Usuario.FindAsync(id);
+            var programa = await _context.Programa.FindAsync(id);
 
-            if (usuario == null)
+            if (programa == null)
             {
                 return NotFound();
             }
 
-            return usuario;
+            return programa;
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUsuario(int id, [FromBody] Usuario usuario)
+        public async Task<IActionResult> PutPrograma(int id, [FromBody] Programa programa)
         {
+            // ⚠️ Elimina validación de la propiedad de navegación "Fichas"
+            ModelState.Remove(nameof(Programa.Fichas));
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var existing = await _context.Usuario.FindAsync(id);
+            var existing = await _context.Programa.FindAsync(id);
             if (existing == null)
                 return NotFound();
 
             // Actualizar campos
-            existing.Nombre = usuario.Nombre;
-            existing.Apellido = usuario.Apellido;
-            existing.TipoDocumento = usuario.TipoDocumento;
-            existing.NumeroDocumento = usuario.NumeroDocumento;
-            existing.Correo = usuario.Correo;
-            existing.Contraseña = usuario.Contraseña;
-            existing.Rol = usuario.Rol;
-            existing.CodigoBarras = usuario.CodigoBarras;
-            existing.Cargo = usuario.Cargo;
-            existing.Telefono = usuario.Telefono;
-            existing.FotoUrl = usuario.FotoUrl;
-            existing.Estado = usuario.Estado;
+            existing.NombrePrograma = programa.NombrePrograma;
+            existing.Codigo = programa.Codigo;
+            existing.NivelFormacion = programa.NivelFormacion;
+            existing.Estado = programa.Estado;
             existing.FechaActualizacion = DateTime.Now;
 
             await _context.SaveChangesAsync();
@@ -72,52 +67,52 @@ namespace API___NFC.Controllers
             return NoContent();
         }
 
-        // POST: api/Usuario
+        // POST: api/Programas
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
+        public async Task<ActionResult<Programa>> PostPrograma(Programa programa)
         {
-            _context.Usuario.Add(usuario);
+            _context.Programa.Add(programa);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetUsuario", new { id = usuario.IdUsuario }, usuario);
+            return CreatedAtAction("GetPrograma", new { id = programa.IdPrograma }, programa);
         }
 
-        // DELETE: api/Usuario/5
+        // DELETE: api/Programas/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUsuario(int id)
+        public async Task<IActionResult> DeletePrograma(int id)
         {
-            var usuario = await _context.Usuario.FindAsync(id);
-            if (usuario == null)
+            var programa = await _context.Programa.FindAsync(id);
+            if (programa == null)
             {
                 return NotFound();
             }
 
-            _context.Usuario.Remove(usuario);
+            _context.Programa.Remove(programa);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
-        private bool UsuarioExists(int id)
+        private bool ProgramaExists(int id)
         {
-            return _context.Usuario.Any(e => e.IdUsuario == id);
+            return _context.Programa.Any(e => e.IdPrograma == id);
         }
-        // GET: api/Usuario/paged?pageNumber=1&pageSize=10
+        // GET: api/Programas/paged?pageNumber=1&pageSize=10
         [HttpGet("paged")]
-        public async Task<ActionResult> GetUsuariosPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult> GetProgramasPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 10;
             const int maxPageSize = 100;
             if (pageSize > maxPageSize) pageSize = maxPageSize;
 
-            var totalCount = await _context.Usuario.CountAsync();
+            var totalCount = await _context.Programa.CountAsync();
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
-            var items = await _context.Usuario
+            var items = await _context.Programa
                 .AsNoTracking()
-                .OrderBy(u => u.IdUsuario)
+                .OrderBy(p => p.IdPrograma)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

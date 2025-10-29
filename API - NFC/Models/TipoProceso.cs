@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace API___NFC.Models
 {
     public class TipoProceso
     {
+        [Key]
         public int IdTipoProceso { get; set; }
-        public string Tipo { get; set; }
-        public bool? Estado { get; set; }
 
-        // Navegación
-        public virtual ICollection<Proceso> Procesos { get; set; } = new List<Proceso>();
+        [Required, MaxLength(50)]
+        public string Tipo { get; set; }
+
+        public bool? Estado { get; set; }
     }
 }
