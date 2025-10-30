@@ -9,10 +9,9 @@ namespace API___NFC.Models
         [Key]
         public int IdRegistro { get; set; }
 
-        // NOT NULL en la BD
         public int IdAprendiz { get; set; }
 
-        // NOT NULL en la BD
+       
         public int IdUsuario { get; set; }
 
         [Required, MaxLength(50)]

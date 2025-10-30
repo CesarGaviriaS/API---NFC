@@ -24,9 +24,8 @@ namespace API___NFC.Models
         [Required, MaxLength(150)]
         public string Correo { get; set; }
 
-        [JsonIgnore]
+       
         [Required, MaxLength(255)]
-
         public string Contraseña { get; set; }
 
         [Required, MaxLength(20)]
@@ -44,6 +43,11 @@ namespace API___NFC.Models
         [MaxLength(255)]
         public string? FotoUrl { get; set; } 
         public bool? Estado { get; set; }
+        [JsonIgnore]
+        public string? TokenRecuperacion { get; set; }    // Guarda el token temporal para recuperar contraseña
+        [JsonIgnore]
+        public DateTime? FechaTokenExpira { get; set; }   // Guarda la fecha de expiración del token
+
 
         public DateTime? FechaCreacion { get; set; }
 

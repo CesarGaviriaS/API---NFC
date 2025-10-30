@@ -31,7 +31,7 @@ namespace API___NFC.Models
 
 [ForeignKey("IdPrograma")]
     [JsonIgnore]
-    [ValidateNever] // 👈 Esto evita que ASP.NET intente validarla
+    [ValidateNever] 
     public virtual Programa Programa { get; set; }
 }
 }

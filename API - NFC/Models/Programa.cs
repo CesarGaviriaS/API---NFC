@@ -23,7 +23,7 @@ namespace API___NFC.Models
         public DateTime? FechaCreacion { get; set; }
         public DateTime? FechaActualizacion { get; set; }
 
-        // ✅ Inicializa la colección y marca como nullable
+       
         [JsonIgnore]
         public virtual ICollection<Ficha>? Fichas { get; set; } = new List<Ficha>();
     }

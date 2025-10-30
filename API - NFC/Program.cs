@@ -1,6 +1,9 @@
 using API___NFC.Hubs;
 using API_NFC.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +31,29 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+
+// ✅ ✅ BLOQUE NUEVO: CONFIGURACIÓN DE JWT (agregado antes del builder.Build)
+var key = builder.Configuration["Jwt:Key"];
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+        };
+    });
+
+
+// ✅ Se crea la aplicación DESPUÉS de registrar todos los servicios
 var app = builder.Build();
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -41,6 +66,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowAll");
+
+// ✅ Añadimos la autenticación antes de autorización (esto también es nuevo)
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Map endpoints
