@@ -18,7 +18,7 @@ namespace API___NFC.Models
 
         public bool? Validado { get; set; }
 
-        // ✅ Navegaciones opcionales (evitan el error 400)
+        //  Navegaciones opcionales (evitan el error 400)
         [ForeignKey("IdElemento")]
         [JsonIgnore]
         [ValidateNever]

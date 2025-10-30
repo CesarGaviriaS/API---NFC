@@ -32,7 +32,7 @@ namespace API___NFC.Models
 
         public int? IdUsuario { get; set; }  
 
-        // 🔹 Relaciones (navegaciones)
+        
         [ForeignKey(nameof(IdTipoProceso))]
         [JsonIgnore]
         public virtual TipoProceso? TipoProceso { get; set; }

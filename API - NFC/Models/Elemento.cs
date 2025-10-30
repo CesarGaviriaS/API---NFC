@@ -19,21 +19,21 @@ namespace API___NFC.Models
         public string TipoPropietario { get; set; } = null!;
 
         [MaxLength(100)]
-        public string? Marca { get; set; }  // ✅ Nullable
+        public string? Marca { get; set; }  
 
         [MaxLength(100)]
-        public string? Modelo { get; set; }  // ✅ Nullable
+        public string? Modelo { get; set; }  
 
         [Required, MaxLength(150)]
         public string Serial { get; set; } = null!;
 
         [MaxLength(100)]
-        public string? CodigoNFC { get; set; }  // ✅ Nullable
+        public string? CodigoNFC { get; set; }  
 
-        public string? Descripcion { get; set; }  // ✅ Nullable
+        public string? Descripcion { get; set; }  
 
         [MaxLength(255)]
-        public string? ImagenUrl { get; set; }  // ✅ Nullable
+        public string? ImagenUrl { get; set; }  
 
         public bool? Estado { get; set; }
         public DateTime? FechaCreacion { get; set; }
@@ -42,7 +42,7 @@ namespace API___NFC.Models
         // Navigation
         [ForeignKey("IdTipoElemento")]
         [JsonIgnore]
-        [ValidateNever]  // ✅ Añade esto
-        public virtual TipoElemento? TipoElemento { get; set; }  // ✅ Nullable
+        [ValidateNever]  
+        public virtual TipoElemento? TipoElemento { get; set; }  
     }
 }

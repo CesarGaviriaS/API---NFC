@@ -87,7 +87,7 @@ namespace API_NFC.Data
 
             modelBuilder.Entity<Ficha>(entity =>
             {
-                entity.ToTable("Ficha"); // ← AÑADE ESTO
+                entity.ToTable("Ficha"); 
                 entity.HasKey(e => e.IdFicha);
                 entity.HasIndex(e => e.Codigo).IsUnique();
 
@@ -99,7 +99,7 @@ namespace API_NFC.Data
                 entity.HasOne(f => f.Programa)
                       .WithMany(p => p.Fichas)
                       .HasForeignKey(f => f.IdPrograma)
-                      .HasPrincipalKey(p => p.IdPrograma) // ← AÑADE ESTO
+                      .HasPrincipalKey(p => p.IdPrograma)
                       .OnDelete(DeleteBehavior.Restrict)
                       .IsRequired();
             });
@@ -140,7 +140,7 @@ namespace API_NFC.Data
             // Programa
             modelBuilder.Entity<Programa>(entity =>
             {
-                entity.ToTable("Programa"); // ✅ AÑADE ESTO
+                entity.ToTable("Programa"); 
                 entity.HasKey(e => e.IdPrograma);
                 entity.HasIndex(e => e.Codigo).IsUnique();
 
@@ -152,7 +152,7 @@ namespace API_NFC.Data
                 entity.HasMany(p => p.Fichas)
                       .WithOne(f => f.Programa)
                       .HasForeignKey(f => f.IdPrograma)
-                      .HasPrincipalKey(p => p.IdPrograma) // ✅ AÑADE ESTO
+                      .HasPrincipalKey(p => p.IdPrograma) 
                       .OnDelete(DeleteBehavior.Restrict);
 
                 // CHECK NivelFormacion
