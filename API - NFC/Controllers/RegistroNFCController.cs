@@ -24,7 +24,7 @@ namespace API___NFC.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RegistroNFC>>> GetRegistros()
         {
-            return await _context.RegistrosNFC
+            return await _context.RegistroNFC
                 .Where(r => r.Estado == null || r.Estado == "Activo")
                 .Include(r => r.Usuario)
                 .Include(r => r.Aprendiz)
@@ -37,7 +37,7 @@ namespace API___NFC.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<RegistroNFC>> GetRegistroNFC(int id)
         {
-            var registro = await _context.RegistrosNFC
+            var registro = await _context.RegistroNFC
                 .Include(r => r.Usuario)
                 .Include(r => r.Aprendiz)
                 .FirstOrDefaultAsync(r => r.IdRegistro == id);
@@ -55,28 +55,51 @@ namespace API___NFC.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Validaciones mínimas (FKs obligatorias y tipo)
-            if (registro.IdAprendiz <= 0 || registro.IdUsuario <= 0)
-                return BadRequest("IdAprendiz y IdUsuario son obligatorios.");
+            // ✅ Tratar 0 como null
+            if (registro.IdUsuario == 0) registro.IdUsuario = null;
+            if (registro.IdAprendiz == 0) registro.IdAprendiz = null;
 
+            // ✅ VALIDAR: Usuario O Aprendiz (no ambos, no ninguno)
+            if (registro.IdUsuario.HasValue && registro.IdAprendiz.HasValue)
+                return BadRequest("Solo puede especificar IdUsuario O IdAprendiz, no ambos.");
+
+            if (!registro.IdUsuario.HasValue && !registro.IdAprendiz.HasValue)
+                return BadRequest("Debe especificar IdUsuario o IdAprendiz.");
+
+            // ✅ VALIDAR: TipoRegistro obligatorio
             if (string.IsNullOrWhiteSpace(registro.TipoRegistro))
                 return BadRequest("TipoRegistro es obligatorio.");
 
-            // Asegurar valores por defecto compatibles con la BD
+            // ✅ VALIDAR: El Usuario o Aprendiz debe existir
+            if (registro.IdUsuario.HasValue)
+            {
+                var usuarioExiste = await _context.Usuario.AnyAsync(u => u.IdUsuario == registro.IdUsuario.Value);
+                if (!usuarioExiste)
+                    return BadRequest($"El Usuario con ID {registro.IdUsuario} no existe.");
+            }
+
+            if (registro.IdAprendiz.HasValue)
+            {
+                var aprendizExiste = await _context.Aprendiz.AnyAsync(a => a.IdAprendiz == registro.IdAprendiz.Value);
+                if (!aprendizExiste)
+                    return BadRequest($"El Aprendiz con ID {registro.IdAprendiz} no existe.");
+            }
+
+            // ✅ Valores por defecto
             registro.FechaRegistro ??= DateTime.Now;
             registro.Estado ??= "Activo";
 
-            _context.RegistrosNFC.Add(registro);
+            _context.RegistroNFC.Add(registro);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetRegistroNFC), new { id = registro.IdRegistro }, registro);
-        }
+        }                 
 
         // PUT: api/RegistroNFC/5 (opcional)
         [HttpPut("{id}")]
         public async Task<IActionResult> PutRegistroNFC(int id, [FromBody] RegistroNFC registro)
         {
-            var existing = await _context.RegistrosNFC.FindAsync(id);
+            var existing = await _context.RegistroNFC.FindAsync(id);
             if (existing == null)
                 return NotFound();
 
@@ -99,7 +122,7 @@ namespace API___NFC.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRegistroNFC(int id)
         {
-            var registro = await _context.RegistrosNFC.FindAsync(id);
+            var registro = await _context.RegistroNFC.FindAsync(id);
             if (registro == null)
                 return NotFound();
 
@@ -118,7 +141,7 @@ namespace API___NFC.Controllers
             const int maxPageSize = 100;
             if (pageSize > maxPageSize) pageSize = maxPageSize;
 
-            var query = _context.RegistrosNFC
+            var query = _context.RegistroNFC
                 .Where(r => r.Estado == null || r.Estado == "Activo")
                 .Include(r => r.Usuario)
                 .Include(r => r.Aprendiz)
