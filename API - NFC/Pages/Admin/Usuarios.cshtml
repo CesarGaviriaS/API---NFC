@@ -6,7 +6,6 @@
 }
 
 <style>
-    /* (estilos iguales a los que ya tenías, compactados) */
     .badge-role {
         font-size: 0.75rem;
         padding: 0.5rem 1rem;
@@ -45,27 +44,27 @@
         background-color: #fff;
         border-color: #dee2e6;
     }
+
+    .form-label.required::after {
+        content: " *";
+        color: red;
+    }
 </style>
 
 <div class="main-content">
     <partial name="_AdminSubNav" />
 
+    <!-- Header -->
     <div class="card border-0 shadow-sm mb-3 bg-success text-white">
         <div class="card-body py-3 d-flex justify-content-between align-items-center">
             <h3 class="mb-0"><i class="bi bi-people-fill me-2"></i>@ViewData["Title"]</h3>
-            <div class="btn-group">
-                <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
-                    <i class="bi bi-plus-circle-fill me-2"></i>Crear Usuario
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow">
-                    <li><a class="dropdown-item" href="#" onclick="abrirModal('aprendiz')"><i class="bi bi-mortarboard-fill me-2 text-primary"></i>Aprendiz</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="abrirModal('funcionario')"><i class="bi bi-person-badge-fill me-2 text-warning"></i>Funcionario</a></li>
-                </ul>
-            </div>
+            <button type="button" class="btn btn-light btn-lg" onclick="abrirModalCrear('')">
+                <i class="bi bi-plus-circle-fill me-2"></i>Crear Usuario
+            </button>
         </div>
     </div>
 
-    <!-- filtros -->
+    <!-- Filtros -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body py-2">
             <div class="row g-2 align-items-center">
@@ -76,14 +75,20 @@
                     <select id="rolFilter" class="form-select form-select-sm">
                         <option value="">Todos los roles</option>
                         <option value="Aprendiz">Aprendiz</option>
+                        <option value="Administrador">Administrador</option>
+                        <option value="Guardia">Guardia</option>
                         <option value="Funcionario">Funcionario</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select id="fichaFilter" class="form-select form-select-sm"><option value="">Todas las fichas</option></select>
+                    <select id="fichaFilter" class="form-select form-select-sm">
+                        <option value="">Todas las fichas</option>
+                    </select>
                 </div>
                 <div class="col-md-2">
-                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()"><i class="bi bi-x-circle"></i> Limpiar</button>
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </button>
                 </div>
                 <div class="col-md-1 text-center">
                     <span id="resultadosContador" class="badge bg-success py-2 px-3">0</span>
@@ -92,110 +97,732 @@
         </div>
     </div>
 
-    <!-- tabla -->
+    <!-- Tabla -->
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-success">
                         <tr>
-                            <th class="py-3"><i class="bi bi-hash me-1"></i>ID Usuario</th>
+                            <th class="py-3"><i class="bi bi-hash me-1"></i>ID</th>
                             <th class="py-3"><i class="bi bi-person-badge me-1"></i>Rol</th>
                             <th class="py-3"><i class="bi bi-person-fill me-1"></i>Nombre</th>
                             <th class="py-3"><i class="bi bi-card-text me-1"></i>Documento</th>
-                            <th class="py-3"><i class="bi bi-info-circle me-1"></i>Ficha / Detalle</th>
+                            <th class="py-3"><i class="bi bi-info-circle me-1"></i>Ficha / Cargo</th>
                             <th class="py-3 text-center" style="width:15%"><i class="bi bi-gear-fill me-1"></i>Acciones</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaDatos"><tr><td colspan="6" class="text-center">Cargando...</td></tr></tbody>
+                    <tbody id="tablaDatos">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
 
+            <!-- Estado vacío -->
             <div id="emptyState" class="text-center py-5 d-none">
                 <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
                 <p class="text-muted mt-3 fs-5">No se encontraron usuarios</p>
             </div>
 
+            <!-- Paginación -->
             <div id="paginacionContainer" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3">
-                <div id="infoPaginacion"><small class="text-muted">Cargando...</small></div>
-                <nav id="paginacionNav"><ul class="pagination pagination-sm mb-0"><li class="page-item disabled"><span class="page-link">Paginación</span></li></ul></nav>
+                <div id="infoPaginacion">
+                    <small class="text-muted">Cargando...</small>
+                </div>
+                <nav id="paginacionNav">
+                    <ul class="pagination pagination-sm mb-0"></ul>
+                </nav>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal unificado dinámico -->
+<!-- MODAL UNIFICADO -->
 <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="userModalTitle"><i class="bi bi-person-fill me-2"></i> Usuario</h5>
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="userModalTitle">
+                    <i class="bi bi-person-fill me-2"></i>Nuevo Usuario
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="userForm">
+                <form id="userForm" onsubmit="return false;">
+                    <!-- IDs ocultos -->
                     <input type="hidden" id="userIdInput" value="0" />
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold"><i class="bi bi-tags me-1"></i>Rol</label>
+                    <input type="hidden" id="tipoUsuarioActual" value="" />
+
+                    <!-- SELECTOR DE ROL -->
+                    <div class="alert alert-info mb-4">
+                        <label class="form-label fw-bold required">Tipo de Usuario</label>
                         <select id="userRoleSelect" class="form-select" required>
-                            <option value="">Seleccione un rol...</option>
-                            <option value="Aprendiz">Aprendiz</option>
-                            <option value="Funcionario">Funcionario</option>
+                            <option value="">Seleccione un tipo...</option>
+                            <option value="Aprendiz">🎓 Aprendiz</option>
+                            <option value="Administrador">👑 Administrador</option>
+                            <option value="Guardia">🛡️ Guardia</option>
+                            <option value="Funcionario">👤 Funcionario</option>
                         </select>
                     </div>
 
-                    <div id="commonFields">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold"><i class="bi bi-person me-1"></i>Nombre completo</label>
-                            <input type="text" id="userNombreInput" class="form-control" required />
+                    <!-- CAMPOS COMUNES -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Nombre</label>
+                            <input type="text" id="nombreInput" class="form-control" required />
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold"><i class="bi bi-card-text me-1"></i>Documento</label>
-                            <input type="text" id="userDocumentoInput" class="form-control" required />
-                        </div>
-                    </div>
-
-                    <div id="dynamicFields">
-                        <!-- Aquí el JS insertará los campos según rol y configuración -->
-                        <div id="aprendizFields" class="d-none">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold"><i class="bi bi-bookmark-fill me-1"></i>Ficha</label>
-                                <select id="aprendizFichaSelect" class="form-select"></select>
-                            </div>
-                            <!-- Si necesitas más campos de aprendiz los agrega el JS -->
-                        </div>
-
-                        <div id="funcionarioFields" class="d-none">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold"><i class="bi bi-briefcase me-1"></i>Cargo / Detalle</label>
-                                <input type="text" id="funcionarioCargoInput" class="form-control" />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold"><i class="bi bi-lock-fill me-1"></i>Contraseña</label>
-                                <input type="password" id="funcionarioPasswordInput" class="form-control" placeholder="Dejar vacío para no cambiar (edición)" />
-                            </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Apellido</label>
+                            <input type="text" id="apellidoInput" class="form-control" required />
                         </div>
                     </div>
 
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Tipo Documento</label>
+                            <select id="tipoDocumentoInput" class="form-select" required>
+                                <option value="">Seleccione...</option>
+                                <option value="CC">Cédula de Ciudadanía</option>
+                                <option value="TI">Tarjeta de Identidad</option>
+                                <option value="CE">Cédula de Extranjería</option>
+                                <option value="PA">Pasaporte</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Número Documento</label>
+                            <input type="text" id="numeroDocumentoInput" class="form-control" required />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" id="telefonoInput" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Correo</label>
+                            <input type="email" id="correoInput" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Código de Barras</label>
+                            <input type="text" id="codigoBarrasInput" class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Foto URL</label>
+                        <input type="url" id="fotoUrlInput" class="form-control" placeholder="https://..." />
+                    </div>
+
+                    <!-- CAMPOS ESPECÍFICOS DE APRENDIZ -->
+                    <div id="aprendizFields" class="d-none">
+                        <div class="card bg-light border-primary mb-3">
+                            <div class="card-body">
+                                <h6 class="text-primary mb-3">
+                                    <i class="bi bi-mortarboard-fill me-2"></i>Datos de Aprendiz
+                                </h6>
+                                <div class="mb-3">
+                                    <label class="form-label required">Ficha</label>
+                                    <select id="aprendizFichaSelect" class="form-select">
+                                        <option value="">Seleccione una ficha...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CAMPOS ESPECÍFICOS DE FUNCIONARIO -->
+                    <div id="funcionarioFields" class="d-none">
+                        <div class="card bg-light border-warning mb-3">
+                            <div class="card-body">
+                                <h6 class="text-warning mb-3">
+                                    <i class="bi bi-briefcase-fill me-2"></i>Datos de Funcionario
+                                </h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Cargo</label>
+                                    <input type="text" id="funcionarioCargoInput" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" id="passwordLabel">Contraseña</label>
+                                    <input type="password" id="funcionarioPasswordInput" class="form-control" />
+                                    <small class="text-muted">Dejar vacío para mantener la actual (al editar)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="estadoInput" checked>
+                        <label class="form-check-label" for="estadoInput">Usuario Activo</label>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i>Cerrar</button>
-                <button type="button" id="userSaveBtn" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Guardar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <button type="button" id="userSaveBtn" class="btn btn-success">
+                    <i class="bi bi-check-circle me-1"></i>Guardar
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-@section Scripts {
-    <script src="~/js/admin/usuarios.js"></script>
-    <script>
-        // helpers para compatibilidad
-        function limpiarFiltros() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('rolFilter').value = '';
-            document.getElementById('fichaFilter').value = '';
-            if (typeof aplicarFiltros === 'function') aplicarFiltros();
+<script>
+    // ========== GESTIÓN UNIFICADA DE USUARIOS Y APRENDICES ==========
+    document.addEventListener('DOMContentLoaded', function () {
+        // ========== CONFIGURACIÓN API ==========
+        const API = {
+            usuarios: '/api/Usuario',
+            aprendiz: '/api/Aprendiz',
+            fichas: '/api/Ficha'
+        };
+
+        // ========== ELEMENTOS DEL DOM ==========
+        const tablaDatos = document.getElementById('tablaDatos');
+        const searchInput = document.getElementById('searchInput');
+        const rolFilter = document.getElementById('rolFilter');
+        const fichaFilter = document.getElementById('fichaFilter');
+        const resultadosContador = document.getElementById('resultadosContador');
+        const emptyState = document.getElementById('emptyState');
+
+        // Modal
+        const userModalEl = document.getElementById('userModal');
+        const userModal = new bootstrap.Modal(userModalEl);
+        const userModalTitle = document.getElementById('userModalTitle');
+        const userIdInput = document.getElementById('userIdInput');
+        const tipoUsuarioActual = document.getElementById('tipoUsuarioActual');
+        const userRoleSelect = document.getElementById('userRoleSelect');
+
+        // Campos comunes
+        const nombreInput = document.getElementById('nombreInput');
+        const apellidoInput = document.getElementById('apellidoInput');
+        const tipoDocumentoInput = document.getElementById('tipoDocumentoInput');
+        const numeroDocumentoInput = document.getElementById('numeroDocumentoInput');
+        const telefonoInput = document.getElementById('telefonoInput');
+        const correoInput = document.getElementById('correoInput');
+        const codigoBarrasInput = document.getElementById('codigoBarrasInput');
+        const fotoUrlInput = document.getElementById('fotoUrlInput');
+        const estadoInput = document.getElementById('estadoInput');
+
+        // Campos específicos
+        const aprendizFields = document.getElementById('aprendizFields');
+        const aprendizFichaSelect = document.getElementById('aprendizFichaSelect');
+        const funcionarioFields = document.getElementById('funcionarioFields');
+        const funcionarioCargoInput = document.getElementById('funcionarioCargoInput');
+        const funcionarioPasswordInput = document.getElementById('funcionarioPasswordInput');
+        const passwordLabel = document.getElementById('passwordLabel');
+
+        const userSaveBtn = document.getElementById('userSaveBtn');
+
+        // ========== ESTADO ==========
+        let paginaActual = 1;
+        let registrosPorPagina = 10;
+        let todosLosUsuarios = [];
+        let listaFichas = [];
+
+        // ========== INICIALIZACIÓN ==========
+        init();
+
+        function init() {
+            cargarFichas();
+            cargarTodosLosDatos();
+            setupEventListeners();
         }
-    </script>
-}
+
+        // ========== EVENT LISTENERS ==========
+        function setupEventListeners() {
+            // Búsqueda con debounce
+            let timeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    paginaActual = 1;
+                    aplicarFiltros();
+                }, 300);
+            });
+
+            // Filtros
+            rolFilter.addEventListener('change', () => {
+                paginaActual = 1;
+                aplicarFiltros();
+            });
+
+            fichaFilter.addEventListener('change', () => {
+                paginaActual = 1;
+                aplicarFiltros();
+            });
+
+            // Cambio de rol en modal
+            userRoleSelect.addEventListener('change', mostrarCamposPorRol);
+
+            // Guardar
+            userSaveBtn.addEventListener('click', guardarUsuario);
+        }
+
+        // ========== MOSTRAR/OCULTAR CAMPOS ==========
+        function mostrarCamposPorRol() {
+            const rol = userRoleSelect.value;
+
+            aprendizFields.classList.add('d-none');
+            funcionarioFields.classList.add('d-none');
+
+            // Remover required
+            aprendizFichaSelect.removeAttribute('required');
+            funcionarioPasswordInput.removeAttribute('required');
+
+            if (rol === 'Aprendiz') {
+                aprendizFields.classList.remove('d-none');
+                aprendizFichaSelect.setAttribute('required', '');
+            } else if (rol === 'Administrador' || rol === 'Guardia' || rol === 'Funcionario') {
+                funcionarioFields.classList.remove('d-none');
+
+                // Solo requerir contraseña en nuevos registros
+                const esNuevo = !userIdInput.value || userIdInput.value === '0';
+                if (esNuevo) {
+                    funcionarioPasswordInput.setAttribute('required', '');
+                    passwordLabel.classList.add('required');
+                } else {
+                    passwordLabel.classList.remove('required');
+                }
+            }
+        }
+
+        // ========== CARGAR FICHAS ==========
+        async function cargarFichas() {
+            try {
+                const response = await fetch(API.fichas);
+                if (!response.ok) throw new Error('Error al cargar fichas');
+
+                listaFichas = await response.json();
+
+                // Llenar select del modal
+                aprendizFichaSelect.innerHTML = '<option value="">Seleccione una ficha...</option>';
+                listaFichas.forEach(f => {
+                    aprendizFichaSelect.innerHTML += `<option value="${f.idFicha}">${f.codigo}</option>`;
+                });
+
+                // Llenar filtro
+                fichaFilter.innerHTML = '<option value="">Todas las fichas</option>';
+                listaFichas.forEach(f => {
+                    fichaFilter.innerHTML += `<option value="${f.idFicha}">${f.codigo}</option>`;
+                });
+            } catch (error) {
+                console.error('Error al cargar fichas:', error);
+            }
+        }
+
+        // ========== CARGAR TODOS LOS DATOS ==========
+        async function cargarTodosLosDatos() {
+            try {
+                tablaDatos.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-success"></div></td></tr>';
+
+                const [responseUsuarios, responseAprendices] = await Promise.all([
+                    fetch(API.usuarios),
+                    fetch(API.aprendiz)
+                ]);
+
+                if (!responseUsuarios.ok || !responseAprendices.ok) {
+                    throw new Error('Error al cargar datos');
+                }
+
+                const usuarios = await responseUsuarios.json();
+                const aprendices = await responseAprendices.json();
+
+                // Normalizar usuarios
+                const usuariosNorm = usuarios.map(u => ({
+                    id: u.idUsuario,
+                    tipo: 'Usuario',
+                    rol: u.rol,
+                    nombre: u.nombre,
+                    apellido: u.apellido,
+                    nombreCompleto: `${u.nombre} ${u.apellido}`,
+                    tipoDocumento: u.tipoDocumento,
+                    numeroDocumento: u.numeroDocumento,
+                    correo: u.correo,
+                    telefono: u.telefono,
+                    codigoBarras: u.codigoBarras,
+                    cargo: u.cargo,
+                    contraseña: u.contraseña,
+                    fotoUrl: u.fotoUrl,
+                    estado: u.estado,
+                    detalle: u.cargo || 'N/A'
+                }));
+
+                // Normalizar aprendices
+                const aprendicesNorm = aprendices.map(a => ({
+                    id: a.idAprendiz,
+                    tipo: 'Aprendiz',
+                    rol: 'Aprendiz',
+                    nombre: a.nombre,
+                    apellido: a.apellido,
+                    nombreCompleto: `${a.nombre} ${a.apellido}`,
+                    tipoDocumento: a.tipoDocumento,
+                    numeroDocumento: a.numeroDocumento,
+                    correo: a.correo,
+                    telefono: a.telefono,
+                    codigoBarras: a.codigoBarras,
+                    fotoUrl: a.fotoUrl,
+                    idFicha: a.idFicha,
+                    estado: a.estado,
+                    detalle: listaFichas.find(f => f.idFicha === a.idFicha)?.codigo || 'Sin ficha'
+                }));
+
+                todosLosUsuarios = [...usuariosNorm, ...aprendicesNorm];
+                aplicarFiltros();
+
+            } catch (error) {
+                console.error('Error al cargar datos:', error);
+                tablaDatos.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Error: ${error.message}</td></tr>`;
+            }
+        }
+
+        // ========== APLICAR FILTROS ==========
+        function aplicarFiltros() {
+            const search = searchInput.value.toLowerCase();
+            const rolFiltro = rolFilter.value;
+            const fichaFiltro = fichaFilter.value;
+
+            let filtrados = todosLosUsuarios.filter(u => {
+                const coincideBusqueda = !search ||
+                    u.nombreCompleto.toLowerCase().includes(search) ||
+                    u.numeroDocumento.includes(search);
+
+                const coincideRol = !rolFiltro || u.rol === rolFiltro;
+
+                const coincideFicha = !fichaFiltro || (u.tipo === 'Aprendiz' && u.idFicha == fichaFiltro);
+
+                return coincideBusqueda && coincideRol && coincideFicha;
+            });
+
+            renderizarTabla(filtrados);
+        }
+
+        // ========== RENDERIZAR TABLA ==========
+        function renderizarTabla(usuarios) {
+            const totalPaginas = Math.ceil(usuarios.length / registrosPorPagina);
+            const inicio = (paginaActual - 1) * registrosPorPagina;
+            const fin = inicio + registrosPorPagina;
+            const usuariosPagina = usuarios.slice(inicio, fin);
+
+            resultadosContador.textContent = usuarios.length;
+
+            if (usuariosPagina.length === 0) {
+                tablaDatos.innerHTML = '';
+                emptyState.classList.remove('d-none');
+                document.getElementById('paginacionContainer').style.display = 'none';
+                return;
+            }
+
+            emptyState.classList.add('d-none');
+            document.getElementById('paginacionContainer').style.display = 'flex';
+
+            tablaDatos.innerHTML = usuariosPagina.map(u => {
+                const badgeClass = u.tipo === 'Aprendiz' ? 'bg-primary' : 'bg-warning text-dark';
+                const icon = u.tipo === 'Aprendiz' ? 'bi-mortarboard-fill' : 'bi-person-badge-fill';
+
+                return `
+                    <tr>
+                        <td class="fw-semibold">${u.id}</td>
+                        <td><span class="badge ${badgeClass} badge-role"><i class="bi ${icon} me-1"></i>${u.rol}</span></td>
+                        <td class="fw-semibold">${u.nombreCompleto}</td>
+                        <td><span class="badge bg-light text-dark">${u.tipoDocumento}: ${u.numeroDocumento}</span></td>
+                        <td>
+                            ${u.tipo === 'Aprendiz'
+                                ? `<span class="badge bg-success bg-opacity-10 text-success">${u.detalle}</span>`
+                                : `<span class="text-muted">${u.detalle}</span>`
+                            }
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-primary" onclick="editarUsuarioGlobal(${u.id}, '${u.tipo}')">
+                                <i class="bi bi-pencil-fill"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarUsuarioGlobal(${u.id}, '${u.tipo}')">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderizarPaginacion(totalPaginas, usuarios.length);
+        }
+
+        // ========== PAGINACIÓN ==========
+        function renderizarPaginacion(totalPaginas, totalRegistros) {
+            const paginacionNav = document.getElementById('paginacionNav');
+            const infoPaginacion = document.getElementById('infoPaginacion');
+
+            if (totalPaginas <= 1) {
+                paginacionNav.innerHTML = '';
+                infoPaginacion.innerHTML = `<small class="text-muted">Mostrando ${totalRegistros} registros</small>`;
+                return;
+            }
+
+            const inicio = ((paginaActual - 1) * registrosPorPagina) + 1;
+            const fin = Math.min(paginaActual * registrosPorPagina, totalRegistros);
+
+            infoPaginacion.innerHTML = `<small class="text-muted">Mostrando ${inicio}-${fin} de ${totalRegistros} registros</small>`;
+
+            let html = '<ul class="pagination pagination-sm mb-0">';
+
+            html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPaginaGlobal(${paginaActual - 1}); return false;">«</a>
+            </li>`;
+
+            for (let i = 1; i <= totalPaginas; i++) {
+                if (i === 1 || i === totalPaginas || (i >= paginaActual - 2 && i <= paginaActual + 2)) {
+                    html += `<li class="page-item ${i === paginaActual ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="cambiarPaginaGlobal(${i}); return false;">${i}</a>
+                    </li>`;
+                } else if (i === paginaActual - 3 || i === paginaActual + 3) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+
+            html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPaginaGlobal(${paginaActual + 1}); return false;">»</a>
+            </li>`;
+
+            html += '</ul>';
+            paginacionNav.innerHTML = html;
+        }
+
+        window.cambiarPaginaGlobal = function (pagina) {
+            paginaActual = pagina;
+            aplicarFiltros();
+        };
+    // ========== ABRIR MODAL CREAR ==========
+    window.abrirModalCrear = function (tipoParam) {
+        userModalTitle.textContent = 'Nuevo Usuario';
+        userIdInput.value = '0';
+        tipoUsuarioActual.value = '';
+
+        // Reset formulario
+        document.getElementById('userForm').reset();
+        estadoInput.checked = true;
+
+        // ✅ DEJAR VACÍO para que el usuario seleccione
+        userRoleSelect.value = tipoParam || '';
+        userRoleSelect.disabled = false;
+
+        mostrarCamposPorRol();
+        userModal.show();
+    };
+           // ========== EDITAR ==========
+    window.editarUsuarioGlobal = async function (id, tipo) {
+        try {
+            const apiUrl = tipo === 'Aprendiz' ? `${API.aprendiz}/${id}` : `${API.usuarios}/${id}`;
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) throw new Error('Error al cargar datos');
+
+            const data = await response.json();
+
+            console.log('Datos cargados para editar:', data); // ✅ DEBUG
+
+            userModalTitle.textContent = `Editar ${tipo === 'Aprendiz' ? 'Aprendiz' : 'Usuario'}`;
+            userIdInput.value = id;
+            tipoUsuarioActual.value = tipo;
+
+            // Campos comunes
+            nombreInput.value = data.nombre || '';
+            apellidoInput.value = data.apellido || '';
+            tipoDocumentoInput.value = data.tipoDocumento || '';
+            numeroDocumentoInput.value = data.numeroDocumento || '';
+            telefonoInput.value = data.telefono || '';
+            correoInput.value = data.correo || '';
+            codigoBarrasInput.value = data.codigoBarras || '';
+            fotoUrlInput.value = data.fotoUrl || '';
+            estadoInput.checked = data.estado ?? true;
+
+            // Campos específicos
+            if (tipo === 'Aprendiz') {
+                userRoleSelect.value = 'Aprendiz';
+                aprendizFichaSelect.value = data.idFicha || '';
+            } else {
+                userRoleSelect.value = data.rol || '';
+                funcionarioCargoInput.value = data.cargo || '';
+                funcionarioPasswordInput.value = ''; // ✅ Vacío para edición
+
+                // ⚠️ GUARDAR CONTRASEÑA ORIGINAL (no se muestra, pero se usa si no se cambia)
+                funcionarioPasswordInput.setAttribute('data-password-original', data.contraseña || '');
+            }
+
+            userRoleSelect.disabled = true;
+            mostrarCamposPorRol();
+            userModal.show();
+
+        } catch (error) {
+            console.error('Error al editar:', error);
+            alert('Error: ' + error.message);
+        }
+    };
+
+    // ========== GUARDAR ==========
+    async function guardarUsuario() {
+        try {
+            const id = parseInt(userIdInput.value) || 0;
+            const rol = userRoleSelect.value;
+
+            if (!rol) {
+                alert('Seleccione un tipo de usuario');
+                return;
+            }
+
+            // ✅ VALIDAR CAMPOS OBLIGATORIOS
+            if (!nombreInput.value.trim() || !apellidoInput.value.trim()) {
+                alert('El nombre y apellido son obligatorios');
+                return;
+            }
+
+            if (!tipoDocumentoInput.value || !numeroDocumentoInput.value.trim()) {
+                alert('El tipo y número de documento son obligatorios');
+                return;
+            }
+
+            if (!correoInput.value.trim() || !codigoBarrasInput.value.trim()) {
+                alert('El correo y código de barras son obligatorios');
+                return;
+            }
+
+            // ✅ VALIDAR QUE TIPO DOCUMENTO SEA VÁLIDO
+            const tiposValidos = ['CC', 'TI', 'CE', 'PA'];
+            if (!tiposValidos.includes(tipoDocumentoInput.value)) {
+                alert('Seleccione un tipo de documento válido');
+                return;
+            }
+
+            const data = {
+                nombre: nombreInput.value.trim(),
+                apellido: apellidoInput.value.trim(),
+                tipoDocumento: tipoDocumentoInput.value,
+                numeroDocumento: numeroDocumentoInput.value.trim(),
+                telefono: telefonoInput.value.trim() || null,
+                correo: correoInput.value.trim(),
+                codigoBarras: codigoBarrasInput.value.trim(),
+                fotoUrl: fotoUrlInput.value.trim() || null,
+                estado: estadoInput.checked
+            };
+
+            let url, method;
+
+            if (rol === 'Aprendiz') {
+                data.idAprendiz = id;
+
+                const idFicha = parseInt(aprendizFichaSelect.value);
+                if (!idFicha) {
+                    alert('Seleccione una ficha');
+                    return;
+                }
+                data.idFicha = idFicha;
+
+                url = id === 0 ? API.aprendiz : `${API.aprendiz}/${id}`;
+                method = id === 0 ? 'POST' : 'PUT';
+            } else {
+                // ========== USUARIO (Administrador, Guardia, Funcionario) ==========
+                data.idUsuario = id;
+                data.rol = rol;
+                data.cargo = funcionarioCargoInput.value.trim() || null;
+
+                const passwordNuevo = funcionarioPasswordInput.value.trim();
+                const passwordOriginal = funcionarioPasswordInput.getAttribute('data-password-original');
+
+                if (id === 0) {
+                    // ✅ NUEVO USUARIO: Contraseña OBLIGATORIA
+                    if (!passwordNuevo) {
+                        alert('La contraseña es obligatoria para usuarios nuevos');
+                        return;
+                    }
+                    data.contraseña = passwordNuevo;
+                } else {
+                    // ✅ EDICIÓN: Si no cambió contraseña, enviar la original
+                    if (passwordNuevo) {
+                        data.contraseña = passwordNuevo; // Nueva contraseña
+                    } else {
+                        data.contraseña = passwordOriginal; // Mantener la original
+                    }
+                }
+
+                url = id === 0 ? API.usuarios : `${API.usuarios}/${id}`;
+                method = id === 0 ? 'POST' : 'PUT';
+            }
+
+            console.log('✅ Enviando:', method, url); // DEBUG
+            console.log('✅ Datos:', JSON.stringify(data, null, 2)); // DEBUG
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Error del servidor:', errorText); // DEBUG
+
+                let errorMessage = 'Error al guardar';
+
+                try {
+                    const errorJson = JSON.parse(errorText);
+
+                    // ✅ Extraer errores de validación de ModelState
+                    if (errorJson.errors) {
+                        const errores = Object.values(errorJson.errors).flat();
+                        errorMessage = errores.join('\n');
+                    } else {
+                        errorMessage = errorJson.title || errorJson.message || errorText;
+                    }
+                } catch {
+                    errorMessage = errorText;
+                }
+
+                throw new Error(errorMessage);
+            }
+
+            userModal.hide();
+            userRoleSelect.disabled = false;
+            await cargarTodosLosDatos();
+            alert(id === 0 ? '✅ Usuario creado exitosamente' : '✅ Usuario actualizado exitosamente');
+
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+            console.error('❌ Error completo:', error);
+        }
+    }
+
+        // ========== ELIMINAR ==========
+        window.eliminarUsuarioGlobal = async function (id, tipo) {
+            if (!confirm(`¿Eliminar este ${tipo}?`)) return;
+
+            try {
+                const url = tipo === 'Aprendiz' ? `${API.aprendiz}/${id}` : `${API.usuarios}/${id}`;
+                const response = await fetch(url, { method: 'DELETE' });
+
+                if (!response.ok) throw new Error('Error al eliminar');
+
+                await cargarTodosLosDatos();
+                alert('Usuario eliminado exitosamente');
+
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        };
+
+        // ========== LIMPIAR FILTROS ==========
+        window.limpiarFiltros = function () {
+            searchInput.value = '';
+            rolFilter.value = '';
+            fichaFilter.value = '';
+            aplicarFiltros();
+        };
+    });
+</script>

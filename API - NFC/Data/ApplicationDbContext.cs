@@ -17,7 +17,7 @@ namespace API_NFC.Data
         public DbSet<Ficha> Ficha { get; set; }
         public DbSet<Proceso> Proceso { get; set; }
         public DbSet<Programa> Programa { get; set; }
-        public DbSet<RegistroNFC> RegistrosNFC { get; set; }
+        public DbSet<RegistroNFC> RegistroNFC { get; set; }
         public DbSet<TipoElemento> TipoElemento { get; set; }
         public DbSet<TipoProceso> TipoProceso { get; set; }
         public DbSet<Usuario> Usuario { get; set; }
@@ -177,13 +177,13 @@ namespace API_NFC.Data
                       .WithMany()
                       .HasForeignKey(e => e.IdAprendiz)
                       .OnDelete(DeleteBehavior.Restrict)
-                      .IsRequired();
+                      .IsRequired(false);  // ✅ ahora permite null
 
                 entity.HasOne(e => e.Usuario)
                       .WithMany()
                       .HasForeignKey(e => e.IdUsuario)
                       .OnDelete(DeleteBehavior.Restrict)
-                      .IsRequired();
+                      .IsRequired(false);  // ✅ también permite null
             });
 
 

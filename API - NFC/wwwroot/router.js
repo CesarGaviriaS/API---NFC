@@ -1,4 +1,4 @@
-﻿// Router global (accesible como window.AppRoutes)
+﻿// Router global CORREGIDO
 window.AppRoutes = (function () {
     const page = {
         terminal: '/Terminal',
@@ -8,29 +8,30 @@ window.AppRoutes = (function () {
         tipoElemento: '/Admin/TipoElemento',
         tipoProceso: '/Admin/TipoProceso',
         usuarios: '/Admin/Usuarios',
+        aprendiz: '/Admin/Aprendiz',
         login: '/Login'
     };
 
     const apiBase = '/api';
 
     const api = {
-        elementos: `${apiBase}/elementos`,
-        fichas: `${apiBase}/fichas`,
-        programas: `${apiBase}/programas`,
-        tipoElementos: `${apiBase}/tipoelementos`,
-        tipoProcesos: `${apiBase}/tipoprocesos`,
-        usuarios: `${apiBase}/usuarios`,
-        registrosNfc: `${apiBase}/registrosnfc`,
-        procesos: `${apiBase}/procesos`
+        elementos: `${apiBase}/Elementoes`,
+        fichas: `${apiBase}/Ficha`,
+        programas: `${apiBase}/Programas`,
+        tipoElementos: `${apiBase}/TipoElementoes`,
+        tipoProcesos: `${apiBase}/TipoProcesoes`,
+        usuarios: `${apiBase}/Usuario`,
+        aprendiz: `${apiBase}/Aprendiz`,
+        procesos: `${apiBase}/Procesoes`
     };
 
-    function paginatedUrl(resourceUrl, page = 1, pageSize = 10, search = '') {
-        const params = new URLSearchParams({ page, pageSize });
-        if (search) params.append('search', search);
-        return `${resourceUrl}/paginated?${params.toString()}`;
+    function pagedUrl(resourceUrl, pageNumber = 1, pageSize = 10) {
+        return `${resourceUrl}/paged?pageNumber=${pageNumber}&pageSize=${pageSize}`;
     }
 
-    function navigateTo(path) { window.location.href = path; }
+    function navigateTo(path) {
+        window.location.href = path;
+    }
 
-    return { page, api, paginatedUrl, navigateTo };
+    return { page, api, pagedUrl, navigateTo };
 })();

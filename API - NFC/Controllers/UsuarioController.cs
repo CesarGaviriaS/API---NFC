@@ -45,7 +45,6 @@ namespace API___NFC.Controllers
             return Ok(usuario);
         }
 
-        // ✅ PUT: api/Usuario/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUsuario(int id, [FromBody] Usuario usuario)
         {
@@ -56,21 +55,36 @@ namespace API___NFC.Controllers
             if (existing == null)
                 return NotFound();
 
-            // 🔹 Validar duplicado de documento o correo
-            if (await _context.Usuario.AnyAsync(u =>
-                    (u.NumeroDocumento == usuario.NumeroDocumento || u.Correo == usuario.Correo) &&
-                    u.IdUsuario != id))
+            // ✅ Validar TipoDocumento
+            var tiposValidos = new[] { "CC", "TI", "CE", "PA" };
+            if (!tiposValidos.Contains(usuario.TipoDocumento))
             {
-                return Conflict("Ya existe un usuario con ese número de documento o correo electrónico.");
+                return BadRequest("El tipo de documento debe ser CC, TI, CE o PA");
             }
 
-            // 🔹 Actualizar campos
+            // ✅ Validar Rol
+            var rolesValidos = new[] { "Administrador", "Guardia", "Funcionario" };
+            if (!rolesValidos.Contains(usuario.Rol))
+            {
+                return BadRequest("El rol debe ser Administrador, Guardia o Funcionario");
+            }
+
+            // ✅ Validar duplicados (excepto el mismo usuario)
+            if (await _context.Usuario.AnyAsync(u =>
+                    (u.NumeroDocumento == usuario.NumeroDocumento ||
+                     u.Correo == usuario.Correo ||
+                     u.CodigoBarras == usuario.CodigoBarras) &&
+                    u.IdUsuario != id))
+            {
+                return Conflict("Ya existe un usuario con ese documento, correo o código de barras.");
+            }
+
+            // ✅ Actualizar campos
             existing.Nombre = usuario.Nombre;
             existing.Apellido = usuario.Apellido;
             existing.TipoDocumento = usuario.TipoDocumento;
             existing.NumeroDocumento = usuario.NumeroDocumento;
             existing.Correo = usuario.Correo;
-            existing.Contraseña = usuario.Contraseña; // ⚠️ En producción, encriptar antes de guardar
             existing.Rol = usuario.Rol;
             existing.CodigoBarras = usuario.CodigoBarras;
             existing.Cargo = usuario.Cargo;
@@ -78,6 +92,13 @@ namespace API___NFC.Controllers
             existing.FotoUrl = usuario.FotoUrl;
             existing.Estado = usuario.Estado ?? true;
             existing.FechaActualizacion = DateTime.Now;
+
+            // ⚠️ SOLO ACTUALIZAR CONTRASEÑA SI SE ENVIÓ UNA NUEVA
+            if (!string.IsNullOrWhiteSpace(usuario.Contraseña))
+            {
+                existing.Contraseña = usuario.Contraseña;
+                // TODO: En producción, encriptar aquí: BCrypt.HashPassword(usuario.Contraseña)
+            }
 
             await _context.SaveChangesAsync();
             return NoContent();

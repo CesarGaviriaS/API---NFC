@@ -5,6 +5,7 @@
     ViewData["Title"] = "Gestión de Programas";
 }
 
+
 <style>
     .badge-role {
         font-size: 0.75rem;
@@ -16,58 +17,89 @@
         transition: all 0.2s ease;
     }
 
-        .table tbody tr:hover {
-            transform: translateX(5px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+    .table tbody tr:hover {
+        transform: translateX(5px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .pagination .page-item.active .page-link {
+        background-color: #198754;
+        border-color: #198754;
+        color: white;
+    }
+
+    .pagination .page-link {
+        color: #198754;
+        border: 1px solid #dee2e6;
+    }
+
+    .pagination .page-link:hover {
+        color: #146c43;
+        background-color: #e9ecef;
+        border-color: #dee2e6;
+    }
+
+    .pagination .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+        background-color: #fff;
+        border-color: #dee2e6;
+    }
+
+    .form-label.required::after {
+        content: " *";
+        color: red;
+    }
 </style>
 
 <div class="main-content">
     <partial name="_AdminSubNav" />
 
-    <!-- Header con título y botón -->
+    <!-- Header -->
     <div class="card border-0 shadow-sm mb-3 bg-success text-white">
-        <div class="card-body py-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h3 class="mb-0"><i class="bi bi-journal-code me-2"></i>@ViewData["Title"]</h3>
-                </div>
-                <button type="button" class="btn btn-light" onclick="abrirModal()">
-                    <i class="bi bi-plus-circle-fill me-2"></i>Crear Programa
-                </button>
-            </div>
+        <div class="card-body py-3 d-flex justify-content-between align-items-center">
+            <h3 class="mb-0"><i class="bi bi-book-fill me-2"></i>@ViewData["Title"]</h3>
+            <button type="button" class="btn btn-light btn-lg" onclick="abrirModalCrear()">
+                <i class="bi bi-plus-circle-fill me-2"></i>Crear Programa
+            </button>
         </div>
     </div>
 
-    <!-- Filtros compactos -->
+    <!-- Filtros -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body py-2">
             <div class="row g-2 align-items-center">
                 <div class="col-md-5">
-                    <input type="text"
-                           class="form-control form-control-sm"
-                           id="searchInput"
-                           placeholder="🔍 Buscar por nombre o código...">
+                    <input id="searchInput" class="form-control form-control-sm" placeholder="🔍 Buscar por nombre o código..." />
                 </div>
                 <div class="col-md-3">
-                    <select class="form-select form-select-sm" id="nivelFilter">
+                    <select id="nivelFormacionFilter" class="form-select form-select-sm">
                         <option value="">Todos los niveles</option>
-                        <!-- Se llenará dinámicamente -->
+                        <option value="Técnico">Técnico</option>
+                        <option value="Tecnólogo">Tecnólogo</option>
+                        <option value="Especialización">Especialización</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <select id="estadoFilter" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="true">Activos</option>
+                        <option value="false">Inactivos</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
                     <button class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarFiltros()">
                         <i class="bi bi-x-circle"></i> Limpiar
                     </button>
                 </div>
                 <div class="col-md-1 text-center">
-                    <span class="badge bg-success py-2 px-3" id="resultadosContador">0</span>
+                    <span id="resultadosContador" class="badge bg-success py-2 px-3">0</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabla moderna -->
+    <!-- Tabla -->
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -75,16 +107,20 @@
                     <thead class="table-success">
                         <tr>
                             <th class="py-3"><i class="bi bi-hash me-1"></i>ID</th>
-                            <th class="py-3"><i class="bi bi-code-square me-1"></i>Código</th>
-                            <th class="py-3"><i class="bi bi-journal-text me-1"></i>Nombre del Programa</th>
-                            <th class="py-3"><i class="bi bi-award me-1"></i>Nivel</th>
-                            <th class="py-3 text-center" style="width: 15%;">
-                                <i class="bi bi-gear-fill me-1"></i>Acciones
-                            </th>
+                            <th class="py-3"><i class="bi bi-book me-1"></i>Nombre del Programa</th>
+                            <th class="py-3"><i class="bi bi-upc-scan me-1"></i>Código</th>
+                            <th class="py-3"><i class="bi bi-mortarboard me-1"></i>Nivel de Formación</th>
+                            <th class="py-3"><i class="bi bi-calendar me-1"></i>Fecha Creación</th>
+                            <th class="py-3"><i class="bi bi-toggle-on me-1"></i>Estado</th>
+                            <th class="py-3 text-center" style="width:12%"><i class="bi bi-gear-fill me-1"></i>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaDatos">
-                        <!-- Se llenará dinámicamente -->
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="spinner-border text-success"></div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -93,600 +129,379 @@
             <div id="emptyState" class="text-center py-5 d-none">
                 <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
                 <p class="text-muted mt-3 fs-5">No se encontraron programas</p>
-                <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
             </div>
-        </div>
-    </div>
 
-    <!-- Paginación -->
-    <div class="card border-0 shadow-sm mt-3">
-        <div class="card-body py-2">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <span class="text-muted me-2">Mostrar:</span>
-                        <select class="form-select form-select-sm w-auto" onchange="cambiarPageSize(this.value)">
-                            <option value="5">5</option>
-                            <option value="10" selected>10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                        </select>
-                        <span class="text-muted ms-2">registros por página</span>
-                    </div>
+            <!-- Paginación -->
+            <div id="paginacionContainer" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3">
+                <div id="infoPaginacion">
+                    <small class="text-muted">Cargando...</small>
                 </div>
-                <div class="col-md-6">
-                    <div id="paginationContainer" class="d-flex justify-content-end">
-                        <!-- La paginación se genera aquí dinámicamente -->
-                    </div>
-                </div>
+                <nav id="paginacionNav">
+                    <ul class="pagination pagination-sm mb-0"></ul>
+                </nav>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal para crear/editar -->
-<div class="modal fade" id="editorModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+<!-- MODAL -->
+<div class="modal fade" id="editorModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title" id="modalTitulo">
-                    <i class="bi bi-journal-code me-2"></i>Programa
+                    <i class="bi bi-book-fill me-2"></i>Nuevo Programa
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="formularioEditor">
+                <form id="formularioEditor" onsubmit="return false;">
                     <input type="hidden" id="idInput">
+
                     <div class="mb-3">
-                        <label for="nombreInput" class="form-label fw-semibold">
-                            <i class="bi bi-journal-text me-1"></i>Nombre del Programa
-                        </label>
-                        <input type="text" class="form-control form-control-lg" id="nombreInput" required>
+                        <label class="form-label required">Nombre del Programa</label>
+                        <input type="text" id="nombreProgramaInput" class="form-control" required placeholder="Ej: Análisis y Desarrollo de Software" />
                     </div>
-                    <div class="mb-3">
-                        <label for="codigoInput" class="form-label fw-semibold">
-                            <i class="bi bi-code-square me-1"></i>Código
-                        </label>
-                        <input type="text" class="form-control form-control-lg" id="codigoInput" required>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Código del Programa</label>
+                            <input type="text" id="codigoInput" class="form-control" required placeholder="Ej: 228106" />
+                            <small class="text-muted">Código único del programa SENA</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Nivel de Formación</label>
+                            <select id="nivelFormacionInput" class="form-select" required>
+                                <option value="">Seleccione...</option>
+                                <option value="Técnico">Técnico</option>
+                                <option value="Tecnólogo">Tecnólogo</option>
+                                <option value="Especialización">Especialización</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="nivelInput" class="form-label fw-semibold">
-                            <i class="bi bi-award me-1"></i>Nivel de Formación
-                        </label>
-                        <select class="form-select form-select-lg" id="nivelInput" required>
-                            <option value="">Seleccione un nivel...</option>
-                            <option value="Técnico">Técnico</option>
-                            <option value="Tecnólogo">Tecnólogo</option>
-                            <option value="Profesional">Profesional</option>
-                            <option value="Especialización">Especialización</option>
-                        </select>
+
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="estadoInput" checked>
+                        <label class="form-check-label" for="estadoInput">Programa Activo</label>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-1"></i>Cerrar
                 </button>
-                <button type="button" class="btn btn-success" onclick="guardar()">
-                    <i class="bi bi-check-circle me-1"></i>Guardar Cambios
+                <button type="button" class="btn btn-success" onclick="guardarPrograma()">
+                    <i class="bi bi-check-circle me-1"></i>Guardar
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-@section Scripts {
-    <script>
-                document.addEventListener('DOMContentLoaded', function () {
-            const apiUrl = '/api/programa';
-            const apiUrlPaginated = '/api/programa/paginated';
-            const apiUrlNiveles = '/api/programa/niveles';
-
-            // Inicializar modal solo si existe
-            const editorModalElement = document.getElementById('editorModal');
-            const editorModal = editorModalElement ? new bootstrap.Modal(editorModalElement) : null;
-
-            // Referencias a elementos del DOM
-            const idInput = document.getElementById('idInput');
-            const nombreInput = document.getElementById('nombreInput');
-            const codigoInput = document.getElementById('codigoInput');
-            const nivelInput = document.getElementById('nivelInput');
-            const modalTitulo = document.getElementById('modalTitulo');
-            const tablaDatos = document.getElementById('tablaDatos');
-            const searchInput = document.getElementById('searchInput');
-            const nivelFilter = document.getElementById('nivelFilter');
-            const resultadosContador = document.getElementById('resultadosContador');
-            const emptyState = document.getElementById('emptyState');
-            const paginationContainer = document.getElementById('paginationContainer');
-
-            // Variables de estado
-            let currentPage = 1;
-            let pageSize = 10;
-            let totalRecords = 0;
-            let totalPages = 0;
-            let currentSearchTerm = '';
-            let currentNivelFilter = '';
-            let searchTimeout = null;
-
-            // ========== FUNCIONES PRINCIPALES ==========
-
-            // Cargar niveles desde el servidor
-            const cargarNiveles = async () => {
-                if (!nivelFilter) return;
-
-                try {
-                    const response = await fetch(apiUrlNiveles);
-                    if (!response.ok) throw new Error('Error al cargar niveles');
-
-                    const niveles = await response.json();
-                    llenarFiltroNiveles(niveles);
-                } catch (error) {
-                    console.error('Error cargando niveles:', error);
-                    // Si falla, cargar niveles por defecto
-                    llenarFiltroNiveles(['Técnico', 'Tecnólogo', 'Profesional', 'Especialización']);
-                }
-            };
-
-            // Llenar filtro de niveles
-            const llenarFiltroNiveles = (niveles) => {
-                if (!nivelFilter) return;
-
-                const currentValue = nivelFilter.value;
-                nivelFilter.innerHTML = '<option value="">Todos los niveles</option>';
-
-                niveles.forEach(nivel => {
-                    if (nivel && nivel.trim() !== '') {
-                        nivelFilter.innerHTML += `<option value="${nivel}">${nivel}</option>`;
-                    }
-                });
-
-                // Restaurar valor si existe
-                if (currentValue) {
-                    nivelFilter.value = currentValue;
-                }
-            };
-
-            // Cargar datos con paginación
-            const cargarDatos = async (page = 1, searchTerm = '', nivel = '') => {
-                try {
-                    // Mostrar estado de carga
-                    mostrarLoading();
-
-                    // Construir URL con parámetros
-                    const params = new URLSearchParams({
-                        page: page.toString(),
-                        pageSize: pageSize.toString()
-                    });
-
-                    if (searchTerm && searchTerm.trim() !== '') {
-                        params.append('search', searchTerm.trim());
-                    }
-
-                    if (nivel && nivel !== '') {
-                        params.append('nivel', nivel);
-                    }
-
-                    const url = `${apiUrlPaginated}?${params.toString()}`;
-                    const response = await fetch(url);
-
-                    if (!response.ok) {
-                        throw new Error(`Error ${response.status}: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-
-                    // Actualizar estado
-                    currentPage = data.page;
-                    totalRecords = data.totalRecords;
-                    totalPages = data.totalPages;
-
-                    // Actualizar UI
-                    actualizarTabla(data.data);
-                    actualizarContador(data);
-                    actualizarPaginacion();
-
-                } catch (error) {
-                    console.error('Error cargando datos:', error);
-                    mostrarError('Error al cargar los datos: ' + error.message);
-                }
-            };
-
-            // Mostrar estado de carga
-            const mostrarLoading = () => {
-                if (!tablaDatos) return;
-
-                tablaDatos.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center py-4">
-                            <div class="spinner-border text-success" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                            <p class="mt-2 text-muted">Cargando programas...</p>
-                        </td>
-                    </tr>`;
-
-                if (emptyState) emptyState.classList.add('d-none');
-            };
-
-            // Actualizar tabla con datos
-            const actualizarTabla = (programas) => {
-                if (!tablaDatos) return;
-
-                tablaDatos.innerHTML = '';
-
-                if (!programas || programas.length === 0) {
-                    if (emptyState) emptyState.classList.remove('d-none');
-                    return;
-                }
-
-                if (emptyState) emptyState.classList.add('d-none');
-
-                programas.forEach(item => {
-                    const fila = document.createElement('tr');
-
-                    // Escapar comillas simples para evitar errores en onclick
-                    const nombreEscapado = (item.nombrePrograma || '').replace(/'/g, "\\'");
-                    const codigoEscapado = (item.codigo || '').replace(/'/g, "\\'");
-                    const nivelEscapado = (item.nivelFormacion || '').replace(/'/g, "\\'");
-
-                    fila.innerHTML = `
-                        <td class="fw-semibold">${item.idPrograma || ''}</td>
-                        <td><span class="badge bg-light text-dark">${item.codigo || 'N/A'}</span></td>
-                        <td class="fw-semibold">${item.nombrePrograma || 'N/A'}</td>
-                        <td><span class="badge bg-info">${item.nivelFormacion || 'Sin nivel'}</span></td>
-                        <td class="text-center">
-                            <button class="btn btn-sm btn-warning me-1" onclick="abrirModalEditor(${item.idPrograma}, '${nombreEscapado}', '${codigoEscapado}', '${nivelEscapado}')">
-                                <i class="bi bi-pencil-fill"></i> Editar
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="eliminarPrograma(${item.idPrograma})">
-                                <i class="bi bi-trash-fill"></i> Borrar
-                            </button>
-                        </td>
-                    `;
-                    tablaDatos.appendChild(fila);
-                });
-            };
-
-            // Actualizar contador de resultados
-            const actualizarContador = (data) => {
-                if (!resultadosContador) return;
-
-                const startItem = ((currentPage - 1) * pageSize) + 1;
-                const endItem = Math.min(currentPage * pageSize, totalRecords);
-
-                resultadosContador.textContent = `${startItem}-${endItem} de ${totalRecords}`;
-                resultadosContador.className = `badge py-2 px-3 ${totalRecords > 0 ? 'bg-success' : 'bg-secondary'}`;
-            };
-
-            // Actualizar paginación
-            const actualizarPaginacion = () => {
-                if (!paginationContainer) return;
-
-                paginationContainer.innerHTML = '';
-
-                if (totalPages <= 1) return;
-
-                const ul = document.createElement('ul');
-                ul.className = 'pagination pagination-sm justify-content-center mb-0';
-
-                // Botón Anterior
-                const liPrev = document.createElement('li');
-                liPrev.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-                liPrev.innerHTML = `
-                    <a class="page-link" href="#" ${currentPage > 1 ? `onclick="cambiarPagina(${currentPage - 1})"` : ''}>
-                        <i class="bi bi-chevron-left"></i>
-                    </a>
-                `;
-                ul.appendChild(liPrev);
-
-                // Números de página
-                const startPage = Math.max(1, currentPage - 2);
-                const endPage = Math.min(totalPages, startPage + 4);
-
-                for (let i = startPage; i <= endPage; i++) {
-                    const li = document.createElement('li');
-                    li.className = `page-item ${i === currentPage ? 'active' : ''}`;
-                    li.innerHTML = `<a class="page-link" href="#" onclick="cambiarPagina(${i})">${i}</a>`;
-                    ul.appendChild(li);
-                }
-
-                // Botón Siguiente
-                const liNext = document.createElement('li');
-                liNext.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-                liNext.innerHTML = `
-                    <a class="page-link" href="#" ${currentPage < totalPages ? `onclick="cambiarPagina(${currentPage + 1})"` : ''}>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                `;
-                ul.appendChild(liNext);
-
-                paginationContainer.appendChild(ul);
-            };
-
-            // Mostrar error
-            const mostrarError = (mensaje) => {
-                if (!tablaDatos) return;
-
-                tablaDatos.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center text-danger py-4">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                            ${mensaje}
-                        </td>
-                    </tr>`;
-
-                if (emptyState) emptyState.classList.add('d-none');
-                if (paginationContainer) paginationContainer.innerHTML = '';
-            };
-
-            // ========== FUNCIONES GLOBALES (window) ==========
-
-            // Cambiar página
-            window.cambiarPagina = (nuevaPagina) => {
-                if (nuevaPagina < 1 || nuevaPagina > totalPages) return;
-                currentPage = nuevaPagina;
-                cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
-            };
-
-            // Cambiar tamaño de página
-            window.cambiarPageSize = (nuevoSize) => {
-                const nuevoPageSize = parseInt(nuevoSize);
-                if (nuevoPageSize > 0) {
-                    pageSize = nuevoPageSize;
-                    currentPage = 1;
-                    cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
-                }
-            };
-
-            // Limpiar filtros
-            window.limpiarFiltros = () => {
-                if (searchInput) searchInput.value = '';
-                if (nivelFilter) nivelFilter.value = '';
-                currentSearchTerm = '';
-                currentNivelFilter = '';
-                currentPage = 1;
-                cargarDatos(currentPage);
-            };
-
-            // Abrir modal de editor
-            window.abrirModalEditor = (id = 0, nombre = '', codigo = '', nivel = '') => {
-                if (!editorModal || !idInput || !nombreInput || !codigoInput || !nivelInput || !modalTitulo) return;
-
-                idInput.value = id;
-                nombreInput.value = nombre || '';
-                codigoInput.value = codigo || '';
-                nivelInput.value = nivel || '';
-
-                modalTitulo.textContent = id === 0 ? 'Crear Nuevo Programa' : 'Editar Programa';
-
-                // Limpiar validaciones
-                [nombreInput, codigoInput, nivelInput].forEach(input => {
-                    if (input) input.classList.remove('is-invalid');
-                });
-
-                editorModal.show();
-
-                // Enfocar el primer input
-                setTimeout(() => {
-                    if (nombreInput) nombreInput.focus();
-                }, 500);
-            };
-
-            // Abrir modal para crear nuevo (sin parámetros)
-            window.abrirModal = () => {
-                window.abrirModalEditor();
-            };
-
-            // Validar formulario
-            const validarFormulario = () => {
-                let esValido = true;
-
-                if (!nombreInput || !nombreInput.value.trim()) {
-                    if (nombreInput) nombreInput.classList.add('is-invalid');
-                    esValido = false;
-                } else if (nombreInput) {
-                    nombreInput.classList.remove('is-invalid');
-                }
-
-                if (!codigoInput || !codigoInput.value.trim()) {
-                    if (codigoInput) codigoInput.classList.add('is-invalid');
-                    esValido = false;
-                } else if (codigoInput) {
-                    codigoInput.classList.remove('is-invalid');
-                }
-
-                if (!nivelInput || !nivelInput.value) {
-                    if (nivelInput) nivelInput.classList.add('is-invalid');
-                    esValido = false;
-                } else if (nivelInput) {
-                    nivelInput.classList.remove('is-invalid');
-                }
-
-                return esValido;
-            };
-
-            // Guardar programa
-            window.guardar = async () => {
-                if (!validarFormulario()) {
-                    return;
-                }
-
-                const id = idInput ? idInput.value : 0;
-                const esNuevo = id == 0;
-
-                const data = {
-                    idPrograma: parseInt(id) || 0,
-                    nombrePrograma: nombreInput ? nombreInput.value.trim() : '',
-                    codigo: codigoInput ? codigoInput.value.trim() : '',
-                    nivelFormacion: nivelInput ? nivelInput.value : ''
-                };
-
-                const url = esNuevo ? apiUrl : `${apiUrl}/${id}`;
-                const method = esNuevo ? 'POST' : 'PUT';
-
-                try {
-                    const response = await fetch(url, {
-                        method: method,
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(data)
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(errorText || `Error ${response.status}: ${response.statusText}`);
-                    }
-
-                    if (editorModal) editorModal.hide();
-
-                    mostrarMensajeExito(esNuevo ? 'Programa creado exitosamente' : 'Programa actualizado exitosamente');
-
-                    // Recargar niveles y datos
-                    await cargarNiveles();
-                    cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
-
-                } catch (error) {
-                    console.error('Error guardando programa:', error);
-                    mostrarError('Error al guardar: ' + error.message);
-                }
-            };
-
-            // Eliminar programa
-            window.eliminarPrograma = async (id) => {
-                if (!id || !confirm('¿Está seguro de que desea borrar (desactivar) este programa?')) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${apiUrl}/${id}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Error ${response.status}: ${response.statusText}`);
-                    }
-
-                    mostrarMensajeExito('Programa borrado exitosamente');
-
-                    // Recargar niveles y datos
-                    await cargarNiveles();
-                    cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
-
-                } catch (error) {
-                    console.error('Error eliminando programa:', error);
-                    mostrarError('Error al borrar: ' + error.message);
-                }
-            };
-
-            // Alias para compatibilidad
-            window.desactivar = window.eliminarPrograma;
-
-            // Mostrar mensaje de éxito
-            const mostrarMensajeExito = (mensaje) => {
-                // Usar toast de Bootstrap si está disponible, sino alert
-                if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-                    // Crear toast dinámico
-                    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
-                    const toastElement = document.createElement('div');
-                    toastElement.className = 'toast align-items-center text-white bg-success border-0';
-                    toastElement.innerHTML = `
-                        <div class="d-flex">
-                            <div class="toast-body">
-                                <i class="bi bi-check-circle-fill me-2"></i>${mensaje}
-                            </div>
-                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                        </div>
-                    `;
-                    toastContainer.appendChild(toastElement);
-                    const toast = new bootstrap.Toast(toastElement);
-                    toast.show();
-
-                    // Remover el toast después de que se oculte
-                    toastElement.addEventListener('hidden.bs.toast', () => {
-                        toastElement.remove();
-                    });
-                } else {
-                    alert(mensaje);
-                }
-            };
-
-            // Crear contenedor de toasts si no existe
-            const createToastContainer = () => {
-                const container = document.createElement('div');
-                container.id = 'toastContainer';
-                container.className = 'toast-container position-fixed top-0 end-0 p-3';
-                container.style.zIndex = '9999';
-                document.body.appendChild(container);
-                return container;
-            };
-
-            // ========== EVENT LISTENERS ==========
-
-            // Búsqueda con debounce
-            if (searchInput) {
-                searchInput.addEventListener('input', function () {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(() => {
-                        currentSearchTerm = this.value.trim();
-                        currentPage = 1;
-                        cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
-                    }, 500);
-                });
-            }
-
-            // Filtro por nivel
-            if (nivelFilter) {
-                nivelFilter.addEventListener('change', function () {
-                    currentNivelFilter = this.value;
-                    currentPage = 1;
-                    cargarDatos(currentPage, currentSearchTerm, currentNivelFilter);
-                });
-            }
-
-            // Permitir Enter en los inputs del modal
-            if (nombreInput) {
-                nombreInput.addEventListener('keypress', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        window.guardar();
-                    }
-                });
-            }
-
-            if (codigoInput) {
-                codigoInput.addEventListener('keypress', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        window.guardar();
-                    }
-                });
-            }
-
-            if (nivelInput) {
-                nivelInput.addEventListener('keypress', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        window.guardar();
-                    }
-                });
-            }
-
-            // ========== INICIALIZACIÓN ==========
-
-            // Inicializar la aplicación
-            const inicializar = () => {
-                cargarNiveles();
-                cargarDatos();
-            };
-
-            // Iniciar cuando el DOM esté listo
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', inicializar);
-            } else {
-                inicializar();
-            }
+<script>
+// ========== GESTIÓN DE PROGRAMAS ==========
+document.addEventListener('DOMContentLoaded', function () {
+    // ========== CONFIGURACIÓN API ==========
+    const API = {
+        programas: '/api/Programas'
+    };
+
+    // ========== ELEMENTOS DEL DOM ==========
+    const tablaDatos = document.getElementById('tablaDatos');
+    const searchInput = document.getElementById('searchInput');
+    const nivelFormacionFilter = document.getElementById('nivelFormacionFilter');
+    const estadoFilter = document.getElementById('estadoFilter');
+    const resultadosContador = document.getElementById('resultadosContador');
+    const emptyState = document.getElementById('emptyState');
+
+    // Modal
+    const editorModal = new bootstrap.Modal(document.getElementById('editorModal'));
+    const modalTitulo = document.getElementById('modalTitulo');
+    const idInput = document.getElementById('idInput');
+    const nombreProgramaInput = document.getElementById('nombreProgramaInput');
+    const codigoInput = document.getElementById('codigoInput');
+    const nivelFormacionInput = document.getElementById('nivelFormacionInput');
+    const estadoInput = document.getElementById('estadoInput');
+
+    // ========== ESTADO ==========
+    let paginaActual = 1;
+    let pageSize = 10;
+    let todosLosProgramas = [];
+
+    // ========== INICIALIZACIÓN ==========
+    init();
+
+    function init() {
+        cargarDatosPaginados(1);
+        setupEventListeners();
+    }
+
+    // ========== EVENT LISTENERS ==========
+    function setupEventListeners() {
+        // Búsqueda con debounce
+        let timeout;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                aplicarFiltros();
+            }, 300);
         });
-    </script>
-}
+
+        // Filtros
+        [nivelFormacionFilter, estadoFilter].forEach(filter => {
+            filter.addEventListener('change', () => {
+                aplicarFiltros();
+            });
+        });
+    }
+
+    // ========== CARGAR DATOS PAGINADOS ==========
+    async function cargarDatosPaginados(pagina = 1) {
+        try {
+            paginaActual = pagina;
+            tablaDatos.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-success"></div></td></tr>';
+
+            const response = await fetch(`${API.programas}/paged?pageNumber=${pagina}&pageSize=${pageSize}`);
+            
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Soporta ambos formatos
+            todosLosProgramas = data.items || data.Items || [];
+            const totalPaginas = data.totalPages || data.TotalPages || 1;
+            const totalRegistros = data.totalCount || data.TotalCount || 0;
+
+            renderizarTabla(todosLosProgramas);
+            renderizarPaginacionServidor(pagina, totalPaginas, totalRegistros);
+
+        } catch (error) {
+            console.error('❌ Error al cargar:', error);
+            tablaDatos.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">
+                <i class="bi bi-exclamation-triangle me-2"></i>Error: ${error.message}
+            </td></tr>`;
+            emptyState.classList.add('d-none');
+        }
+    }
+
+    // ========== APLICAR FILTROS ==========
+    function aplicarFiltros() {
+        const search = searchInput.value.toLowerCase().trim();
+        const nivelFiltro = nivelFormacionFilter.value;
+        const estadoFiltro = estadoFilter.value;
+
+        // Si NO hay filtros, usar paginación del servidor
+        if (!search && !nivelFiltro && !estadoFiltro) {
+            document.getElementById('paginacionContainer').style.display = 'flex';
+            cargarDatosPaginados(1);
+            return;
+        }
+
+        // Si hay filtros, aplicar localmente
+        document.getElementById('paginacionContainer').style.display = 'none';
+
+        let filtrados = todosLosProgramas.filter(p => {
+            const coincideBusqueda = !search ||
+                (p.nombrePrograma && p.nombrePrograma.toLowerCase().includes(search)) ||
+                (p.codigo && p.codigo.toLowerCase().includes(search));
+
+            const coincideNivel = !nivelFiltro || p.nivelFormacion === nivelFiltro;
+            const coincideEstado = !estadoFiltro || p.estado?.toString() === estadoFiltro;
+
+            return coincideBusqueda && coincideNivel && coincideEstado;
+        });
+
+        renderizarTabla(filtrados);
+    }
+
+    // ========== RENDERIZAR TABLA ==========
+    function renderizarTabla(programas) {
+        resultadosContador.textContent = programas.length;
+
+        if (programas.length === 0) {
+            tablaDatos.innerHTML = '';
+            emptyState.classList.remove('d-none');
+            return;
+        }
+
+        emptyState.classList.add('d-none');
+
+        tablaDatos.innerHTML = programas.map(p => {
+            const fecha = p.fechaCreacion ? new Date(p.fechaCreacion).toLocaleDateString() : 'N/A';
+            
+            let nivelBadge = 'bg-info';
+            if (p.nivelFormacion === 'Tecnólogo') nivelBadge = 'bg-primary';
+            else if (p.nivelFormacion === 'Especialización') nivelBadge = 'bg-warning text-dark';
+
+            return `
+                <tr>
+                    <td class="fw-semibold">${p.idPrograma}</td>
+                    <td>${p.nombrePrograma || 'N/A'}</td>
+                    <td><span class="badge bg-secondary">${p.codigo || 'N/A'}</span></td>
+                    <td><span class="badge ${nivelBadge}">${p.nivelFormacion || 'N/A'}</span></td>
+                    <td><small class="text-muted">${fecha}</small></td>
+                    <td><span class="badge ${p.estado ? 'bg-success' : 'bg-danger'}">${p.estado ? 'Activo' : 'Inactivo'}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-warning" onclick="editarProgramaGlobal(${p.idPrograma})">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarProgramaGlobal(${p.idPrograma})">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // ========== PAGINACIÓN DEL SERVIDOR ==========
+    function renderizarPaginacionServidor(paginaActual, totalPaginas, totalRegistros) {
+        const paginacionNav = document.getElementById('paginacionNav');
+        const infoPaginacion = document.getElementById('infoPaginacion');
+        const paginacionContainer = document.getElementById('paginacionContainer');
+
+        paginacionContainer.style.display = 'flex';
+
+        const inicio = ((paginaActual - 1) * pageSize) + 1;
+        const fin = Math.min(paginaActual * pageSize, totalRegistros);
+
+        infoPaginacion.innerHTML = `<small class="text-muted">Mostrando ${inicio}-${fin} de ${totalRegistros} registros</small>`;
+
+        if (totalPaginas <= 1) {
+            paginacionNav.innerHTML = '';
+            return;
+        }
+
+        let html = '<ul class="pagination pagination-sm mb-0">';
+
+        html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="cambiarPaginaServidor(${paginaActual - 1}); return false;">«</a>
+        </li>`;
+
+        for (let i = 1; i <= totalPaginas; i++) {
+            if (i === 1 || i === totalPaginas || (i >= paginaActual - 2 && i <= paginaActual + 2)) {
+                html += `<li class="page-item ${i === paginaActual ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="cambiarPaginaServidor(${i}); return false;">${i}</a>
+                </li>`;
+            } else if (i === paginaActual - 3 || i === paginaActual + 3) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="cambiarPaginaServidor(${paginaActual + 1}); return false;">»</a>
+        </li>`;
+
+        html += '</ul>';
+        paginacionNav.innerHTML = html;
+    }
+
+    window.cambiarPaginaServidor = function (pagina) {
+        if (pagina < 1) return;
+        cargarDatosPaginados(pagina);
+    };
+
+    // ========== ABRIR MODAL CREAR ==========
+    window.abrirModalCrear = function () {
+        modalTitulo.textContent = 'Nuevo Programa';
+        document.getElementById('formularioEditor').reset();
+        idInput.value = '';
+        estadoInput.checked = true;
+        editorModal.show();
+    };
+
+    // ========== EDITAR ==========
+    window.editarProgramaGlobal = async function (id) {
+        try {
+            const response = await fetch(`${API.programas}/${id}`);
+            if (!response.ok) throw new Error('Error al cargar programa');
+
+            const data = await response.json();
+
+            modalTitulo.textContent = 'Editar Programa';
+            idInput.value = data.idPrograma;
+            nombreProgramaInput.value = data.nombrePrograma || '';
+            codigoInput.value = data.codigo || '';
+            nivelFormacionInput.value = data.nivelFormacion || '';
+            estadoInput.checked = data.estado ?? true;
+
+            editorModal.show();
+
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    };
+
+    // ========== GUARDAR ==========
+    window.guardarPrograma = async function () {
+        try {
+            const id = parseInt(idInput.value) || 0;
+
+            if (!nombreProgramaInput.value.trim() || !codigoInput.value.trim() || !nivelFormacionInput.value) {
+                alert('Complete todos los campos obligatorios');
+                return;
+            }
+
+            const data = {
+                idPrograma: id,
+                nombrePrograma: nombreProgramaInput.value.trim(),
+                codigo: codigoInput.value.trim(),
+                nivelFormacion: nivelFormacionInput.value,
+                estado: estadoInput.checked
+            };
+
+            console.log('✅ Enviando:', data);
+
+            const url = id === 0 ? API.programas : `${API.programas}/${id}`;
+            const method = id === 0 ? 'POST' : 'PUT';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Error del servidor:', errorText);
+                throw new Error(errorText || 'Error al guardar');
+            }
+
+            editorModal.hide();
+            await cargarDatosPaginados(paginaActual);
+            alert(id === 0 ? '✅ Programa creado exitosamente' : '✅ Programa actualizado exitosamente');
+
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+            console.error('Error completo:', error);
+        }
+    };
+
+    // ========== ELIMINAR ==========
+    window.eliminarProgramaGlobal = async function (id) {
+        if (!confirm('¿Eliminar este programa?')) return;
+
+        try {
+            const response = await fetch(`${API.programas}/${id}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Error al eliminar');
+
+            await cargarDatosPaginados(paginaActual);
+            alert('✅ Programa eliminado exitosamente');
+
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    };
+
+    // ========== LIMPIAR FILTROS ==========
+    window.limpiarFiltros = function () {
+        searchInput.value = '';
+        nivelFormacionFilter.value = '';
+        estadoFilter.value = '';
+        paginaActual = 1;
+        cargarDatosPaginados(1);
+    };
+});
+</script>

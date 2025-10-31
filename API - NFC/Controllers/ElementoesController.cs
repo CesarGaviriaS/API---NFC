@@ -188,5 +188,57 @@ namespace API___NFC.Controllers
         {
             return _context.Elemento.Any(e => e.IdElemento == id);
         }
+        // DTOs
+        public class BindNfcRequest { public string CodigoNFC { get; set; } = string.Empty; }
+        public class ClearNfcRequest { public bool Confirmar { get; set; } = true; }
+
+        // POST api/Elementoes/{id}/bind-nfc
+        [HttpPost("{id}/bind-nfc")]
+        public async Task<IActionResult> BindNfc(int id, [FromBody] BindNfcRequest body)
+        {
+            if (string.IsNullOrWhiteSpace(body.CodigoNFC))
+                return BadRequest("CodigoNFC es obligatorio.");
+
+            var elemento = await _context.Elemento.FindAsync(id);
+            if (elemento == null) return NotFound("Elemento no encontrado.");
+
+            // Verificar que ese NFC no esté ya usado por otro elemento
+            var enUso = await _context.Elemento
+                .AnyAsync(e => e.CodigoNFC == body.CodigoNFC && e.IdElemento != id);
+            if (enUso) return Conflict("Ese CodigoNFC ya está asignado a otro elemento.");
+
+            elemento.CodigoNFC = body.CodigoNFC;
+            elemento.FechaActualizacion = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { Message = "NFC asignado al elemento.", elemento.IdElemento, elemento.CodigoNFC });
+        }
+
+        // POST api/Elementoes/{id}/clear-nfc
+        [HttpPost("{id}/clear-nfc")]
+        public async Task<IActionResult> ClearNfc(int id, [FromBody] ClearNfcRequest body)
+        {
+            if (body == null || !body.Confirmar) return BadRequest("Confirmación requerida.");
+            var elemento = await _context.Elemento.FindAsync(id);
+            if (elemento == null) return NotFound("Elemento no encontrado.");
+
+            elemento.CodigoNFC = null;
+            elemento.FechaActualizacion = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { Message = "NFC removido del elemento.", elemento.IdElemento });
+        }
+
+        // GET api/Elementoes/by-nfc/{codigo}
+        [HttpGet("by-nfc/{codigo}")]
+        public async Task<IActionResult> GetByNfc(string codigo)
+        {
+            var elemento = await _context.Elemento
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.CodigoNFC == codigo);
+            if (elemento == null) return NotFound("No existe un elemento con ese CodigoNFC.");
+            return Ok(elemento);
+        }
+
     }
 }
