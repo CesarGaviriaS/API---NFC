@@ -3,57 +3,119 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Administración</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>@ViewData["Title"] - Panel Administrativo</title>
+
+    <!-- Bootstrap y estilos base -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
     <style>
-        body {
-            background-color: #f8f9fa;
+        :root {
+            --sena-verde: #39A900;
+            --sena-verde-oscuro: #2d8700;
+            --gris-fondo: #f4f6f8;
+            --gris-navbar: #00692d;
         }
 
+        body {
+            background-color: var(--gris-fondo);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* === NAVBAR === */
+        .navbar {
+            background: linear-gradient(90deg, var(--sena-verde) 0%, var(--gris-navbar) 100%);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #fff !important;
+        }
+
+        .navbar-nav .nav-link {
+            color: #ffffffcc;
+            font-weight: 500;
+            margin-right: 1rem;
+            transition: all 0.3s ease;
+        }
+
+            .navbar-nav .nav-link:hover {
+                color: #fff;
+                transform: translateY(-1px);
+            }
+
+        .nav-link.active {
+            color: #fff !important;
+            font-weight: 700;
+        }
+
+        /* === MAIN === */
         .main-content {
             padding: 2rem;
+            min-height: 100vh;
+            background-color: var(--gris-fondo);
         }
 
-        .navbar {
-            background-color: #00963f;
+        footer {
+            text-align: center;
+            padding: 1rem;
+            color: #6c757d;
+            font-size: 0.85rem;
         }
-        /* Mantén aquí estilos generales del layout */
+
+        /* === BOTONES GLOBALES === */
+        .btn-success {
+            background: linear-gradient(135deg, var(--sena-verde), var(--sena-verde-oscuro));
+            border: none;
+            box-shadow: 0 2px 6px rgba(57, 169, 0, 0.3);
+        }
+
+            .btn-success:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(57, 169, 0, 0.4);
+            }
     </style>
+
     @await RenderSectionAsync("Styles", required: false)
 </head>
+
 <body>
     <header>
-        <nav class="navbar navbar-expand-lg">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="#" style="color:#FFF;"
-                   onmouseover="this.style.fontWeight='bold'"
-                   onmouseout="this.style.fontWeight='normal'">Panel de Administración</a>
+        <nav class="navbar navbar-expand-lg navbar-dark">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand" href="/Terminal">
+                    <i class="bi bi-cpu me-2"></i> Panel de Administración
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
 
-                <div class="collapse navbar-collapse">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="/Terminal" style="color:#FFF;"
-                               onmouseover="this.style.fontWeight='bold'"
-                               onmouseout="this.style.fontWeight='normal'">NFC HUB (Terminal)</a>
+                            <a class="nav-link @(Context.Request.Path.Value.Contains("/Terminal") ? "active" : "")" href="/Terminal">
+                                <i class="bi bi-broadcast-pin me-1"></i> Terminal NFC
+                            </a>
                         </li>
-
                         <li class="nav-item">
-                            <a class="nav-link" href="/Admin/Usuarios" style="color:#FFF;"
-                               onmouseover="this.style.fontWeight='bold'"
-                               onmouseout="this.style.fontWeight='normal'">Gestión de Datos</a>
+                            <a class="nav-link @(Context.Request.Path.Value.Contains("/Admin/Usuarios") ? "active" : "")" href="/Admin/Usuarios">
+                                <i class="bi bi-people me-1"></i> Gestión de Datos
+                            </a>
                         </li>
-
                         <li class="nav-item">
-                            <a class="nav-link" href="/Admin/GestionNFC" style="color:#FFF;"
-                               onmouseover="this.style.fontWeight='bold'"
-                               onmouseout="this.style.fontWeight='normal'">Gestión NFC</a>
+                            <a class="nav-link @(Context.Request.Path.Value.Contains("/Admin/GestionNFC") ? "active" : "")" href="/Admin/GestionNFC">
+                                <i class="bi bi-qr-code-scan me-1"></i> Gestión NFC
+                            </a>
                         </li>
+                    </ul>
 
-                        <li class="nav-item login-nav-item ms-auto">
-                            <a class="nav-link login-nav-link @(Context.Request.Path.Value.Contains("/Login") ? "active" : "")"
-                               href="/Login" style="color:#FFF;">
-                                <i class="bi bi-box-arrow-in-right"></i> Login
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/Login">
+                                <i class="bi bi-box-arrow-in-right"></i> Cerrar Sesión
                             </a>
                         </li>
                     </ul>
@@ -62,19 +124,18 @@
         </nav>
     </header>
 
-    <div class="container-fluid">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
+    <main class="main-content">
+        @RenderBody()
+    </main>
 
-    <!-- Scripts globales -->
+    <footer>
+        © @DateTime.Now.Year — Sistema de Control NFC del CIMM | SENA
+    </footer>
+
+    <!-- JS globales -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Router global: define rutas públicas y base API -->
     <script src="~/js/router.js"></script>
 
-    <!-- Sección para scripts específicos de cada página -->
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
