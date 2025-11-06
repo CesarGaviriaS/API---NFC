@@ -146,5 +146,11 @@ namespace API___NFC.Hubs
 
         public async Task SendOperationFailure(string errorMessage)
             => await Clients.All.SendAsync("OperationFailed", errorMessage);
+        // --- NUEVO EVENTO GLOBAL PARA MENSAJES EN TIEMPO REAL ---
+        public async Task SendTagEvent(string tipoEvento, string mensaje)
+        {
+            await Clients.All.SendAsync(tipoEvento, mensaje);
+        }
+
     }
 }

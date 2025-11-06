@@ -118,6 +118,25 @@
         margin: 0;
     }
 
+    .device-item {
+        display: flex;
+        gap: .75rem;
+        align-items: center;
+        border: 1px solid var(--borde-suave);
+        border-radius: 12px;
+        padding: .6rem .75rem;
+        background: #fff;
+        margin: .5rem 0;
+    }
+
+        .device-item img {
+            width: 56px;
+            height: 56px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid var(--borde-suave);
+        }
+
     .toast {
         border: none;
         border-radius: 12px;
@@ -150,9 +169,28 @@
                 <div id="user-profile-content" class="p-2 text-muted">Esperando lectura...</div>
             </div>
 
+            <!-- Dispositivos del proceso -->
+            <div class="card">
+                <div class="card-header text-center" style="background:linear-gradient(135deg,var(--sena-verde),#4bbb3f)">
+                    Dispositivos en este proceso
+                </div>
+                <div class="card-body">
+                    <div id="user-devices">
+                        <p class="text-muted text-center">Sin dispositivos asociados.</p>
+                    </div>
+                    <div class="text-center mt-2">
+                        <button id="btnAddDevice" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalAddDevice" disabled>
+                            <i class="bi bi-plus-circle"></i> Agregar dispositivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Último elemento detectado -->
             <div class="card">
-                <div class="card-header text-center" style="background:linear-gradient(135deg,var(--sena-azul),#1e88e5)">Último Elemento Detectado</div>
+                <div class="card-header text-center" style="background:linear-gradient(135deg,var(--sena-azul),#1e88e5)">
+                    Último Elemento Detectado
+                </div>
                 <div class="card-body" id="last-detected-item-content">
                     <p class="text-center text-muted">Esperando escaneo...</p>
                 </div>
@@ -164,27 +202,98 @@
     <div id="toast-container" style="position:fixed;bottom:1rem;right:1rem;z-index:1050;"></div>
 </div>
 
+<!-- MODAL: Agregar Dispositivo (SIN NFC) -->
+<div class="modal fade" id="modalAddDevice" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,var(--sena-azul),#1e88e5); color:#fff;">
+                <h5 class="modal-title"><i class="bi bi-pc me-2"></i>Agregar dispositivo al proceso</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formDevice" class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Tipo de dispositivo</label>
+                        <select id="selTipoElemento" class="form-select" required>
+                            <option value="">Cargando...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Serial (obligatorio)</label>
+                        <input id="inpSerial" class="form-control" placeholder="Ej. HP-SN-12345" required />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Marca</label>
+                        <input id="inpMarca" class="form-control" placeholder="Ej. HP / Logitech / Lenovo" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Modelo</label>
+                        <input id="inpModelo" class="form-control" placeholder="Ej. ProBook 440 / G203 / ThinkPad" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Descripción</label>
+                        <input id="inpDescripcion" class="form-control" placeholder="Descripción breve (opcional)" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">URL de imagen (opcional)</label>
+                        <input id="inpImagenUrl" class="form-control" placeholder="https://..." />
+                    </div>
+                </form>
+
+                <div class="small text-muted mt-2">
+                    * Este registro <b>NO</b> solicita NFC. Puedes agregar etiquetas más tarde desde Gestión NFC si lo requieres.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnGuardarDevice" type="button" class="btn btn-success">
+                    <i class="bi bi-check2-circle me-1"></i> Guardar
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <!-- SignalR del paquete local (NuGet/npm copiado a wwwroot/lib) -->
     <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
 
     <script>
+        // =======================
+        // Config & Estado
+        // =======================
         const HUB_URL = `${window.location.origin}/nfcHub`;
         const API = {
-            aprendiz: id => `${window.location.origin}/api/Aprendiz/${id}`,
-            usuario: id => `${window.location.origin}/api/Usuario/${id}`
+            aprendiz:  id => `${window.location.origin}/api/Aprendiz/${id}`,
+            usuario:   id => `${window.location.origin}/api/Usuario/${id}`,
+            tipos:     ()  => `${window.location.origin}/api/TipoElementoes`,
+            crearElem: ()  => `${window.location.origin}/api/Elementoes`,
+            byProceso: idp => `${window.location.origin}/api/ElementoProcesoes/byProceso/${idp}`,
+            vincular:  ()  => `${window.location.origin}/api/ElementoProcesoes`
         };
+
+        let procesoActualId = null;          // para vincular ElementoProceso
+        let tipoPersonaActual = null;        // "Aprendiz" | "Usuario"
+        let idPropietarioActual = null;      // idAprendiz | idUsuario (según tipo)
+        let tiposElementoCache = [];         // cache de tipos
 
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(HUB_URL)
             .withAutomaticReconnect()
             .build();
 
+        // =======================
+        // UI helpers
+        // =======================
         const historyList = document.getElementById("history-list");
         const profileDiv = document.getElementById("user-profile-content");
         const lastDetected = document.getElementById("last-detected-item-content");
-        const btn = document.getElementById("btnNuevoProceso");
+        const btnLectura = document.getElementById("btnNuevoProceso");
+        const btnAddDevice = document.getElementById("btnAddDevice");
 
-        // === UI Helpers ===
         const showToast = (msg, type='info')=>{
             const el=document.createElement('div');
             el.className=`toast align-items-center text-bg-${type} show`;
@@ -196,103 +305,273 @@
 
         const addHistory = (tipo,fecha,nombre)=>{
             const el=document.createElement('div');
-            el.className=`history-item ${tipo.toLowerCase()}`;
-            el.innerHTML=`<strong>${tipo}</strong> — ${nombre}<br><small>${new Date(fecha).toLocaleString()}</small>`;
+            el.className=`history-item ${ (tipo||'').toLowerCase() }`;
+            const fechaTxt = fecha ? new Date(fecha).toLocaleString() : new Date().toLocaleString();
+            el.innerHTML=`<strong>${tipo}</strong> — ${nombre || '—'}<br><small>${fechaTxt}</small>`;
             historyList.prepend(el);
         }
 
-        const showProfile = (persona,tipoPersona,proceso,registro)=>{
-            profileDiv.innerHTML=`
+        async function showProfile(persona, tipoPersona, proceso, registro) {
+            procesoActualId = (proceso.idProceso ?? proceso.IdProceso ?? null);
+            tipoPersonaActual = tipoPersona;
+            idPropietarioActual = (tipoPersona === 'Aprendiz')
+                ? (proceso.idAprendiz ?? proceso.IdAprendiz ?? null)
+                : (proceso.idUsuario  ?? proceso.IdUsuario  ?? null);
+
+            const tipoReg = registro.tipoRegistro ?? registro.TipoRegistro ?? 'Ingreso';
+            const fechaReg = registro.fechaRegistro ?? registro.FechaRegistro ?? new Date();
+
+            profileDiv.innerHTML = `
                 <div class="profile-card">
                     <div class="profile-avatar">
-                        ${persona.fotoUrl?`<img src="${persona.fotoUrl}" alt="Foto">`:`<i class="bi bi-person-circle"></i>`}
+                        ${persona.fotoUrl ? `<img src="${persona.fotoUrl}" alt="Foto">` : `<i class="bi bi-person-circle"></i>`}
                     </div>
                     <div class="profile-info">
                         <p class="profile-role">${tipoPersona}</p>
                         <h4 class="profile-name">${persona.nombreCompleto}</h4>
-                        <p class="text-muted">${registro.TipoRegistro} — ${new Date(registro.FechaRegistro).toLocaleString()}</p>
+                        <p class="text-muted">${tipoReg} — ${new Date(fechaReg).toLocaleString()}</p>
                         <div class="profile-program">
                             📄 ${persona.documento || '—'}<br>
                             ✉️ ${persona.correo || '—'}<br>
                             🎓 ${persona.extra || '—'}<br>
                             🧾 Código: ${persona.codigoBarras || '—'}<br>
-                            ⚙️ Proceso: ${proceso.IdProceso}
+                            ⚙️ Proceso: ${procesoActualId || '—'}
                         </div>
                     </div>
-                </div>`;
+                </div>
+            `;
+
+            // habilitar botón de agregar dispositivo si ya hay proceso
+            btnAddDevice.disabled = !procesoActualId;
+
+            // cargar dispositivos del proceso
+            await cargarDispositivos(procesoActualId);
+        }
+
+        async function cargarDispositivos(idProceso) {
+            const cont = document.getElementById("user-devices");
+            if (!idProceso) {
+                cont.innerHTML = `<p class="text-muted text-center">Sin dispositivos asociados.</p>`;
+                return;
+            }
+
+            const res = await fetch(API.byProceso(idProceso));
+            if (!res.ok) {
+                cont.innerHTML = `
+                    <div class="text-center">
+                        <p class="text-muted">Sin dispositivos asociados.</p>
+                    </div>`;
+                return;
+            }
+
+            const data = await res.json();
+            if (!data || data.length === 0) {
+                cont.innerHTML = `<p class="text-muted text-center">Sin dispositivos registrados aún.</p>`;
+                return;
+            }
+
+            cont.innerHTML = data.map(d => `
+                <div class="device-item">
+                    <img src="${d.elemento?.imagenUrl || '/img/default-device.png'}" alt="Foto">
+                    <div>
+                        <strong>${d.elemento?.descripcion || d.elemento?.marca || 'Dispositivo'}</strong><br>
+                        <small>${d.elemento?.modelo || ''} — ${d.elemento?.serial || ''}</small>
+                    </div>
+                </div>
+            `).join('');
         }
 
         const updateLastDetected = (tipo, persona)=>{
+            const tipoTxt = tipo ?? 'Ingreso';
             lastDetected.innerHTML=`
                 <div class="element-item highlighted">
                     <img src="${persona.fotoUrl || '/img/default-user.png'}" class="element-image" alt="Foto">
                     <div class="element-details">
                         <strong>${persona.nombreCompleto}</strong>
-                        <p>${tipo} — ${new Date().toLocaleTimeString()}</p>
-                        <p>${persona.documento}</p>
+                        <p>${tipoTxt} — ${new Date().toLocaleTimeString()}</p>
+                        <p>${persona.documento || ''}</p>
                     </div>
                 </div>`;
         }
 
         const mapPersona=(tipo,data)=>{
-            if(tipo==='Aprendiz'){
+            if((tipo||'')==='Aprendiz'){
                 return {
-                    id:data.idAprendiz,
-                    nombreCompleto:`${data.nombre||''} ${data.apellido||''}`.trim(),
-                    documento:`${data.tipoDocumento||''} ${data.numeroDocumento||''}`.trim(),
-                    correo:data.correo||'',
-                    extra:data.ficha?.codigo?`Ficha ${data.ficha.codigo}`:'',
-                    codigoBarras:data.codigoBarras||'',
-                    fotoUrl:data.fotoUrl||null
+                    id: data.idAprendiz ?? data.IdAprendiz,
+                    nombreCompleto:`${data.nombre||data.Nombre||''} ${data.apellido||data.Apellido||''}`.trim(),
+                    documento:`${data.tipoDocumento||data.TipoDocumento||''} ${data.numeroDocumento||data.NumeroDocumento||''}`.trim(),
+                    correo: data.correo || data.Correo || '',
+                    extra: (data.ficha?.codigo || data.Ficha?.Codigo) ? `Ficha ${data.ficha?.codigo ?? data.Ficha?.Codigo}` : '',
+                    codigoBarras: data.codigoBarras || data.CodigoBarras || '',
+                    fotoUrl: data.fotoUrl || data.FotoUrl || null
                 };
-            }else{
+            } else {
                 return {
-                    id:data.idUsuario,
-                    nombreCompleto:`${data.nombre||''} ${data.apellido||''}`.trim(),
-                    documento:`${data.tipoDocumento||''} ${data.numeroDocumento||''}`.trim(),
-                    correo:data.correo||'',
-                    extra:data.rol||'',
-                    codigoBarras:data.codigoBarras||'',
-                    fotoUrl:data.fotoUrl||null
+                    id: data.idUsuario ?? data.IdUsuario,
+                    nombreCompleto:`${data.nombre||data.Nombre||''} ${data.apellido||data.Apellido||''}`.trim(),
+                    documento:`${data.tipoDocumento||data.TipoDocumento||''} ${data.numeroDocumento||data.NumeroDocumento||''}`.trim(),
+                    correo: data.correo || data.Correo || '',
+                    extra: data.rol || data.Rol || '',
+                    codigoBarras: data.codigoBarras || data.CodigoBarras || '',
+                    fotoUrl: data.fotoUrl || data.FotoUrl || null
                 };
             }
         }
 
-        // === EVENTOS DEL HUB ===
+        // =======================
+        // SignalR: eventos del Hub
+        // =======================
         connection.on("OperacionProcesada", async (json)=>{
             try{
-                const payload=JSON.parse(json);
-                const proceso=payload.Proceso;
-                const registro=payload.Registro;
-                const tipoPersona=proceso.TipoPersona;
-                const id=(tipoPersona==="Aprendiz")?proceso.IdAprendiz:proceso.IdUsuario;
+                // payload puede venir camelCase o PascalCase según AddJsonOptions (ya lo normalizamos)
+                const payload = (typeof json === 'string') ? JSON.parse(json) : json;
+                const proceso = payload.proceso ?? payload.Proceso ?? {};
+                const registro = payload.registro ?? payload.Registro ?? {};
+                const tipoPersona = proceso.tipoPersona ?? proceso.TipoPersona ?? 'Usuario';
+                const id = (tipoPersona === "Aprendiz")
+                    ? (proceso.idAprendiz ?? proceso.IdAprendiz)
+                    : (proceso.idUsuario  ?? proceso.IdUsuario);
 
-                const res=await fetch(tipoPersona==="Aprendiz"?API.aprendiz(id):API.usuario(id));
-                if(!res.ok) throw new Error("No se pudo obtener los datos");
-                const persona=mapPersona(tipoPersona, await res.json());
+                // traer datos reales de la persona
+                const res = await fetch(tipoPersona === "Aprendiz" ? API.aprendiz(id) : API.usuario(id));
+                if(!res.ok) throw new Error("No se pudo obtener los datos de la persona");
+                const persona = mapPersona(tipoPersona, await res.json());
 
-                showProfile(persona,tipoPersona,proceso,registro);
-                updateLastDetected(registro.TipoRegistro,persona);
-                addHistory(registro.TipoRegistro,registro.FechaRegistro,persona.nombreCompleto);
-                showToast(`✅ ${registro.TipoRegistro} de ${persona.nombreCompleto}`,"success");
+                showProfile(persona, tipoPersona, proceso, registro);
+                const tipoReg = registro.tipoRegistro ?? registro.TipoRegistro ?? 'Ingreso';
+                const fechaReg = registro.fechaRegistro ?? registro.FechaRegistro ?? new Date();
+                updateLastDetected(tipoReg, persona);
+                addHistory(tipoReg, fechaReg, persona.nombreCompleto);
+                showToast(`✅ ${tipoReg} de ${persona.nombreCompleto}`,"success");
             }catch(e){
                 console.error(e);
                 showToast("Error procesando lectura","danger");
             }
         });
 
-        connection.on("OperacionError",msg=>showToast("⚠️ "+msg,"danger"));
-        connection.on("AgentStatusUpdate",(msg,type)=>showToast(msg,type==='warning'?'danger':'info'));
+        connection.on("OperacionError", msg => showToast("⚠️ " + msg, "danger"));
+        connection.on("AgentStatusUpdate", (msg, type) => showToast(msg, type === 'warning' ? 'danger' : 'info'));
 
-        btn.addEventListener("click",async()=>{
-            await connection.invoke("SetAgentModeToRead");
-            showToast("📶 Modo lectura activo. Pase un tag...","info");
+        // =======================
+        // Botones / acciones
+        // =======================
+        btnLectura.addEventListener("click", async ()=>{
+            try{
+                await connection.invoke("SetAgentModeToRead");
+                showToast("📶 Modo lectura activo. Pase un tag...", "info");
+            }catch{
+                showToast("No se pudo poner el agente en modo lectura","danger");
+            }
         });
 
+        // Cargar tipos al abrir el modal
+        const modalAdd = document.getElementById('modalAddDevice');
+        modalAdd.addEventListener('show.bs.modal', async ()=>{
+            const sel = document.getElementById('selTipoElemento');
+            // evita recargar si ya los tenemos
+            if (tiposElementoCache.length === 0) {
+                sel.innerHTML = `<option value="">Cargando...</option>`;
+                try{
+                    const r = await fetch(API.tipos());
+                    if (!r.ok) throw 0;
+                    const data = await r.json();
+                    tiposElementoCache = data || [];
+                }catch {
+                    tiposElementoCache = [];
+                }
+            }
+            if (tiposElementoCache.length === 0) {
+                sel.innerHTML = `<option value="">(No hay tipos activos)</option>`;
+            } else {
+                sel.innerHTML = `<option value="">Seleccione...</option>` + tiposElementoCache.map(t =>
+                    `<option value="${t.idTipoElemento ?? t.IdTipoElemento}">${t.tipo ?? t.Tipo}</option>`
+                ).join('');
+            }
+        });
+
+        // Guardar dispositivo (sin NFC) y vincular al proceso
+        document.getElementById('btnGuardarDevice').addEventListener('click', async ()=>{
+            if (!procesoActualId || !idPropietarioActual || !tipoPersonaActual) {
+                showToast("No hay proceso en curso. Pase un tag primero.","danger");
+                return;
+            }
+
+            const selTipo = document.getElementById('selTipoElemento');
+            const serial  = document.getElementById('inpSerial').value.trim();
+            const marca   = document.getElementById('inpMarca').value.trim();
+            const modelo  = document.getElementById('inpModelo').value.trim();
+            const descripcion = document.getElementById('inpDescripcion').value.trim();
+            const imagenUrl   = document.getElementById('inpImagenUrl').value.trim();
+
+            if (!selTipo.value) { showToast("Seleccione el tipo de dispositivo","danger"); return; }
+            if (!serial)        { showToast("El serial es obligatorio","danger"); return; }
+
+            // Elemento requiere: IdTipoElemento, IdPropietario, TipoPropietario, Serial (obligatorio), opcionales…
+            const elementoPayload = {
+                idTipoElemento: Number(selTipo.value),
+                idPropietario: Number(idPropietarioActual),
+                tipoPropietario: tipoPersonaActual, // "Aprendiz" o "Usuario" (cumple CHECK)
+                marca: marca || null,
+                modelo: modelo || null,
+                serial: serial,
+                codigoNFC: null,         // SIN NFC
+                descripcion: descripcion || null,
+                imagenUrl: imagenUrl || null,
+                estado: true
+            };
+
+            try{
+                // 1) Crear Elemento
+                const r1 = await fetch(API.crearElem(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(elementoPayload)
+                });
+                if (!r1.ok) {
+                    const txt = await r1.text();
+                    showToast(`Error creando elemento: ${txt}`, 'danger');
+                    return;
+                }
+                const elem = await r1.json();
+                const idElemento = elem.idElemento ?? elem.IdElemento;
+
+                // 2) Vincular Elemento a Proceso
+                const vincPayload = {
+                    idElemento: idElemento,
+                    idProceso:  Number(procesoActualId),
+                    validado: true
+                };
+                const r2 = await fetch(API.vincular(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(vincPayload)
+                });
+                if (!r2.ok) {
+                    const txt = await r2.text();
+                    showToast(`Elemento creado, pero error al vincular: ${txt}`, 'danger');
+                } else {
+                    showToast("✅ Dispositivo agregado al proceso", "success");
+                }
+
+                // 3) Refrescar listado y cerrar modal
+                await cargarDispositivos(procesoActualId);
+                const modal = bootstrap.Modal.getInstance(modalAdd);
+                modal.hide();
+                // limpiar form
+                document.getElementById('formDevice').reset();
+
+            }catch(e){
+                console.error(e);
+                showToast("Error al guardar el dispositivo", 'danger');
+            }
+        });
+
+        // =======================
+        // Arranque SignalR
+        // =======================
         async function startHub(){
             try{
                 await connection.start();
-                console.log("✅ Conectado al Hub");
                 showToast("Conectado al Hub NFC","success");
             }catch(e){
                 console.error(e);

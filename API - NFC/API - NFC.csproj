@@ -29,6 +29,7 @@
     <Folder Include="Models\Entity\Proceso\" />
     <Folder Include="Pages\Admin\DataGestion\" />
     <Folder Include="Pages\Admin\GestionNFC\" />
+    <Folder Include="wwwroot\uploads\" />
   </ItemGroup>
 
 </Project>
