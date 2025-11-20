@@ -9,6 +9,8 @@ using API_NFC.Data;
 using API___NFC.Models;
 using BCrypt.Net;
 using System.Text.RegularExpressions;
+using API___NFC.Services;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace API___NFC.Controllers
 {
@@ -18,11 +20,13 @@ namespace API___NFC.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _config;
+        private readonly IEmailSender _emailSender;
 
-        public AuthController(ApplicationDbContext context, IConfiguration config)
+        public AuthController(ApplicationDbContext context, IConfiguration config, IEmailSender emailSender)
         {
             _context = context;
             _config = config;
+            _emailSender = emailSender;
         }
 
         [HttpPost("login")]
@@ -73,7 +77,6 @@ namespace API___NFC.Controllers
             if (usuario == null)
                 return BadRequest(new { error = "Datos inválidos." });
 
-            
             if (string.IsNullOrWhiteSpace(usuario.Correo) || string.IsNullOrWhiteSpace(usuario.Contraseña) ||
                 string.IsNullOrWhiteSpace(usuario.Nombre) || string.IsNullOrWhiteSpace(usuario.Apellido) ||
                 string.IsNullOrWhiteSpace(usuario.Rol) || string.IsNullOrWhiteSpace(usuario.NumeroDocumento))
@@ -87,14 +90,13 @@ namespace API___NFC.Controllers
             usuario.Contraseña = BCrypt.Net.BCrypt.HashPassword(usuario.Contraseña);
             usuario.Estado = true;
 
-            
             if (string.IsNullOrWhiteSpace(usuario.CodigoBarras))
             {
-                usuario.CodigoBarras = null; 
+                usuario.CodigoBarras = null;
             }
             else
             {
-                usuario.CodigoBarras = usuario.CodigoBarras.Trim(); 
+                usuario.CodigoBarras = usuario.CodigoBarras.Trim();
             }
 
             usuario.FechaCreacion = DateTime.UtcNow;
@@ -113,15 +115,64 @@ namespace API___NFC.Controllers
 
             var correo = req.Correo.Trim().ToLower();
             var usuario = await _context.Usuario.FirstOrDefaultAsync(u => u.Correo.ToLower() == correo);
-            if (usuario == null)
-                return NotFound(new { error = "No existe." });
 
-            var token = Guid.NewGuid().ToString("N");
-            usuario.TokenRecuperacion = token;
+            var genericMsg = new { message = "Si existe una cuenta con ese correo, recibirás un email con instrucciones." };
+
+            if (usuario == null)
+                return Ok(genericMsg);
+
+            // Generar token seguro URL-safe
+            var rawToken = GenerateResetToken();
+            var hashed = HashToken(rawToken);
+            usuario.TokenRecuperacion = hashed;
             usuario.FechaTokenExpira = DateTime.UtcNow.AddMinutes(30);
             await _context.SaveChangesAsync();
 
-            return Ok(new { token, expira = usuario.FechaTokenExpira });
+            var frontendBase = _config["FrontendUrl"]?.TrimEnd('/') ?? "http://localhost:3000";
+            var resetUrl = $"{frontendBase}/reset-password?token={Uri.EscapeDataString(rawToken)}&id={usuario.IdUsuario}";
+
+            var html = $@"
+        <p>Hola {usuario.Nombre},</p>
+        <p>Has solicitado recuperar tu contraseña. Haz click en el siguiente enlace para establecer una nueva contraseña. El enlace expirará en 30 minutos.</p>
+        <p><a href=""{resetUrl}"">Resetear contraseña</a></p>
+        <p>Si el enlace no abre, copia y pega esta URL en tu navegador:</p>
+        <p>{resetUrl}</p>
+        <hr/>
+        <p>Si no solicitaste este cambio, ignora este correo.</p>
+    ";
+
+            // Disparar envío en background para no bloquear la petición
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailSender.SendEmailAsync(usuario.Correo, "Recuperación de contraseña - NFC", html, $"Visita {resetUrl} para resetear tu contraseña.");
+                }
+                catch (Exception ex)
+                {
+                    // Log con detalle
+                    Console.Error.WriteLine("[Forgot->Background] Error enviando correo: " + ex);
+
+                    // Limpiar token si fallo el envío (porque no queremos que quede token sin que usuario reciba nada)
+                    try
+                    {
+                        var u = await _context.Usuario.FirstOrDefaultAsync(x => x.IdUsuario == usuario.IdUsuario);
+                        if (u != null)
+                        {
+                            u.TokenRecuperacion = null;
+                            u.FechaTokenExpira = null;
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+                    catch (Exception e2)
+                    {
+                        Console.Error.WriteLine("[Forgot->Background] Error limpiando token tras fallo de envío: " + e2);
+                    }
+                }
+            });
+
+            // Responder inmediatamente (no exponemos si el usuario existe)
+            return Ok(genericMsg);
         }
 
         [HttpPost("reset-password")]
@@ -130,19 +181,38 @@ namespace API___NFC.Controllers
             if (req == null || string.IsNullOrWhiteSpace(req.Token) || string.IsNullOrWhiteSpace(req.NuevaContraseña))
                 return BadRequest(new { error = "Datos incompletos." });
 
+            var hashed = HashToken(req.Token);
             var usuario = await _context.Usuario.FirstOrDefaultAsync(u =>
-                u.TokenRecuperacion == req.Token && u.FechaTokenExpira > DateTime.UtcNow);
+                u.TokenRecuperacion == hashed && u.FechaTokenExpira > DateTime.UtcNow);
 
             if (usuario == null)
-                return BadRequest(new { error = "Token inválido/expirado." });
+                return BadRequest(new { error = "Token inválido o expirado." });
+
+            if (req.NuevaContraseña.Length < 6)
+                return BadRequest(new { error = "La contraseña debe tener al menos 6 caracteres." });
 
             usuario.Contraseña = BCrypt.Net.BCrypt.HashPassword(req.NuevaContraseña);
             usuario.TokenRecuperacion = null;
             usuario.FechaTokenExpira = null;
             usuario.FechaActualizacion = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
-            return Ok(new { message = "Actualizada" });
+
+            // enviar confirmación (no bloquear si falla)
+            try
+            {
+                var html = $"<p>Hola {usuario.Nombre},</p><p>Tu contraseña ha sido actualizada correctamente. Si no fuiste tú, contacta soporte.</p>";
+                await _emailSender.SendEmailAsync(usuario.Correo, "Contraseña actualizada - NFC", html, $"Tu contraseña ha sido actualizada.");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("Error enviando confirmación: " + ex);
+            }
+
+            return Ok(new { message = "Contraseña actualizada correctamente." });
         }
+
+        // --------- helpers & métodos existentes ---------
 
         private string GenerateJwtToken(Usuario usuario)
         {
@@ -195,8 +265,23 @@ namespace API___NFC.Controllers
             return new(false, false, "mismatch");
         }
 
+        private static string GenerateResetToken()
+        {
+            var bytes = new byte[32];
+            RandomNumberGenerator.Fill(bytes);
+            return WebEncoders.Base64UrlEncode(bytes);
+        }
+
+        private static string HashToken(string token)
+        {
+            using var sha = SHA256.Create();
+            var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(token));
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+
         private record PasswordCheckResult(bool EsValida, bool NecesitaUpgrade, string Info);
 
+        // DTOs
         public class LoginRequest { public string Correo { get; set; } = ""; public string Contraseña { get; set; } = ""; }
         public class ForgotPasswordRequest { public string Correo { get; set; } = ""; }
         public class ResetPasswordRequest { public string Token { get; set; } = ""; public string NuevaContraseña { get; set; } = ""; }

@@ -4,16 +4,25 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using API___NFC.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Services
+// ------------------------------------------------------
+// SERVICES
+// ------------------------------------------------------
+
+// Razor Pages
 builder.Services.AddRazorPages();
+
+// Controllers + camelCase JSON  ✅ (IMPORTANTE)
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
-        opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase);
+    {
+        opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
-// Swagger (opcional)
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -24,15 +33,19 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // SignalR
 builder.Services.AddSignalR();
 
-// CORS (si lo necesitas)
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+// Email Sender (MailKit)
+builder.Services.AddTransient<IEmailSender, EmailSender>();
 
-// ✅ ✅ BLOQUE NUEVO: CONFIGURACIÓN DE JWT (agregado antes del builder.Build)
+// ------------------------------------------------------
+// JWT CONFIG  🔐
+// ------------------------------------------------------
 var key = builder.Configuration["Jwt:Key"];
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -50,11 +63,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-
-// ✅ Se crea la aplicación DESPUÉS de registrar todos los servicios
+// ------------------------------------------------------
+// BUILD APP
+// ------------------------------------------------------
 var app = builder.Build();
 
-
+// Ambiente de desarrollo
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -62,23 +76,24 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Middlewares
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowAll");
 
-// ✅ Añadimos la autenticación antes de autorización (esto también es nuevo)
+// JWT
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Map endpoints
+// Endpoints
 app.MapRazorPages();
 app.MapControllers();
 
-// Map SignalR hub (asegúrate que Hub class y namespace coinciden)
+// SignalR Hub
 app.MapHub<NfcHub>("/nfcHub");
 
-// Redirect root to Terminal
+// Redirect root → /Terminal
 app.MapGet("/", (HttpContext ctx) =>
 {
     ctx.Response.Redirect("/Terminal");
