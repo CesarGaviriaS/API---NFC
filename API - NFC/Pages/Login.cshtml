@@ -559,25 +559,31 @@
           });
 
           linkRecuperar.addEventListener('click', async e=>{
-            e.preventDefault();
-            const correo = prompt('Correo para recuperación:');
-            if(!correo) return;
-            try{
-              const resp = await fetch('/api/auth/RECUPERAR-password',{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ Correo: correo.trim() })
-              });
-              const data = await safeParse(resp);
-              if(!resp.ok){
-                alert(data.error || data.rawText || 'Error');
-              } else {
-                alert('Token: '+(data.token||data.Token)+'\nExpira: '+(data.expira||data.Expira));
-              }
-            }catch{
-              alert('Fallo de red.');
+          e.preventDefault();
+          const correo = prompt('Correo para recuperación:');
+          if(!correo) return;
+
+          try{
+            const resp = await fetch('/api/auth/RECUPERAR-password',{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ Correo: correo.trim() })
+            });
+
+            const data = await safeParse(resp);
+
+            if (!resp.ok) {
+              // mostramos el error devuelto (si existe) o un mensaje genérico
+              alert(data.error || data.rawText || 'Error al solicitar recuperación.');
+            } else {
+              // Mensaje genérico para evitar revelar si el correo existe o no
+              alert('Si existe una cuenta con ese correo, recibirás un email con instrucciones para restablecer tu contraseña. Revisa bandeja de entrada y spam.');
             }
-          });
+          } catch (err) {
+            alert('Fallo de red.');
+          }
+        });
+
 
           linkVerToken.addEventListener('click', e=>{
             e.preventDefault();
