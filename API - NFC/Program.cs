@@ -93,10 +93,10 @@ app.MapControllers();
 // SignalR Hub
 app.MapHub<NfcHub>("/nfcHub");
 
-// Redirect root → /Terminal
+// Redirect root → /Login
 app.MapGet("/", (HttpContext ctx) =>
 {
-    ctx.Response.Redirect("/Terminal");
+    ctx.Response.Redirect("/Login");
     return Task.CompletedTask;
 });
 
