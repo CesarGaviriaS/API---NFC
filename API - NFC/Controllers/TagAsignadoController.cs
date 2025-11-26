@@ -28,14 +28,56 @@ namespace API___NFC.Controllers
 
             return Ok(new { message = "Tag registrado correctamente.", tag });
         }
-
-        [HttpGet("{codigo}")]
-        public async Task<IActionResult> GetByCodigo(string codigo)
+        [HttpDelete("cleanup/{codigo}")]
+        public async Task<IActionResult> CleanupTag(string codigo)
         {
-            var tag = await _context.TagAsignado.FirstOrDefaultAsync(t => t.CodigoTag == codigo);
-            if (tag == null)
-                return NotFound("Tag no registrado.");
-            return Ok(tag);
+            try
+            {
+                Console.WriteLine($"🧹 Limpiando tag: {codigo}");
+
+                // 1. Buscar el tag
+                var tag = await _context.TagAsignado.FirstOrDefaultAsync(t => t.CodigoTag == codigo);
+
+                // 2.  Buscar el elemento asociado
+                var elemento = await _context.Elemento.FirstOrDefaultAsync(e => e.CodigoNFC == codigo);
+
+                if (tag == null && elemento == null)
+                {
+                    Console.WriteLine($"⚠️ Tag {codigo} no encontrado en el sistema");
+                    return NotFound(new { message = "Tag no encontrado en el sistema." });
+                }
+
+                // 3. Liberar el elemento (soft delete)
+                if (elemento != null)
+                {
+                    elemento.CodigoNFC = null;
+                    elemento.Estado = false;
+                    elemento.FechaActualizacion = DateTime.Now;
+                    Console.WriteLine($"🔓 Elemento ID {elemento.IdElemento} liberado");
+                }
+
+                // 4. Eliminar TagAsignado
+                if (tag != null)
+                {
+                    _context.TagAsignado.Remove(tag);
+                    Console.WriteLine($"🗑️ TagAsignado eliminado");
+                }
+
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"✅ Tag {codigo} limpiado completamente de la BD");
+
+                return Ok(new
+                {
+                    message = "Tag limpiado correctamente y listo para reutilizar",
+                    codigoTag = codigo,
+                    elementoLiberado = elemento?.IdElemento
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al limpiar tag {codigo}: {ex.Message}");
+                return StatusCode(500, new { message = $"Error al limpiar tag: {ex.Message}" });
+            }
         }
     }
 }
