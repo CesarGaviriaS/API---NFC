@@ -79,6 +79,9 @@
 
     <script>
         (function () {
+            // ✅ Constante para URL de login (mantenibilidad)
+            const LOGIN_URL = '/Login';
+
             function decodeJwt(token) {
                 if (!token) return null;
                 const parts = token.split('.');
@@ -108,6 +111,37 @@
                 return typeof rol === 'string' ? rol.trim() : null;
             }
 
+            // ✅ Verificar autenticación - Redirigir a Login si no hay token
+            function verificarAutenticacion() {
+                const token = localStorage.getItem('auth_token');
+                if (!token) {
+                    // No hay token, redirigir a Login
+                    window.location.replace(LOGIN_URL);
+                    return false;
+                }
+                
+                // Verificar si el token es válido (no expirado)
+                const decoded = decodeJwt(token);
+                if (!decoded) {
+                    // Token inválido, limpiar y redirigir
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('user_info');
+                    window.location.replace(LOGIN_URL);
+                    return false;
+                }
+                
+                // Verificar expiración del token
+                if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+                    // Token expirado, limpiar y redirigir
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('user_info');
+                    window.location.replace(LOGIN_URL);
+                    return false;
+                }
+                
+                return true;
+            }
+
             function aplicarVisibilidadPorRol() {
                 const rol = obtenerRolActivo();
                 const items = document.querySelectorAll('[data-visible-roles]');
@@ -122,6 +156,11 @@
                         item.style.display = 'none';
                     }
                 });
+            }
+
+            // ✅ Ejecutar verificación de autenticación primero
+            if (!verificarAutenticacion()) {
+                return; // Si no está autenticado, no continuar
             }
 
             aplicarVisibilidadPorRol();
