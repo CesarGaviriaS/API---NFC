@@ -15,7 +15,6 @@
 <body style="background:var(--brand-bg); display:flex; align-items:center; min-height:100vh;">
     <style>
         :root {
-            /* Paleta basada en tus pantallas */
             --brand-green: #08701C;
             --brand-green-dark: #055314;
             --brand-green-light: #13A236;
@@ -43,199 +42,6 @@
             font-family: system-ui, 'Inter', Arial, sans-serif;
             color: #1F2A33;
             min-height: 100vh;
-        }
-
-        .navbar-brand {
-            font-weight: 700;
-            letter-spacing: .5px;
-        }
-
-        .navbar-custom {
-            background: var(--brand-green);
-        }
-
-        .card-brand {
-            background: var(--brand-white);
-            border: 1px solid var(--border-soft);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-card);
-            overflow: hidden;
-            margin-bottom: 1.25rem;
-        }
-
-        .card-brand-header {
-            background: var(--gradient-green-blue);
-            color: #fff;
-            padding: .85rem 1.15rem;
-            font-weight: 600;
-            font-size: .95rem;
-            letter-spacing: .4px;
-            display: flex;
-            align-items: center;
-            gap: .6rem;
-        }
-
-            .card-brand-header.green {
-                background: var(--brand-green);
-            }
-
-            .card-brand-header.blue {
-                background: var(--brand-blue);
-            }
-
-        .card-brand-body {
-            padding: 1.2rem 1.25rem;
-        }
-
-        .btn-brand {
-            background: var(--brand-green);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            padding: .65rem 1.05rem;
-            display: inline-flex;
-            align-items: center;
-            gap: .5rem;
-            transition: var(--transition);
-        }
-
-            .btn-brand:hover {
-                background: var(--brand-green-dark);
-            }
-
-        .btn-outline-brand {
-            background: #fff;
-            color: var(--brand-green);
-            border: 1px solid var(--brand-green);
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            padding: .55rem .95rem;
-            transition: var(--transition);
-        }
-
-            .btn-outline-brand:hover {
-                background: var(--brand-green);
-                color: #fff;
-            }
-
-        .form-control, .form-select {
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-soft);
-            background: #F9FBFC;
-            font-size: .9rem;
-            transition: var(--transition);
-        }
-
-            .form-control:focus, .form-select:focus {
-                border-color: var(--brand-green-light);
-                box-shadow: 0 0 0 .15rem rgba(8,112,28,.25);
-                background: #fff;
-            }
-
-        .badge-role {
-            display: inline-flex;
-            align-items: center;
-            gap: .35rem;
-            font-size: .65rem;
-            font-weight: 600;
-            padding: .35rem .6rem;
-            border-radius: var(--radius-sm);
-            letter-spacing: .4px;
-            text-transform: uppercase;
-            color: #fff;
-        }
-
-            .badge-role.Administrador {
-                background: #D9A400;
-            }
-
-            .badge-role.Guardia {
-                background: #006BB3;
-            }
-
-            .badge-role.Funcionario {
-                background: #5B6773;
-            }
-
-        .table-brand thead {
-            background: var(--brand-green);
-            color: #fff;
-        }
-
-            .table-brand thead th {
-                font-weight: 600;
-                font-size: .75rem;
-                letter-spacing: .5px;
-            }
-
-        .table-brand tbody tr {
-            vertical-align: middle;
-        }
-
-        .table-brand tbody td {
-            font-size: .78rem;
-        }
-
-        .search-bar {
-            background: #fff;
-            border: 1px solid var(--border-soft);
-            border-radius: var(--radius-md);
-            padding: .55rem .9rem;
-            display: flex;
-            align-items: center;
-            gap: .55rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-            .search-bar input {
-                flex: 1;
-                border: none;
-                background: transparent;
-                outline: none;
-                font-size: .85rem;
-            }
-
-        .shadow-soft {
-            box-shadow: var(--shadow-soft);
-        }
-
-        .link-action {
-            cursor: pointer;
-            color: var(--brand-green);
-            font-size: .75rem;
-            display: inline-flex;
-            align-items: center;
-            gap: .3rem;
-        }
-
-            .link-action:hover {
-                text-decoration: underline;
-            }
-
-        .alert-soft {
-            background: #EEF4EE;
-            border: 1px solid #D1DED1;
-            color: #1F3B22;
-            border-radius: var(--radius-md);
-            font-size: .75rem;
-            padding: .6rem .8rem;
-        }
-
-        .minicard {
-            background: #fff;
-            border: 1px solid var(--border-soft);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-soft);
-            padding: .9rem 1.05rem;
-            font-size: .75rem;
-        }
-
-        .footer-bar {
-            font-size: .7rem;
-            color: #5B6773;
-            padding: 1.5rem 0;
-            text-align: center;
         }
 
         .login-wrapper {
@@ -291,6 +97,37 @@
             overflow: hidden;
         }
 
+        .btn-brand {
+            background: var(--brand-green);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            padding: .65rem 1.05rem;
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            transition: var(--transition);
+        }
+
+            .btn-brand:hover {
+                background: var(--brand-green-dark);
+            }
+
+        .form-control, .form-select {
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-soft);
+            background: #F9FBFC;
+            font-size: .9rem;
+            transition: var(--transition);
+        }
+
+            .form-control:focus, .form-select:focus {
+                border-color: var(--brand-green-light);
+                box-shadow: 0 0 0 .15rem rgba(8,112,28,.25);
+                background: #fff;
+            }
+
         .alert-inline {
             display: none;
             margin-bottom: .65rem;
@@ -337,7 +174,15 @@
             animation: spin .85s linear infinite;
             display: none;
         }
-     
+
+        .footer-bar {
+            font-size: .7rem;
+            color: #5B6773;
+            padding: 1.5rem 0;
+            text-align: center;
+        }
+
+    
     </style>
 
     <div class="login-wrapper">
@@ -459,13 +304,13 @@
         </div>
 
         <div class="footer-bar mt-4">
-            &copy; @DateTime.UtcNow.Year NFC SENA · Seguridad & Control
+            &copy; @DateTime.UtcNow.Year NFC SENA · Seguridad &amp; Control
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-                (function(){
+        (function(){
           // Tabs
           const btnTabLogin     = document.getElementById('btnTabLogin');
           const btnTabRegister  = document.getElementById('btnTabRegister');
@@ -544,10 +389,44 @@
                 if(!token){
                   show(loginError,'Respuesta inesperada (sin token).');
                 } else {
+                  // Guardar token y usuario
                   localStorage.setItem('auth_token', token);
                   if(usr) localStorage.setItem('user_info', JSON.stringify(usr));
-                  show(loginOk,'Bienvenido '+(usr?.Nombre||usr?.nombre||'')+' ('+(usr?.Rol||usr?.rol||'')+')');
-                  setTimeout(()=>{ window.location.href='/Terminal'; }, 800);
+
+                  // 👮‍♂️ Si es guardia, guardar también su IdUsuario como guard_id
+                  if (usr && (usr.Rol || usr.rol)) {
+                      const rolLocal = (usr.Rol || usr.rol).toString().trim().toLowerCase();
+                      if (rolLocal === 'guardia') {
+                          const guardId = usr.IdUsuario || usr.idUsuario;
+                          if (guardId) {
+                              localStorage.setItem('guard_id', guardId.toString());
+                          }
+                      }
+                  }
+
+                  show(loginOk, 'Bienvenido ' + (usr?.Nombre || usr?.nombre || '') + ' (' + (usr?.Rol || usr?.rol || '') + ')');
+
+                  // 🔐 Decidir a dónde ir según el rol
+                  const decoded = decodeJwt(token);
+                  const rolToken =
+                      decoded?.role ||
+                      decoded?.Rol ||
+                      decoded?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+
+                  const rolLocal2 = usr?.Rol || usr?.rol;
+                  const rolFinal = (rolLocal2 || rolToken || '').toString().trim().toLowerCase();
+
+                  let redirectUrl = '/Login'; // valor por defecto
+
+                  if (rolFinal === 'guardia') {
+                      // ✅ Candado: marcamos que VIENE del login hacia la Terminal
+                      sessionStorage.setItem('terminal_auth_ok', '1');
+                      redirectUrl = '/Terminal';
+                  } else if (rolFinal === 'administrador') {
+                      redirectUrl = '/Admin/Usuarios';
+                  }
+
+                  setTimeout(() => { window.location.href = redirectUrl; }, 800);
                 }
               }
             }catch{
@@ -559,31 +438,28 @@
           });
 
           linkRecuperar.addEventListener('click', async e=>{
-          e.preventDefault();
-          const correo = prompt('Correo para recuperación:');
-          if(!correo) return;
+            e.preventDefault();
+            const correo = prompt('Correo para recuperación:');
+            if(!correo) return;
 
-          try{
-            const resp = await fetch('/api/auth/RECUPERAR-password',{
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ Correo: correo.trim() })
-            });
+            try{
+              const resp = await fetch('/api/auth/RECUPERAR-password',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ Correo: correo.trim() })
+              });
 
-            const data = await safeParse(resp);
+              const data = await safeParse(resp);
 
-            if (!resp.ok) {
-              // mostramos el error devuelto (si existe) o un mensaje genérico
-              alert(data.error || data.rawText || 'Error al solicitar recuperación.');
-            } else {
-              // Mensaje genérico para evitar revelar si el correo existe o no
-              alert('Si existe una cuenta con ese correo, recibirás un email con instrucciones para restablecer tu contraseña. Revisa bandeja de entrada y spam.');
+              if (!resp.ok) {
+                alert(data.error || data.rawText || 'Error al solicitar recuperación.');
+              } else {
+                alert('Si existe una cuenta con ese correo, recibirás un email con instrucciones para restablecer tu contraseña. Revisa bandeja de entrada y spam.');
+              }
+            } catch (err) {
+              alert('Fallo de red.');
             }
-          } catch (err) {
-            alert('Fallo de red.');
-          }
-        });
-
+          });
 
           linkVerToken.addEventListener('click', e=>{
             e.preventDefault();
@@ -594,10 +470,13 @@
             alert('Token inicio:\n'+t.substring(0,55)+'...\nRol: '+(rol||'N/D'));
           });
 
+          // 🔴 BOTÓN LIMPIAR SESIÓN
           linkClear.addEventListener('click', e=>{
             e.preventDefault();
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user_info');
+            localStorage.removeItem('guard_id');
+            sessionStorage.removeItem('terminal_auth_ok');
             alert('Sesión limpiada.');
           });
 

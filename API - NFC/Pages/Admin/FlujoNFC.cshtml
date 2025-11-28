@@ -1,0 +1,538 @@
+﻿@page
+@model API___NFC.Pages.Admin.FlujoNFCModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Flujo de Ingreso y Salida";
+}
+
+<style>
+    .badge-role {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.7rem;
+        font-weight: 600;
+    }
+
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+        .table tbody tr:hover {
+            transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+    .form-label.required::after {
+        content: " *";
+        color: red;
+    }
+
+    .pagination {
+        margin: 0;
+    }
+
+    .badge-ingreso {
+        background-color: #28a745;
+    }
+
+    .badge-salida {
+        background-color: #dc3545;
+    }
+
+    .badge-aprendiz {
+        background-color: #007bff;
+    }
+
+    .badge-usuario {
+        background-color: #6c757d;
+    }
+</style>
+
+<div class="main-content">
+    <partial name="_AdminSubNav" />
+
+    <!-- HEADER -->
+    <div class="card border-0 shadow-sm mb-3 bg-success text-white">
+        <div class="card-body py-3">
+            <h3 class="mb-0">
+                <i class="bi bi-shuffle me-2"></i>@ViewData["Title"]
+            </h3>
+            <small class="text-white-50">
+                Resumen de ingresos y salidas con personas y dispositivos.
+            </small>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-3">
+            <div class="row g-3 align-items-end">
+
+                <div class="col-md-3">
+                    <label class="form-label required">Desde</label>
+                    <input type="date" id="filtroDesde" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label required">Hasta</label>
+                    <input type="date" id="filtroHasta" class="form-control form-control-sm" />
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Tipo Registro</label>
+                    <select id="filtroTipoRegistro" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="Ingreso">Ingreso</option>
+                        <option value="Salida">Salida</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Tipo Persona</label>
+                    <select id="filtroTipoPersona" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="Aprendiz">Aprendiz</option>
+                        <option value="Usuario">Usuario</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Buscar</label>
+                    <input id="filtroTexto" class="form-control form-control-sm" placeholder="Nombre, documento, dispositivo..." />
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                    <button class="btn btn-success btn-sm me-1" id="btnBuscar">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" id="btnLimpiarFiltros">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </button>
+
+                    <!-- BOTONES DE EXPORTACIÓN -->
+                    <button class="btn btn-outline-primary btn-sm ms-2" id="btnExportPdf">
+                        <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm ms-1" id="btnExportWord">
+                        <i class="bi bi-file-earmark-word"></i> Exportar Word
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span id="contadorRegistros" class="badge bg-success">0 registros</span>
+                    <select id="registrosPorPagina" class="form-select form-select-sm" style="width: auto;">
+                        <option value="10">10 por página</option>
+                        <option value="25" selected>25 por página</option>
+                        <option value="50">50 por página</option>
+                        <option value="100">100 por página</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="tablaFlujo">
+                    <thead class="table-success">
+                        <tr>
+                            <th class="py-3">
+                                <i class="bi bi-calendar me-1"></i>Fecha / Hora
+                                <i class="bi bi-chevron-expand ms-1" style="cursor:pointer;" data-sort="fecha"></i>
+                            </th>
+                            <th class="py-3">
+                                <i class="bi bi-arrow-left-right me-1"></i>Tipo
+                            </th>
+                            <th class="py-3">
+                                <i class="bi bi-person-circle me-1"></i>Persona
+                            </th>
+                            <th class="py-3">
+                                <i class="bi bi-file-earmark-text me-1"></i>Documento
+                            </th>
+                            <th class="py-3">
+                                <i class="bi bi-laptop me-1"></i>Dispositivos
+                            </th>
+                            <th class="py-3">
+                                <i class="bi bi-person-badge me-1"></i>Tipo Persona
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyFlujo">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="spinner-border text-success"></div>
+                                <p class="text-muted mt-2 mb-0">Cargando datos...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado vacío -->
+            <div id="emptyStateFlujo" class="text-center py-5 d-none">
+                <i class="bi bi-journal-x display-1 text-muted opacity-25"></i>
+                <p class="text-muted mt-3 fs-5">No se encontraron registros</p>
+            </div>
+
+            <!-- PAGINACIÓN -->
+            <div class="card-footer bg-white border-top">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-muted small">
+                        Mostrando <span id="registrosDesde">0</span> a <span id="registrosHasta">0</span> de <span id="registrosTotal">0</span> registros
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="paginacion">
+                            <!-- Se genera dinámicamente -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const API = {
+            flujo: '/api/Reportes/FlujoNFC'
+        };
+
+        const filtroDesde = document.getElementById('filtroDesde');
+        const filtroHasta = document.getElementById('filtroHasta');
+        const filtroTipoReg = document.getElementById('filtroTipoRegistro');
+        const filtroTipoPer = document.getElementById('filtroTipoPersona');
+        const filtroTexto = document.getElementById('filtroTexto');
+        const btnBuscar = document.getElementById('btnBuscar');
+        const btnLimpiar = document.getElementById('btnLimpiarFiltros');
+        const tbody = document.getElementById('bodyFlujo');
+        const lblTotal = document.getElementById('contadorRegistros');
+        const emptyState = document.getElementById('emptyStateFlujo');
+        const registrosPorPaginaSelect = document.getElementById('registrosPorPagina');
+        const paginacionContainer = document.getElementById('paginacion');
+
+        const btnExportPdf = document.getElementById('btnExportPdf');
+        const btnExportWord = document.getElementById('btnExportWord');
+
+        let registrosOriginales = [];
+        let registrosFiltrados = [];
+        let paginaActual = 1;
+        let registrosPorPagina = 25;
+        let ordenActual = { campo: 'fecha', direccion: 'desc' };
+
+        const hoy = new Date().toISOString().slice(0, 10);
+        filtroDesde.value = hoy;
+        filtroHasta.value = hoy;
+
+        // ==================== CARGAR DATOS DESDE API ====================
+        async function cargarDatos() {
+            const params = new URLSearchParams();
+
+            if (filtroDesde.value) {
+                params.append('desde', filtroDesde.value + 'T00:00:00');
+            }
+            if (filtroHasta.value) {
+                params.append('hasta', filtroHasta.value + 'T23:59:59');
+            }
+
+            if (filtroTipoReg.value) {
+                params.append('tipoRegistro', filtroTipoReg.value.trim());
+            }
+            if (filtroTipoPer.value) {
+                params.append('tipoPersona', filtroTipoPer.value.trim());
+            }
+
+            const url = `${API.flujo}?${params.toString()}`;
+            console.log('URL llamada:', url);
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        <div class="spinner-border text-success"></div>
+                        <p class="text-muted mt-2 mb-0">Cargando datos...</p>
+                    </td>
+                </tr>`;
+            emptyState.classList.add('d-none');
+            lblTotal.textContent = '0 registros';
+
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    throw new Error('Error al cargar datos: ' + resp.statusText);
+                }
+                const data = await resp.json();
+                console.log('Datos recibidos:', data.length, 'registros');
+                registrosOriginales = data || [];
+                paginaActual = 1;
+                aplicarFiltros();
+            } catch (err) {
+                console.error('Error completo:', err);
+                tbody.innerHTML = `<tr>
+                    <td colspan="6" class="text-center text-danger py-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Error al cargar datos: ${err.message}
+                    </td>
+                </tr>`;
+            }
+        }
+
+        // ==================== APLICAR FILTROS (TEXTO) ====================
+        function aplicarFiltros() {
+            const texto = filtroTexto.value.trim().toLowerCase();
+
+            registrosFiltrados = registrosOriginales.filter(r => {
+                if (!texto) return true;
+
+                const nombre = (r.nombreCompleto || r.NombreCompleto || '').toLowerCase();
+                const doc    = (r.documento || r.Documento || '').toLowerCase();
+                const disp   = (r.dispositivosTexto || r.DispositivosTexto || '').toLowerCase();
+
+                return nombre.includes(texto) || doc.includes(texto) || disp.includes(texto);
+            });
+
+            ordenarRegistros();
+            renderTabla();
+            renderPaginacion();
+        }
+
+        // ==================== ORDENAR REGISTROS ====================
+        function ordenarRegistros() {
+            registrosFiltrados.sort((a, b) => {
+                if (ordenActual.campo === 'fecha') {
+                    const fechaA = new Date(a.fechaRegistro || a.FechaRegistro);
+                    const fechaB = new Date(b.fechaRegistro || b.FechaRegistro);
+                    return ordenActual.direccion === 'asc' ? fechaA - fechaB : fechaB - fechaA;
+                }
+                return 0;
+            });
+        }
+
+        // ==================== RENDERIZAR TABLA ====================
+        function renderTabla() {
+            const total = registrosFiltrados.length;
+            lblTotal.textContent = total + ' registro' + (total !== 1 ? 's' : '');
+
+            if (!total) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No hay registros para mostrar
+                        </td>
+                    </tr>`;
+                emptyState.classList.remove('d-none');
+                document.getElementById('registrosDesde').textContent = '0';
+                document.getElementById('registrosHasta').textContent = '0';
+                document.getElementById('registrosTotal').textContent = '0';
+                return;
+            }
+
+            emptyState.classList.add('d-none');
+
+            const inicio = (paginaActual - 1) * registrosPorPagina;
+            const fin = Math.min(inicio + registrosPorPagina, total);
+            const registrosPagina = registrosFiltrados.slice(inicio, fin);
+
+            document.getElementById('registrosDesde').textContent = inicio + 1;
+            document.getElementById('registrosHasta').textContent = fin;
+            document.getElementById('registrosTotal').textContent = total;
+
+            tbody.innerHTML = registrosPagina.map(r => {
+                const fechaRaw = r.fechaRegistro || r.FechaRegistro;
+                const fecha = fechaRaw
+                    ? new Date(fechaRaw).toLocaleString('es-CO', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit'
+                    })
+                    : 'N/A';
+
+                const tipoRegistro = r.tipoRegistro || r.TipoRegistro || '';
+                const tipoPersona  = r.tipoPersona || r.TipoPersona || '';
+                const nombre       = r.nombreCompleto || r.NombreCompleto || '';
+                const documento    = r.documento || r.Documento || '';
+                const dispositivos = r.dispositivosTexto || r.DispositivosTexto || 'Sin dispositivos';
+
+                const badgeTipo = tipoRegistro === 'Ingreso' ? 'badge-ingreso' : 'badge-salida';
+                const badgePersona = tipoPersona === 'Aprendiz' ? 'badge-aprendiz' : 'badge-usuario';
+
+                return `
+                    <tr>
+                        <td><small>${fecha}</small></td>
+                        <td><span class="badge ${badgeTipo}">${tipoRegistro}</span></td>
+                        <td><strong>${nombre}</strong></td>
+                        <td><small class="text-muted">${documento}</small></td>
+                        <td><small>${dispositivos}</small></td>
+                        <td><span class="badge ${badgePersona}">${tipoPersona}</span></td>
+                    </tr>`;
+            }).join('');
+        }
+
+        // ==================== RENDERIZAR PAGINACIÓN ====================
+        function renderPaginacion() {
+            const total = registrosFiltrados.length;
+            const totalPaginas = Math.ceil(total / registrosPorPagina);
+
+            if (totalPaginas <= 1) {
+                paginacionContainer.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            html += `<li class="page-item ${paginaActual === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" data-pagina="${paginaActual - 1}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>`;
+
+            const rango = 2;
+            let inicio = Math.max(1, paginaActual - rango);
+            let fin = Math.min(totalPaginas, paginaActual + rango);
+
+            if (inicio > 1) {
+                html += `<li class="page-item"><a class="page-link" href="#" data-pagina="1">1</a></li>`;
+                if (inicio > 2) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+
+            for (let i = inicio; i <= fin; i++) {
+                html += `<li class="page-item ${i === paginaActual ? 'active' : ''}">
+                    <a class="page-link" href="#" data-pagina="${i}">${i}</a>
+                </li>`;
+            }
+
+            if (fin < totalPaginas) {
+                if (fin < totalPaginas - 1) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+                html += `<li class="page-item"><a class="page-link" href="#" data-pagina="${totalPaginas}">${totalPaginas}</a></li>`;
+            }
+
+            html += `<li class="page-item ${paginaActual === totalPaginas ? 'disabled' : ''}">
+                <a class="page-link" href="#" data-pagina="${paginaActual + 1}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>`;
+
+            paginacionContainer.innerHTML = html;
+        }
+
+        // ==================== CAMBIAR PÁGINA ====================
+        paginacionContainer.addEventListener('click', (e) => {
+            e.preventDefault();
+            const link = e.target.closest('a');
+            if (!link) return;
+
+            const pagina = parseInt(link.dataset.pagina);
+            if (!isNaN(pagina) && pagina !== paginaActual) {
+                paginaActual = pagina;
+                renderTabla();
+                renderPaginacion();
+            }
+        });
+
+        // ==================== CAMBIAR REGISTROS POR PÁGINA ====================
+        registrosPorPaginaSelect.addEventListener('change', () => {
+            registrosPorPagina = parseInt(registrosPorPaginaSelect.value);
+            paginaActual = 1;
+            renderTabla();
+            renderPaginacion();
+        });
+
+        // ==================== ORDENAR POR FECHA ====================
+        document.querySelector('[data-sort="fecha"]').addEventListener('click', () => {
+            ordenActual.direccion = ordenActual.direccion === 'asc' ? 'desc' : 'asc';
+            aplicarFiltros();
+        });
+
+        // ==================== EVENTOS ====================
+        btnBuscar.addEventListener('click', (e) => {
+            e.preventDefault();
+            cargarDatos();
+        });
+
+        btnLimpiar.addEventListener('click', (e) => {
+            e.preventDefault();
+            filtroDesde.value = hoy;
+            filtroHasta.value = hoy;
+            filtroTipoReg.value = '';
+            filtroTipoPer.value = '';
+            filtroTexto.value = '';
+            cargarDatos();
+        });
+
+        filtroTexto.addEventListener('input', () => {
+            paginaActual = 1;
+            aplicarFiltros();
+        });
+
+        // ==================== FUNCIONES DE EXPORTACIÓN ====================
+        function buildExportQuery() {
+            const params = new URLSearchParams();
+            if (filtroDesde.value) params.append('desde', filtroDesde.value + 'T00:00:00');
+            if (filtroHasta.value) params.append('hasta', filtroHasta.value + 'T23:59:59');
+            if (filtroTipoReg.value) params.append('tipoRegistro', filtroTipoReg.value.trim());
+            if (filtroTipoPer.value) params.append('tipoPersona', filtroTipoPer.value.trim());
+            return params.toString();
+        }
+
+        async function downloadFromUrl(url, fallbackName) {
+            try {
+                const resp = await fetch(url, { method: 'GET', headers: { 'Accept': '*/*' } });
+
+                if (!resp.ok) {
+                    const text = await resp.text().catch(() => resp.statusText);
+                    throw new Error(`HTTP ${resp.status}: ${text}`);
+                }
+
+                const blob = await resp.blob();
+
+                // Intentar obtener filename desde Content-Disposition
+                let filename = fallbackName;
+                const disposition = resp.headers.get('content-disposition');
+                if (disposition) {
+                    const match = /filename\*=UTF-8''(.+)|filename="?(.*?)"?($|;)/i.exec(disposition);
+                    if (match) {
+                        filename = decodeURIComponent(match[1] || match[2]);
+                    }
+                }
+
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename || 'download';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+            } catch (err) {
+                console.error('Error en downloadFromUrl:', err);
+                alert('Error generando el archivo: ' + (err.message || err));
+            }
+        }
+
+        if (btnExportPdf) {
+            btnExportPdf.addEventListener('click', (e) => {
+                e.preventDefault();
+                const q = buildExportQuery();
+                const url = '/api/Reportes/FlujoNFC/export/pdf' + (q ? '?' + q : '');
+                const fallback = `flujo_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'')}.pdf`;
+                downloadFromUrl(url, fallback);
+            });
+        }
+
+        if (btnExportWord) {
+            btnExportWord.addEventListener('click', (e) => {
+                e.preventDefault();
+                const q = buildExportQuery();
+                const url = '/api/Reportes/FlujoNFC/export/word' + (q ? '?' + q : '');
+                const fallback = `flujo_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'')}.docx`;
+                downloadFromUrl(url, fallback);
+            });
+        }
+
+        // ==================== CARGA INICIAL ====================
+        cargarDatos();
+    });
+</script>

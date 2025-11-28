@@ -6,11 +6,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using API_NFC.Data;
 using API___NFC.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API___NFC.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Administrador,Guardia")]
     public class RegistroNFCController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
