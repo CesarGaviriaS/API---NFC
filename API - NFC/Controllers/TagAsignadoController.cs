@@ -79,5 +79,23 @@ namespace API___NFC.Controllers
                 return StatusCode(500, new { message = $"Error al limpiar tag: {ex.Message}" });
             }
         }
+        [HttpDelete("by-codigo")]
+        public async Task<IActionResult> DeleteByCodigo([FromQuery] string codigoTag)
+        {
+            if (string.IsNullOrWhiteSpace(codigoTag))
+                return BadRequest(new { message = "El código del tag es obligatorio." });
+
+            var tag = await _context.TagAsignado
+                .FirstOrDefaultAsync(t => t.CodigoTag == codigoTag);
+
+            if (tag == null)
+                return NotFound(new { message = "El tag no se encuentra asignado." });
+
+            _context.TagAsignado.Remove(tag);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Tag eliminado correctamente." });
+        }
+
     }
 }

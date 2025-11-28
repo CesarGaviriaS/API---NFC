@@ -14,9 +14,24 @@ namespace API___NFC.Hubs
     {
         private readonly IServiceScopeFactory _scopeFactory;
 
+        // 👮‍♂️ Guardia actualmente activo en la terminal
+        private static int _currentGuardId = 0;
+
         public NfcHub(IServiceScopeFactory scopeFactory)
         {
             _scopeFactory = scopeFactory;
+        }
+
+        // --- REGISTRAR GUARDIA ACTIVO DESDE LA TERMINAL ---
+        public async Task SetCurrentGuard(int guardId)
+        {
+            _currentGuardId = guardId;
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"👮‍♂️ [NfcHub] Guardia activo actualizado: Id = {guardId}");
+            Console.ResetColor();
+
+            // Opcional: notificar a las UIs
+            await Clients.All.SendAsync("GuardChanged", guardId);
         }
 
         // --- MODO MANUAL DESDE DASHBOARD ---
@@ -29,7 +44,7 @@ namespace API___NFC.Hubs
         public async Task SetAgentModeToRead()
             => await Clients.All.SendAsync("RequestReadMode");
 
-        // --- AGENTE → API (LECTURA DE TAG) --- 🔥 CORREGIDO
+        // --- AGENTE → API (LECTURA DE TAG) ---
         public async Task ProcesarLecturaTag(string tagData)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -138,7 +153,7 @@ namespace API___NFC.Hubs
                     {
                         IdTipoProceso = tipoProc.IdTipoProceso,
                         TipoPersona = tipoPersona,
-                        IdGuardia = 6,
+                        IdGuardia = _currentGuardId, // 👈 AHORA USA EL GUARDIA ACTIVO
                         TimeStampEntradaSalida = DateTime.Now,
                         Observaciones = $"{nombreTipo} registrada por NFC",
                         SincronizadoBD = true,
@@ -150,7 +165,7 @@ namespace API___NFC.Hubs
                     await context.SaveChangesAsync();
 
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"✅ Proceso INGRESO creado. IdProceso = {proceso.IdProceso}");
+                    Console.WriteLine($"✅ Proceso INGRESO creado. IdProceso = {proceso.IdProceso}, Guardia = {_currentGuardId}");
                     Console.ResetColor();
 
                     registro = new RegistroNFC
@@ -193,7 +208,7 @@ namespace API___NFC.Hubs
 
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine($"✅ Registro NFC SALIDA guardado. IdRegistro = {registro.IdRegistro}");
-                    Console.WriteLine($"   → Asociado al Proceso ID: {proceso.IdProceso}");
+                    Console.WriteLine($"   → Asociado al Proceso ID: {proceso.IdProceso}, Guardia = {proceso.IdGuardia}");
                     Console.ResetColor();
                 }
 

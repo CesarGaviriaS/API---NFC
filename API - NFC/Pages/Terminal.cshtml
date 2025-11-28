@@ -170,19 +170,6 @@
             outline: none;
         }
 
-    /* MODAL */
-    .modal-header {
-        background: var(--sena-azul);
-        color: #fff;
-        border-top-left-radius: var(--radio);
-        border-top-right-radius: var(--radio);
-    }
-
-    .modal-body h6 {
-        font-weight: 600;
-        color: var(--sena-azul);
-    }
-    /* MODAL DISEÑO MEJORADO */
     .modal-content {
         border-radius: 0.75rem;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
@@ -225,7 +212,6 @@
         gap: 0.5rem;
     }
 
-    /* Caja usuario */
     #modalUserData {
         background-color: #e7f3ff;
         border-left: 4px solid var(--sena-azul);
@@ -233,7 +219,6 @@
         border-radius: 0.5rem;
     }
 
-    /* Lista dispositivos existentes */
     #modal-user-devices {
         background: #fff;
         border: 1px solid var(--borde-suave);
@@ -241,28 +226,6 @@
         padding: 0.75rem;
     }
 
-    /* Inputs */
-    input.form-control,
-    select.form-select {
-        border-radius: 0.5rem;
-        border: 1px solid #ced4da;
-        box-shadow: none;
-    }
-
-        input.form-control:focus,
-        select.form-select:focus {
-            border-color: var(--sena-azul);
-            outline: none;
-        }
-
-    /* Botones */
-    .modal-footer .btn {
-        padding: 0.5rem 1.25rem;
-        font-weight: 500;
-        border-radius: 0.5rem;
-    }
-
-    /* Oculta el contenido mientras se valida el rol para evitar parpadeos */
     html.guard-check-pending {
         visibility: hidden;
     }
@@ -276,9 +239,15 @@
             <div class="card p-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="text-success"><i class="bi bi-person-badge"></i> Perfil</h5>
-                    <button id="btnNuevoProceso" class="btn btn-success">
-                        <i class="bi bi-broadcast-pin"></i> Iniciar lectura
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button id="btnNuevoProceso" class="btn btn-success">
+                            <i class="bi bi-broadcast-pin"></i> Iniciar lectura
+                        </button>
+                        <!-- 🔴 BOTÓN CERRAR SESIÓN -->
+                        <button id="btnLogout" class="btn btn-outline-danger">
+                            <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                        </button>
+                    </div>
                 </div>
                 <div id="user-profile-content" class="mt-2 text-muted">
                     Esperando lectura...
@@ -347,12 +316,11 @@
     <div id="toast-container" style="position:fixed;bottom:1rem;right:1rem;z-index:2000;"></div>
 </div>
 
-<!-- MODAL REGISTRAR DISPOSITIVO (100% Bootstrap) -->
+<!-- MODAL REGISTRAR DISPOSITIVO -->
 <div class="modal fade" id="modalAddDevice" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
 
-            <!-- Encabezado -->
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title d-flex align-items-center gap-2">
                     <i class="bi bi-pc"></i> Registrar dispositivo
@@ -360,16 +328,12 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
 
-            <!-- Cuerpo -->
             <div class="modal-body bg-light">
-
-                <!-- Datos del usuario -->
                 <div class="alert alert-info border-start border-4 border-primary rounded-3">
                     <h6 class="mb-1"><i class="bi bi-person-lines-fill"></i> Usuario</h6>
                     <div id="modalUserData" class="small text-muted">Cargando...</div>
                 </div>
 
-                <!-- Dispositivos existentes -->
                 <h6 class="text-primary mb-2"><i class="bi bi-hdd-network"></i> Dispositivos existentes</h6>
                 <div id="modal-user-devices" class="bg-white border rounded p-3 mb-3" style="max-height:200px; overflow-y:auto;">
                     <p class="text-center text-muted small">Sin dispositivos.</p>
@@ -377,7 +341,6 @@
 
                 <hr>
 
-                <!-- Formulario nuevo dispositivo -->
                 <h6 class="text-success"><i class="bi bi-plus-circle"></i> Crear nuevo dispositivo</h6>
                 <form id="formDevice" class="row g-3 mt-2">
 
@@ -412,7 +375,6 @@
 
             </div>
 
-            <!-- Footer -->
             <div class="modal-footer bg-white">
                 <button id="btnGuardarDevice" class="btn btn-success">
                     <i class="bi bi-check-circle"></i> Guardar
@@ -424,12 +386,20 @@
     </div>
 </div>
 
-
 <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
 
 <script>
+    // 🔒 Validación de sesión y rol ANTES de mostrar la Terminal
     (() => {
         document.documentElement.classList.add('guard-check-pending');
+
+        // 🚫 Candado extra: Terminal SOLO se puede abrir viniendo del Login
+        const terminalFlag = sessionStorage.getItem('terminal_auth_ok');
+        if (!terminalFlag) {
+            // Si alguien escribe /Terminal directo en la barra → al Login
+            window.location.replace('/Login');
+            return;
+        }
 
         function decodeJwt(token) {
             if (!token) return null;
@@ -467,8 +437,16 @@
             return typeof rol === 'string' ? rol.trim().toLowerCase() : null;
         }
 
+        // Si no hay token, manda a Login
+        const rawToken = localStorage.getItem('auth_token');
+        if (!rawToken) {
+            window.location.replace('/Login');
+            return;
+        }
+
         const rolActivo = obtenerRolActivo();
         if (rolActivo !== 'guardia') {
+            // Si está logueado pero no es guardia → al panel admin
             window.location.replace('/Admin/Usuarios');
             return;
         }
@@ -476,6 +454,7 @@
         document.documentElement.classList.remove('guard-check-pending');
     })();
 </script>
+
 <script>
     /* =============================================================================
        🎯 CONFIGURACIÓN Y VARIABLES GLOBALES
@@ -496,16 +475,11 @@
         procesoActivo: (tipo, id) => `/api/Procesoes/activo/${tipo}/${id}`
     };
 
-    // 🔥 Variables de estado del proceso actual
     let procesoActualId = null;
     let tipoPersonaActual = null;
     let idPropietarioActual = null;
     let modoActual = null; // "Ingreso" o "Salida"
     let nombreUsuarioActual = null;
-
-    /* =============================================================================
-       🎨 ELEMENTOS DOM
-    ============================================================================= */
 
     const ownerContainer = document.getElementById("user-owner-devices");
     const processContainer = document.getElementById("user-process-devices");
@@ -520,10 +494,7 @@
     const inpMarca = document.getElementById("inpMarca");
     const inpModelo = document.getElementById("inpModelo");
     const inpDescripcion = document.getElementById("inpDescripcion");
-
-    /* =============================================================================
-       🍞 SISTEMA DE TOASTS
-    ============================================================================= */
+    const btnLogout = document.getElementById("btnLogout");
 
     function showToast(msg, type = "info") {
         const div = document.createElement("div");
@@ -537,10 +508,6 @@
         document.getElementById("toast-container").appendChild(div);
         setTimeout(() => div.remove(), 5000);
     }
-
-    /* =============================================================================
-       🧹 LIMPIAR PROCESO
-    ============================================================================= */
 
     function limpiarProceso() {
         procesoActualId = null;
@@ -556,10 +523,6 @@
         btnAddDevice.disabled = true;
     }
 
-    /* =============================================================================
-       ✅ VALIDACIÓN DEL PROCESO
-    ============================================================================= */
-
     function validarProceso(proceso) {
         if (!proceso) return false;
         const tipo = proceso.tipoPersona || proceso.TipoPersona;
@@ -567,10 +530,6 @@
         if (tipo === "Usuario") return !!(proceso.idUsuario || proceso.IdUsuario);
         return false;
     }
-
-    /* =============================================================================
-       👤 MAPEAR PERSONA (Aprendiz o Usuario)
-    ============================================================================= */
 
     function mapPersona(tipo, data) {
         const nombre = data.nombre || data.Nombre || "";
@@ -601,10 +560,6 @@
             extra: extra
         };
     }
-
-    /* =============================================================================
-       🤖 AUTO-REGISTRAR DISPOSITIVOS (SOLO EN INGRESO)
-    ============================================================================= */
 
     async function autoRegistrarDispositivos() {
         if (modoActual !== "Ingreso") {
@@ -644,10 +599,6 @@
         }
     }
 
-    /* =============================================================================
-       📊 MOSTRAR PERFIL + ACTIVAR PROCESO
-    ============================================================================= */
-
     async function showProfile(persona, tipoPersona, proceso, registro) {
         tipoPersonaActual = tipoPersona;
         procesoActualId = proceso.idProceso || proceso.IdProceso;
@@ -685,22 +636,14 @@
             </div>
         `;
 
-        // 🔒 Solo permitir agregar dispositivos en INGRESO
         btnAddDevice.disabled = !esIngreso;
 
         addHistory(modoActual, registro.fechaRegistro || new Date(), persona.nombreCompleto);
 
-        // 🔥 AUTO-REGISTRAR DISPOSITIVOS (solo en ingreso)
         await autoRegistrarDispositivos();
-
-        // Cargar dispositivos
         await cargarDispositivosUsuario();
         await cargarDispositivosProceso();
     }
-
-    /* =============================================================================
-       📦 DISPOSITIVOS REGISTRADOS DEL USUARIO (Todos los que tiene)
-    ============================================================================= */
 
     async function cargarDispositivosUsuario() {
         try {
@@ -747,10 +690,6 @@
             ownerContainer.innerHTML = `<p class="text-danger text-center">Error al cargar dispositivos</p>`;
         }
     }
-
-    /* =============================================================================
-       🔧 DISPOSITIVOS EN PROCESO ACTUAL (Solo los del ingreso/salida)
-    ============================================================================= */
 
     async function cargarDispositivosProceso() {
         try {
@@ -822,10 +761,6 @@
         }
     }
 
-    /* =============================================================================
-       🎨 ICONO SEGÚN TIPO DE DISPOSITIVO
-    ============================================================================= */
-
     function getIconoDispositivo(tipo) {
         const iconos = {
             'Portátil': 'laptop',
@@ -849,10 +784,6 @@
         return iconos[tipo] || 'hdd';
     }
 
-    /* =============================================================================
-       ❌ QUITAR DISPOSITIVO DEL PROCESO
-    ============================================================================= */
-
     async function removeFromProcess(relId) {
         const mensaje = modoActual === "Salida"
             ? "¿Confirmar que NO sacaste este dispositivo del SENA?"
@@ -875,10 +806,6 @@
         }
     }
 
-    /* =============================================================================
-       📝 MODAL - CARGAR DATOS
-    ============================================================================= */
-
     document.getElementById("modalAddDevice").addEventListener("show.bs.modal", async () => {
         modalUserData.innerHTML = "Cargando...";
         modalUserDevices.innerHTML = `<p class="text-muted text-center">Cargando...</p>`;
@@ -895,10 +822,6 @@
 
         await cargarDispositivosModal();
     });
-
-    /* =============================================================================
-       📋 MODAL - DISPOSITIVOS EXISTENTES
-    ============================================================================= */
 
     async function cargarDispositivosModal() {
         try {
@@ -937,10 +860,6 @@
         }
     }
 
-    /* =============================================================================
-       ➕ CREAR NUEVO DISPOSITIVO
-    ============================================================================= */
-
     document.getElementById("btnGuardarDevice").onclick = async () => {
         if (!selTipoElemento.value || !inpSerial.value.trim()) {
             showToast("⚠️ Complete los campos obligatorios (Tipo y Serial)", "danger");
@@ -970,7 +889,6 @@
 
                 showToast("✅ Dispositivo creado exitosamente", "success");
 
-                // Vincular automáticamente al proceso si es INGRESO
                 if (modoActual === "Ingreso") {
                     const idElemento = nuevoElemento.idElemento || nuevoElemento.IdElemento;
 
@@ -987,18 +905,15 @@
                     console.log("✅ Dispositivo vinculado al proceso automáticamente");
                 }
 
-                // Limpiar formulario
                 inpSerial.value = "";
                 inpMarca.value = "";
                 inpModelo.value = "";
                 inpDescripcion.value = "";
 
-                // Recargar vistas
                 await cargarDispositivosUsuario();
                 await cargarDispositivosProceso();
                 await cargarDispositivosModal();
 
-                // Cerrar modal
                 bootstrap.Modal.getInstance(document.getElementById("modalAddDevice")).hide();
             } else {
                 const error = await res.json();
@@ -1009,10 +924,6 @@
             showToast("❌ Error de conexión", "danger");
         }
     };
-
-    /* =============================================================================
-       🎛️ CARGAR TIPOS DE DISPOSITIVOS
-    ============================================================================= */
 
     async function cargarTipos() {
         try {
@@ -1034,14 +945,16 @@
 
     cargarTipos();
 
-    /* =============================================================================
-       📡 SIGNALR - LECTURA NFC AUTOMÁTICA
-    ============================================================================= */
-
     const connection = new signalR.HubConnectionBuilder()
         .withUrl(HUB_URL)
         .withAutomaticReconnect([0, 2000, 5000, 10000])
         .build();
+
+    function getCurrentUser() {
+        const storedUser = localStorage.getItem('user_info');
+        if (!storedUser) return null;
+        try { return JSON.parse(storedUser); } catch { return null; }
+    }
 
     connection.on("OperacionProcesada", async raw => {
         console.log("📡 Evento recibido desde SignalR:", raw);
@@ -1115,14 +1028,32 @@
     connection.start().then(() => {
         console.log("✅ Conexión SignalR establecida correctamente");
         showToast("🟢 Sistema NFC habilitado", "success");
+
+        const user = getCurrentUser();
+        if (user) {
+            const rol = (user.Rol || user.rol || '').toString().trim().toLowerCase();
+            if (rol === 'guardia') {
+                let guardId = user.IdUsuario || user.idUsuario || localStorage.getItem('guard_id');
+                if (guardId) {
+                    guardId = parseInt(guardId);
+                    connection.invoke('SetCurrentGuard', guardId)
+                        .then(() => {
+                            console.log("👮‍♂️ Guardia registrado en el hub con Id =", guardId);
+                            showToast(`👮‍♂️ Guardia activo: ID ${guardId}`, "info");
+                        })
+                        .catch(err => {
+                            console.error("❌ Error enviando Id de guardia al hub:", err);
+                            showToast("❌ No se pudo registrar el guardia en el hub", "danger");
+                        });
+                } else {
+                    console.warn("⚠️ No se encontró IdUsuario para el guardia en user_info / guard_id");
+                }
+            }
+        }
     }).catch(err => {
         console.error("❌ Error conectando SignalR:", err);
         showToast("❌ Error de conexión NFC. Verifique el servidor.", "danger");
     });
-
-    /* =============================================================================
-       📜 HISTORIAL
-    ============================================================================= */
 
     function addHistory(tipo, fecha, nombre) {
         const item = document.createElement("div");
@@ -1143,15 +1074,10 @@
 
         historyList.prepend(item);
 
-        // Limitar historial a 20 items
         while (historyList.children.length > 20) {
             historyList.lastChild.remove();
         }
     }
-
-    /* =============================================================================
-       🔄 BOTÓN NUEVO PROCESO
-    ============================================================================= */
 
     document.getElementById("btnNuevoProceso").addEventListener("click", () => {
         if (procesoActualId) {
@@ -1164,7 +1090,18 @@
         console.log("🔄 Proceso limpiado, esperando nuevo tag");
     });
 
+    // 🔴 BOTÓN CERRAR SESIÓN EN TERMINAL
+    btnLogout.addEventListener("click", () => {
+        if (!confirm("¿Cerrar sesión y salir de la terminal?")) return;
 
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_info');
+        localStorage.removeItem('guard_id');
+        sessionStorage.removeItem('terminal_auth_ok');
 
-
+        showToast("👋 Sesión cerrada.", "info");
+        setTimeout(() => {
+            window.location.replace('/Login');
+        }, 500);
+    });
 </script>
