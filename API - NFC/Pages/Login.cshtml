@@ -12,7 +12,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/css/theme.css" rel="stylesheet" />
 </head>
-<body style="background:var(--brand-bg); display:flex; align-items:center; min-height:100vh;">
+<body>
     <style>
         :root {
             --brand-green: #08701C;
@@ -32,9 +32,13 @@
             --shadow-soft: 0 4px 16px -4px rgba(0,0,0,.12);
             --shadow-card: 0 8px 28px -10px rgba(0,0,0,.25);
             --transition: .2s ease;
-            --gradient-green-teal: linear-gradient(90deg,#08701C 0%, #0087A8 100%);
-            --gradient-green-blue: linear-gradient(90deg,#08701C 0%, #006BB3 100%);
-            --gradient-green: #08701C;
+            --gradient-green-teal: linear-gradient(135deg,#08701C 0%, #0087A8 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         html, body {
@@ -42,98 +46,201 @@
             font-family: system-ui, 'Inter', Arial, sans-serif;
             color: #1F2A33;
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        .login-wrapper {
-            max-width: 430px;
-            width: 100%;
-            margin: auto;
-        }
-
-        .gradient-header-login {
-            background: var(--gradient-green-teal);
-            color: #fff;
-            padding: 1.1rem 1.2rem;
-            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-            font-weight: 600;
-            letter-spacing: .5px;
+        .container-fluid {
+            min-height: 100vh;
+            padding: 0;
             display: flex;
             align-items: center;
-            gap: .55rem;
+            justify-content: center;
         }
 
-        .tab-switch {
+        .split-screen {
             display: flex;
-            width: 100%;
+            max-width: 950px;
+            width: 85%;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            background: white;
+            flex-wrap: wrap;
         }
 
-            .tab-switch button {
-                flex: 1;
-                border: none;
-                padding: .75rem;
-                font-weight: 600;
-                font-size: .8rem;
-                background: #E7EDF0;
-                letter-spacing: .6px;
-                cursor: pointer;
-                transition: var(--transition);
-                color: #184A26;
-            }
-
-                .tab-switch button.active {
-                    background: var(--brand-green);
-                    color: #fff;
-                }
-
-                .tab-switch button:hover:not(.active) {
-                    background: #DCE3E6;
-                }
-
-        .login-card {
-            background: #fff;
-            border: 1px solid var(--border-soft);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-card);
+        .left-panel {
+            flex: 1;
+            background: var(--gradient-green-teal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            position: relative;
+            min-height: 300px;
             overflow: hidden;
         }
 
-        .btn-brand {
-            background: var(--brand-green);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            padding: .65rem 1.05rem;
-            display: inline-flex;
-            align-items: center;
-            gap: .5rem;
-            transition: var(--transition);
-        }
-
-            .btn-brand:hover {
-                background: var(--brand-green-dark);
+            .left-panel::before {
+                content: '';
+                position: absolute;
+                width: 500px;
+                height: 500px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 50%;
+                top: -150px;
+                left: -150px;
             }
 
+            .left-panel::after {
+                content: '';
+                position: absolute;
+                width: 350px;
+                height: 350px;
+                background: rgba(255,255,255,0.08);
+                border-radius: 50%;
+                bottom: -100px;
+                right: -100px;
+            }
+
+        .welcome-content {
+            text-align: center;
+            color: white;
+            z-index: 1;
+            max-width: 400px;
+        }
+
+            .welcome-content h1 {
+                font-size: 2.5rem;
+                font-weight: 700;
+                margin-bottom: 1rem;
+                text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            }
+
+            .welcome-content p {
+                font-size: 1.1rem;
+                opacity: 0.95;
+                margin-bottom: 2rem;
+            }
+
+        .toggle-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 0.75rem 2.5rem;
+            border-radius: var(--radius-lg);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+            .toggle-btn:hover {
+                background: white;
+                color: var(--brand-green);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 2rem 2.5rem;
+            overflow-y: auto;
+            height: auto;
+            max-height: none;
+            background: white;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .form-header {
+            margin-bottom: 1.5rem;
+        }
+
+            .form-header h2 {
+                font-size: 1.75rem;
+                font-weight: 700;
+                color: var(--brand-green);
+                margin-bottom: 0.3rem;
+            }
+
+            .form-header p {
+                color: #5B6773;
+                font-size: 0.85rem;
+            }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #1F2A33;
+            margin-bottom: 0.4rem;
+            font-size: 0.85rem;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
         .form-control, .form-select {
+            width: 100%;
+            padding: 0.7rem 0.9rem;
             border-radius: var(--radius-md);
-            border: 1px solid var(--border-soft);
+            border: 2px solid var(--border-soft);
             background: #F9FBFC;
-            font-size: .9rem;
+            font-size: 0.875rem;
             transition: var(--transition);
         }
 
             .form-control:focus, .form-select:focus {
+                outline: none;
                 border-color: var(--brand-green-light);
-                box-shadow: 0 0 0 .15rem rgba(8,112,28,.25);
-                background: #fff;
+                background: white;
+                box-shadow: 0 0 0 3px rgba(8,112,28,0.1);
+            }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--gradient-green-teal);
+            border: none;
+            color: white;
+            padding: 0.9rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(8,112,28,0.3);
+            }
+
+            .btn-primary:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
             }
 
         .alert-inline {
             display: none;
-            margin-bottom: .65rem;
-            font-size: .7rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
             border-radius: var(--radius-md);
-            padding: .55rem .7rem;
+            padding: 0.75rem 1rem;
         }
 
             .alert-inline.ok {
@@ -148,162 +255,266 @@
                 color: #7A2422;
             }
 
+        .small-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.75rem;
+            margin-bottom: 1.25rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
         .small-link {
-            font-size: .7rem;
+            font-size: 0.85rem;
             text-decoration: none;
             color: var(--brand-blue);
             font-weight: 500;
+            transition: var(--transition);
         }
 
             .small-link:hover {
+                color: var(--brand-blue-dark);
                 text-decoration: underline;
             }
-
-        .flex-between {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
 
         .spinner-dot {
             width: 18px;
             height: 18px;
-            border: 3px solid rgba(0,0,0,.15);
-            border-top-color: var(--brand-green);
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
             border-radius: 50%;
-            animation: spin .85s linear infinite;
+            animation: spin 0.8s linear infinite;
             display: none;
         }
 
-        .footer-bar {
-            font-size: .7rem;
+  
+
+        .info-text {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.8rem;
             color: #5B6773;
-            padding: 1.5rem 0;
+        }
+
+        .sena-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            padding: 0.6rem;
+            background: rgba(255,255,255,0.15);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(10px);
+        }
+
+            .sena-badge span {
+                font-size: 0.8rem;
+                font-weight: 600;
+                color: white;
+                text-align: center;
+                line-height: 1.3;
+            }
+
+        .footer-bar {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: #5B6773;
             text-align: center;
         }
 
-    
+       
+
+        .left-panel {
+            min-height: 220px;
+            padding: 2rem;
+        }
+
+        .right-panel {
+            padding: 2rem 1rem;
+        }
+
+        .small-links {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        }
     </style>
 
-    <div class="login-wrapper">
-        <div class="login-card">
-            <div class="gradient-header-login">
-                <span style="font-size:1rem;">Bienvenido</span>
+    <div class="container-fluid">
+        <div class="split-screen">
+            <!-- Panel Izquierdo -->
+            <div class="left-panel" id="leftPanel">
+                <div class="welcome-content">
+                    <h1 id="welcomeTitle">¡Hola, Bienvenido!</h1>
+                    <p id="welcomeText">¿No tienes una cuenta?</p>
+                    <button class="toggle-btn" id="toggleBtn">Registrar</button>
+
+                    <div class="sena-badge">
+                        <span>CIMM - Centro Industrial de<br>Mantenimiento y Manufactura<br>SENA</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="tab-switch">
-                <button id="btnTabLogin" class="active">LOGIN</button>
-                <button id="btnTabRegister">REGISTRO</button>
-            </div>
+            <!-- Panel Derecho -->
+            <div class="right-panel">
+                <div class="form-container">
+                    <!-- ALERTAS -->
+                    <div id="alertLoginErr" class="alert-inline err"></div>
+                    <div id="alertLoginOk" class="alert-inline ok"></div>
+                    <div id="alertRegErr" class="alert-inline err"></div>
+                    <div id="alertRegOk" class="alert-inline ok"></div>
 
-            <!-- ALERTAS -->
-            <div id="alertLoginErr" class="alert-inline err"></div>
-            <div id="alertLoginOk" class="alert-inline ok"></div>
-            <div id="alertRegErr" class="alert-inline err"></div>
-            <div id="alertRegOk" class="alert-inline ok"></div>
+                    <!-- FORMULARIO LOGIN -->
+                    <div id="loginForm">
+                        <div class="form-header">
+                            <h2>Iniciar Sesión</h2>
+                            <p>Ingresa tus credenciales para continuar</p>
+                        </div>
 
-            <!-- LOGIN -->
-            <div id="paneLogin" style="padding:1.2rem;">
-                <form id="formLogin" autocomplete="off">
-                    <div class="mb-3">
-                        <label class="form-label">Correo</label>
-                        <input type="email" class="form-control" id="loginCorreo" required placeholder="usuario@correo.com">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Contraseña</label>
-                        <input type="password" class="form-control" id="loginPass" required minlength="4" placeholder="••••••">
-                    </div>
-                    <div class="flex-between mb-3">
-                        <a href="#" id="linkRecuperar" class="small-link">Recuperar contraseña</a>
-                        <div class="d-flex gap-3">
-                            <a href="#" id="linkVerToken" class="small-link">Ver token</a>
-                            <a href="#" id="linkClear" class="small-link">Limpiar sesión</a>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-brand w-100" id="btnLogin">
-                        <span id="spinnerLogin" class="spinner-dot me-2"></span> Entrar
-                    </button>
-                    <p class="text-center mt-3 small-link" style="cursor:default; text-decoration:none;">
-                        Roles habilitados: Administrador / Guardia
-                    </p>
-                </form>
-            </div>
+                        <form id="formLogin" autocomplete="off">
+                            <div class="form-group">
+                                <label class="form-label">Correo Electrónico</label>
+                                <div class="input-wrapper">
+                                    <input type="email" class="form-control" id="loginCorreo" required placeholder="usuario@correo.com">
+                                </div>
+                            </div>
 
-            <!-- REGISTRO -->
-            <div id="paneRegister" style="display:none; padding:1.2rem;">
-                <form id="formRegister" autocomplete="off">
-                    <div class="row">
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Nombre</label>
-                            <input type="text" class="form-control" name="Nombre" id="regNombre" required minlength="2">
-                        </div>
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Apellido</label>
-                            <input type="text" class="form-control" name="Apellido" id="regApellido" required minlength="2">
-                        </div>
+                            <div class="form-group">
+                                <label class="form-label">Contraseña</label>
+                                <div class="input-wrapper">
+                                    <input type="password" class="form-control" id="loginPass" required minlength="4" placeholder="••••••••">
+                                </div>
+                            </div>
+
+                            <div class="small-links">
+                                <a href="#" id="linkRecuperar" class="small-link">¿Olvidaste tu contraseña?</a>
+                                <div style="display: flex; gap: 1rem;">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-primary" id="btnLogin">
+                                <span id="spinnerLogin" class="spinner-dot"></span>
+                                Entrar
+                            </button>
+
+                            <p class="info-text">
+                                <strong>Roles habilitados:</strong> Administrador / Guardia
+                            </p>
+                        </form>
                     </div>
-                    <div class="row">
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Tipo Doc.</label>
-                            <select class="form-select" name="TipoDocumento" id="regTipoDoc" required>
-                                <option value="">--</option>
-                                <option value="CC">CC</option>
-                                <option value="TI">TI</option>
-                                <option value="CE">CE</option>
-                                <option value="PA">PA</option>
-                            </select>
+
+                    <!-- FORMULARIO REGISTRO -->
+                    <div id="registerForm" style="display: none;">
+                        <div class="form-header">
+                            <h2>Crear Cuenta</h2>
+                            <p>Completa los datos para registrarte</p>
                         </div>
-                        <div class="col-6 mb-2">
-                            <label class="form-label">N° Documento</label>
-                            <input type="text" class="form-control" name="NumeroDocumento" id="regNumDoc" required minlength="4">
-                        </div>
+
+                        <form id="formRegister" autocomplete="off">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Nombre</label>
+                                        <input type="text" class="form-control" name="Nombre" id="regNombre" required minlength="2" placeholder="Juan">
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Apellido</label>
+                                        <input type="text" class="form-control" name="Apellido" id="regApellido" required minlength="2" placeholder="Pérez">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Tipo Doc.</label>
+                                        <select class="form-select" name="TipoDocumento" id="regTipoDoc" required>
+                                            <option value="">Seleccionar</option>
+                                            <option value="CC">CC</option>
+                                            <option value="TI">TI</option>
+                                            <option value="CE">CE</option>
+                                            <option value="PA">PA</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label class="form-label">N° Documento</label>
+                                        <input type="text" class="form-control" name="NumeroDocumento" id="regNumDoc" required minlength="4" placeholder="12345678">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Correo Electrónico</label>
+                                <input type="email" class="form-control" name="Correo" id="regCorreo" required placeholder="usuario@correo.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" name="Contraseña" id="regPass" required minlength="6" placeholder="Mínimo 6 caracteres">
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Rol</label>
+                                        <select class="form-select" name="Rol" id="regRol" required>
+                                            <option value="">Seleccionar</option>
+                                            <option value="Administrador">Administrador</option>
+                                            <option value="Guardia">Guardia</option>
+                                            <option value="Funcionario">Funcionario</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Código Barras (opcional)</label>
+                                        <input type="text" class="form-control" name="CodigoBarras" id="regCB" placeholder="Código">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Cargo (opcional)</label>
+                                        <input type="text" class="form-control" name="Cargo" id="regCargo" placeholder="Tu cargo">
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group">
+                                        <label class="form-label">Teléfono (opcional)</label>
+                                        <input type="text" class="form-control" name="Telefono" id="regTel" placeholder="3001234567">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Foto URL (opcional)</label>
+                                <input type="url" class="form-control" name="FotoUrl" id="regFoto" placeholder="https://...">
+                            </div>
+
+                            <button type="submit" class="btn-primary" id="btnReg">
+                                <span id="spinnerReg" class="spinner-dot"></span>
+                                Registrar
+                            </button>
+
+                            <p class="info-text">Si no proporcionas un código de barras, se generará automáticamente.</p>
+                        </form>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label">Correo</label>
-                        <input type="email" class="form-control" name="Correo" id="regCorreo" required>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Contraseña</label>
-                        <input type="password" class="form-control" name="Contraseña" id="regPass" required minlength="6">
-                    </div>
-                    <div class="row">
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Rol</label>
-                            <select class="form-select" name="Rol" id="regRol" required>
-                                <option value="">--</option>
-                                <option value="Administrador">Administrador</option>
-                                <option value="Guardia">Guardia</option>
-                                <option value="Funcionario">Funcionario</option>
-                            </select>
-                        </div>
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Código Barras (op)</label>
-                            <input type="text" class="form-control" name="CodigoBarras" id="regCB">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Cargo (op)</label>
-                            <input type="text" class="form-control" name="Cargo" id="regCargo">
-                        </div>
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Teléfono (op)</label>
-                            <input type="text" class="form-control" name="Telefono" id="regTel">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Foto URL (op)</label>
-                        <input type="url" class="form-control" name="FotoUrl" id="regFoto" placeholder="https://...">
-                    </div>
-                    <button type="submit" class="btn-brand w-100" id="btnReg">
-                        <span id="spinnerReg" class="spinner-dot me-2"></span> Registrar
-                    </button>
-                    <p class="text-center mt-3 small-link" style="cursor:default;">Si no das Código Barras se genera automático.</p>
-                </form>
+                </div>
             </div>
         </div>
 
-        <div class="footer-bar mt-4">
+        <div class="footer-bar">
             &copy; @DateTime.UtcNow.Year NFC SENA · Seguridad &amp; Control
         </div>
     </div>
@@ -311,141 +522,163 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function(){
-          // Tabs
-          const btnTabLogin     = document.getElementById('btnTabLogin');
-          const btnTabRegister  = document.getElementById('btnTabRegister');
-          const paneLogin       = document.getElementById('paneLogin');
-          const paneRegister    = document.getElementById('paneRegister');
+          // Toggle entre Login y Registro
+          const toggleBtn = document.getElementById('toggleBtn');
+          const welcomeTitle = document.getElementById('welcomeTitle');
+          const welcomeText = document.getElementById('welcomeText');
+          const loginForm = document.getElementById('loginForm');
+          const registerForm = document.getElementById('registerForm');
 
-          function activate(tab){
-            if(tab === 'login'){
-              btnTabLogin.classList.add('active');
-              btnTabRegister.classList.remove('active');
-              paneLogin.style.display='block';
-              paneRegister.style.display='none';
+          let isLogin = true;
+
+          toggleBtn.addEventListener('click', () => {
+            isLogin = !isLogin;
+
+            if (isLogin) {
+              welcomeTitle.textContent = '¡Hola, Bienvenido!';
+              welcomeText.textContent = '¿No tienes una cuenta?';
+              toggleBtn.textContent = 'Registrar';
+              loginForm.style.display = 'block';
+              registerForm.style.display = 'none';
             } else {
-              btnTabRegister.classList.add('active');
-              btnTabLogin.classList.remove('active');
-              paneRegister.style.display='block';
-              paneLogin.style.display='none';
+              welcomeTitle.textContent = '¡Bienvenido de nuevo!';
+              welcomeText.textContent = '¿Ya tienes una cuenta?';
+              toggleBtn.textContent = 'Iniciar Sesión';
+              loginForm.style.display = 'none';
+              registerForm.style.display = 'block';
             }
-          }
-          btnTabLogin.addEventListener('click', ()=>activate('login'));
-          btnTabRegister.addEventListener('click', ()=>activate('register'));
+          });
 
           // Utilidades
-          const show = (el,msg)=>{ el.textContent=msg; el.style.display='block'; };
-          const hide = el=>{ el.textContent=''; el.style.display='none'; };
-          function decodeJwt(t){
+          const show = (el, msg) => {
+            el.textContent = msg;
+            el.style.display = 'block';
+          };
+
+          const hide = el => {
+            el.textContent = '';
+            el.style.display = 'none';
+          };
+
+          function decodeJwt(t) {
             if(!t) return null;
-            try{
+            try {
               const p = t.split('.')[1];
               const j = atob(p.replace(/-/g,'+').replace(/_/g,'/'));
               return JSON.parse(j);
-            }catch { return null; }
+            } catch {
+              return null;
+            }
           }
-          async function safeParse(resp){
-            const ct = resp.headers.get('content-type')||'';
-            if(ct.includes('application/json')){
-              try{ return await resp.json(); }catch { return {}; }
+
+          async function safeParse(resp) {
+            const ct = resp.headers.get('content-type') || '';
+            if(ct.includes('application/json')) {
+              try {
+                return await resp.json();
+              } catch {
+                return {};
+              }
             }
             return { rawText: await resp.text() };
           }
 
           // LOGIN
-          const formLogin   = document.getElementById('formLogin');
-          const loginError  = document.getElementById('alertLoginErr');
-          const loginOk     = document.getElementById('alertLoginOk');
-          const spinnerLogin= document.getElementById('spinnerLogin');
-          const btnLogin    = document.getElementById('btnLogin');
+          const formLogin = document.getElementById('formLogin');
+          const loginError = document.getElementById('alertLoginErr');
+          const loginOk = document.getElementById('alertLoginOk');
+          const spinnerLogin = document.getElementById('spinnerLogin');
+          const btnLogin = document.getElementById('btnLogin');
           const linkRecuperar = document.getElementById('linkRecuperar');
-          const linkVerToken  = document.getElementById('linkVerToken');
-          const linkClear     = document.getElementById('linkClear');
+          const linkVerToken = document.getElementById('linkVerToken');
+          const linkClear = document.getElementById('linkClear');
 
-          formLogin.addEventListener('submit', async e=>{
+          formLogin.addEventListener('submit', async e => {
             e.preventDefault();
-            hide(loginError); hide(loginOk);
+            hide(loginError);
+            hide(loginOk);
+
             const correo = document.getElementById('loginCorreo').value.trim();
-            const pass   = document.getElementById('loginPass').value;
-            if(!correo || !pass){
-              show(loginError,'Complete los campos.');
+            const pass = document.getElementById('loginPass').value;
+
+            if(!correo || !pass) {
+              show(loginError, 'Complete todos los campos.');
               return;
             }
-            btnLogin.disabled=true;
-            spinnerLogin.style.display='inline-block';
-            try{
-              const resp = await fetch('/api/auth/login',{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
+
+            btnLogin.disabled = true;
+            spinnerLogin.style.display = 'inline-block';
+
+            try {
+              const resp = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ Correo: correo, Contraseña: pass })
               });
+
               const data = await safeParse(resp);
-              if(!resp.ok){
-                const msg = data.error || data.message || data.rawText || ('Error '+resp.status);
-                show(loginError,msg);
+
+              if(!resp.ok) {
+                const msg = data.error || data.message || data.rawText || ('Error ' + resp.status);
+                show(loginError, msg);
               } else {
                 const token = data.token || data.Token;
-                const usr   = data.usuario || data.Usuario;
-                if(!token){
-                  show(loginError,'Respuesta inesperada (sin token).');
+                const usr = data.usuario || data.Usuario;
+
+                if(!token) {
+                  show(loginError, 'Respuesta inesperada (sin token).');
                 } else {
-                  // Guardar token y usuario
                   localStorage.setItem('auth_token', token);
                   if(usr) localStorage.setItem('user_info', JSON.stringify(usr));
 
-                  // 👮‍♂️ Si es guardia, guardar también su IdUsuario como guard_id
                   if (usr && (usr.Rol || usr.rol)) {
-                      const rolLocal = (usr.Rol || usr.rol).toString().trim().toLowerCase();
-                      if (rolLocal === 'guardia') {
-                          const guardId = usr.IdUsuario || usr.idUsuario;
-                          if (guardId) {
-                              localStorage.setItem('guard_id', guardId.toString());
-                          }
+                    const rolLocal = (usr.Rol || usr.rol).toString().trim().toLowerCase();
+                    if (rolLocal === 'guardia') {
+                      const guardId = usr.IdUsuario || usr.idUsuario;
+                      if (guardId) {
+                        localStorage.setItem('guard_id', guardId.toString());
                       }
+                    }
                   }
 
                   show(loginOk, 'Bienvenido ' + (usr?.Nombre || usr?.nombre || '') + ' (' + (usr?.Rol || usr?.rol || '') + ')');
 
-                  // 🔐 Decidir a dónde ir según el rol
                   const decoded = decodeJwt(token);
-                  const rolToken =
-                      decoded?.role ||
-                      decoded?.Rol ||
-                      decoded?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-
+                  const rolToken = decoded?.role || decoded?.Rol || decoded?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
                   const rolLocal2 = usr?.Rol || usr?.rol;
                   const rolFinal = (rolLocal2 || rolToken || '').toString().trim().toLowerCase();
 
-                  let redirectUrl = '/Login'; // valor por defecto
+                  let redirectUrl = '/Login';
 
                   if (rolFinal === 'guardia') {
-                      // ✅ Candado: marcamos que VIENE del login hacia la Terminal
-                      sessionStorage.setItem('terminal_auth_ok', '1');
-                      redirectUrl = '/Terminal';
+                    sessionStorage.setItem('terminal_auth_ok', '1');
+                    redirectUrl = '/Terminal';
                   } else if (rolFinal === 'administrador') {
-                      redirectUrl = '/Admin/Usuarios';
+                    redirectUrl = '/Admin/Usuarios';
                   }
 
-                  setTimeout(() => { window.location.href = redirectUrl; }, 800);
+                  setTimeout(() => {
+                    window.location.href = redirectUrl;
+                  }, 1200);
                 }
               }
-            }catch{
-              show(loginError,'Fallo de red.');
-            }finally{
-              btnLogin.disabled=false;
-              spinnerLogin.style.display='none';
+            } catch {
+              show(loginError, 'Error de conexión. Intenta nuevamente.');
+            } finally {
+              btnLogin.disabled = false;
+              spinnerLogin.style.display = 'none';
             }
           });
 
-          linkRecuperar.addEventListener('click', async e=>{
+          linkRecuperar.addEventListener('click', async e => {
             e.preventDefault();
-            const correo = prompt('Correo para recuperación:');
+            const correo = prompt('Ingresa tu correo para recuperación:');
             if(!correo) return;
 
-            try{
-              const resp = await fetch('/api/auth/RECUPERAR-password',{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
+            try {
+              const resp = await fetch('/api/auth/RECUPERAR-password', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ Correo: correo.trim() })
               });
 
@@ -454,42 +687,46 @@
               if (!resp.ok) {
                 alert(data.error || data.rawText || 'Error al solicitar recuperación.');
               } else {
-                alert('Si existe una cuenta con ese correo, recibirás un email con instrucciones para restablecer tu contraseña. Revisa bandeja de entrada y spam.');
+                alert('Si existe una cuenta con ese correo, recibirás un email con instrucciones. Revisa bandeja de entrada y spam.');
               }
-            } catch (err) {
-              alert('Fallo de red.');
+            } catch {
+              alert('Error de conexión.');
             }
           });
 
-          linkVerToken.addEventListener('click', e=>{
+          linkVerToken.addEventListener('click', e => {
             e.preventDefault();
             const t = localStorage.getItem('auth_token');
-            if(!t){ alert('No hay token.'); return; }
+            if(!t) {
+              alert('No hay token guardado.');
+              return;
+            }
             const d = decodeJwt(t);
             const rol = d?.role || d?.Rol || d?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-            alert('Token inicio:\n'+t.substring(0,55)+'...\nRol: '+(rol||'N/D'));
+            alert('Token (inicio):\n' + t.substring(0, 55) + '...\n\nRol: ' + (rol || 'N/D'));
           });
 
-          // 🔴 BOTÓN LIMPIAR SESIÓN
-          linkClear.addEventListener('click', e=>{
+          linkClear.addEventListener('click', e => {
             e.preventDefault();
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user_info');
             localStorage.removeItem('guard_id');
             sessionStorage.removeItem('terminal_auth_ok');
-            alert('Sesión limpiada.');
+            alert('Sesión limpiada correctamente.');
           });
 
           // REGISTRO
           const formRegister = document.getElementById('formRegister');
-          const regError     = document.getElementById('alertRegErr');
-          const regOk        = document.getElementById('alertRegOk');
-          const spinnerReg   = document.getElementById('spinnerReg');
-          const btnReg       = document.getElementById('btnReg');
+          const regError = document.getElementById('alertRegErr');
+          const regOk = document.getElementById('alertRegOk');
+          const spinnerReg = document.getElementById('spinnerReg');
+          const btnReg = document.getElementById('btnReg');
 
-          formRegister.addEventListener('submit', async e=>{
+          formRegister.addEventListener('submit', async e => {
             e.preventDefault();
-            hide(regError); hide(regOk);
+            hide(regError);
+            hide(regOk);
+
             const fd = new FormData(formRegister);
             const payload = {
               Nombre: fd.get('Nombre')?.toString().trim(),
@@ -506,38 +743,44 @@
             };
 
             if(!payload.Nombre || !payload.Apellido || !payload.TipoDocumento ||
-               !payload.NumeroDocumento || !payload.Correo || !payload.Contraseña || !payload.Rol){
-              show(regError,'Completa todos los requeridos.');
+               !payload.NumeroDocumento || !payload.Correo || !payload.Contraseña || !payload.Rol) {
+              show(regError, 'Completa todos los campos requeridos.');
               return;
             }
-            if(payload.Contraseña.length < 6){
-              show(regError,'Contraseña mínima 6 caracteres.');
+
+            if(payload.Contraseña.length < 6) {
+              show(regError, 'La contraseña debe tener mínimo 6 caracteres.');
               return;
             }
-            btnReg.disabled=true;
-            spinnerReg.style.display='inline-block';
-            try{
-              const resp = await fetch('/api/auth/register',{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
+
+            btnReg.disabled = true;
+            spinnerReg.style.display = 'inline-block';
+
+            try {
+              const resp = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
               });
+
               const data = await safeParse(resp);
-              if(!resp.ok){
-                const msg = data.error || data.message || data.rawText || 'Error';
+
+              if(!resp.ok) {
+                const msg = data.error || data.message || data.rawText || 'Error en el registro';
                 show(regError, msg);
               } else {
-                show(regOk,'Registro exitoso. Ve a Login.');
-                setTimeout(()=>{
-                  btnTabLogin.click();
+                show(regOk, 'Registro exitoso. Redirigiendo a Login...');
+                setTimeout(() => {
+                  toggleBtn.click();
                   hide(regOk);
-                }, 1500);
+                  formRegister.reset();
+                }, 1800);
               }
-            }catch{
-              show(regError,'Fallo de red.');
-            }finally{
-              btnReg.disabled=false;
-              spinnerReg.style.display='none';
+            } catch {
+              show(regError, 'Error de conexión. Intenta nuevamente.');
+            } finally {
+              btnReg.disabled = false;
+              spinnerReg.style.display = 'none';
             }
           });
         })();
