@@ -645,10 +645,8 @@
         await cargarDispositivosProceso();
     }
 
-    async function cargarDispositivosUsuario() {
+      async function cargarDispositivosUsuario() {
         try {
-            console.log(`📦 Cargando dispositivos registrados de ${tipoPersonaActual} ID: ${idPropietarioActual}`);
-
             const res = await fetch(API.owner(tipoPersonaActual, idPropietarioActual));
 
             if (!res.ok) {
@@ -657,7 +655,6 @@
             }
 
             const dispositivos = await res.json();
-            console.log(`✅ ${dispositivos.length} dispositivos encontrados`);
 
             if (dispositivos.length === 0) {
                 ownerContainer.innerHTML = `<p class="text-muted text-center">Sin dispositivos registrados.</p>`;
@@ -667,29 +664,34 @@
             ownerContainer.innerHTML = dispositivos.map(d => {
                 const tipoElem = d.tipoElemento || d.TipoElemento || {};
                 const tipoNombre = tipoElem.tipo || tipoElem.Tipo || "Dispositivo";
+                const imagen = d.imagenUrl || d.ImagenUrl;
 
                 return `
                     <div class="device-item">
                         <div class="device-icon">
-                            <i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>
+                            ${
+                                imagen && imagen.trim() !== ""
+                                ? `<img src="${imagen}" alt="${tipoNombre}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
+                                : `<i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>`
+                            }
                         </div>
                         <div>
                             <strong class="device-name">${tipoNombre}</strong><br>
                             <span class="device-details">
-                                ${d.marca ? `<strong>${d.marca}</strong> ` : ''}
-                                ${d.modelo || ''}<br>
-                                📟 Serial: ${d.serial || 'N/A'}
+                                ${d.marca ? `<strong>${d.marca}</strong> ` : ""}
+                                ${d.modelo || ""}<br>
+                                📟 Serial: ${d.serial || "N/A"}
                             </span>
                         </div>
                     </div>
                 `;
             }).join("");
 
-        } catch (error) {
-            console.error("❌ Error cargando dispositivos del usuario:", error);
+        } catch {
             ownerContainer.innerHTML = `<p class="text-danger text-center">Error al cargar dispositivos</p>`;
         }
     }
+
 
     async function cargarDispositivosProceso() {
         try {
@@ -730,7 +732,12 @@
                 return `
                     <div class="device-item">
                         <div class="device-icon">
-                            <i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>
+                              ${
+        d.imagenUrl
+        ? `<img src="${d.imagenUrl}" alt="${tipoNombre}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
+        : `<i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>`
+    }
+
                         </div>
                         <div style="flex:1">
                             <strong class="device-name">${tipoNombre}</strong><br>
@@ -805,6 +812,34 @@
             showToast("❌ Error de conexión", "danger");
         }
     }
+        async function agregarExistenteAlProceso(idElemento) {
+        if (!procesoActualId) return;
+
+        const res = await fetch(API.vincular(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                idElemento,
+                idProceso: procesoActualId,
+                validado: true
+            })
+        });
+
+        if (!res.ok) {
+            showToast("❌ No se pudo agregar el dispositivo al proceso", "danger");
+            return;
+        }
+
+        await cargarDispositivosProceso();
+        await cargarDispositivosModal();
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById("modalAddDevice"));
+        modal.hide();
+
+        showToast("✅ Dispositivo agregado al proceso", "success");
+    }
+
+
 
     document.getElementById("modalAddDevice").addEventListener("show.bs.modal", async () => {
         modalUserData.innerHTML = "Cargando...";
@@ -823,10 +858,9 @@
         await cargarDispositivosModal();
     });
 
-    async function cargarDispositivosModal() {
+     async function cargarDispositivosModal() {
         try {
             const res = await fetch(API.owner(tipoPersonaActual, idPropietarioActual));
-
             if (!res.ok) {
                 modalUserDevices.innerHTML = `<p class="text-muted text-center">Sin dispositivos.</p>`;
                 return;
@@ -834,28 +868,49 @@
 
             const dispositivos = await res.json();
 
+            const resProc = await fetch(API.byProceso(procesoActualId));
+            const dispositivosProc = resProc.ok ? await resProc.json() : [];
+            const idsEnProceso = dispositivosProc.map(ep => ep.idElemento || ep.IdElemento);
+
             modalUserDevices.innerHTML = dispositivos.length === 0
                 ? `<p class="text-muted text-center">Sin dispositivos registrados.</p>`
                 : dispositivos.map(d => {
                     const tipoElem = d.tipoElemento || d.TipoElemento || {};
                     const tipoNombre = tipoElem.tipo || tipoElem.Tipo || "Dispositivo";
 
+                    const idElemento = d.idElemento || d.IdElemento;
+                    const enProceso = idsEnProceso.includes(idElemento);
+
                     return `
                         <div class="device-item">
                             <div class="device-icon">
-                                <i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>
+                                   ${
+        d.imagenUrl
+        ? `<img src="${d.imagenUrl}" alt="${tipoNombre}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
+        : `<i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>`
+    }
+
                             </div>
-                            <div>
+
+                            <div style="flex:1">
                                 <strong>${tipoNombre}</strong><br>
-                                ${d.marca || ''} ${d.modelo || ''}<br>
-                                Serial: ${d.serial || 'N/A'}
+                                ${d.marca || ""} ${d.modelo || ""}<br>
+                                Serial: ${d.serial || "N/A"}
                             </div>
+
+                            ${
+                                enProceso
+                                    ? `<span class="badge bg-secondary">En proceso</span>`
+                                    : `<button class="btn btn-outline-success btn-sm"
+                                          onclick="agregarExistenteAlProceso(${idElemento})">
+                                          <i class="bi bi-plus-circle"></i>
+                                       </button>`
+                            }
                         </div>
                     `;
                 }).join("");
 
         } catch (error) {
-            console.error("❌ Error cargando dispositivos del modal:", error);
             modalUserDevices.innerHTML = `<p class="text-danger text-center">Error al cargar</p>`;
         }
     }
