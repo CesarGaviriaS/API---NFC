@@ -583,15 +583,13 @@
             return { rawText: await resp.text() };
           }
 
-          // LOGIN
+          // ---------------- LOGIN ----------------
           const formLogin = document.getElementById('formLogin');
           const loginError = document.getElementById('alertLoginErr');
           const loginOk = document.getElementById('alertLoginOk');
           const spinnerLogin = document.getElementById('spinnerLogin');
           const btnLogin = document.getElementById('btnLogin');
           const linkRecuperar = document.getElementById('linkRecuperar');
-          const linkVerToken = document.getElementById('linkVerToken');
-          const linkClear = document.getElementById('linkClear');
 
           formLogin.addEventListener('submit', async e => {
             e.preventDefault();
@@ -628,9 +626,11 @@
                 if(!token) {
                   show(loginError, 'Respuesta inesperada (sin token).');
                 } else {
+                
                   localStorage.setItem('auth_token', token);
                   if(usr) localStorage.setItem('user_info', JSON.stringify(usr));
 
+                 
                   if (usr && (usr.Rol || usr.rol)) {
                     const rolLocal = (usr.Rol || usr.rol).toString().trim().toLowerCase();
                     if (rolLocal === 'guardia') {
@@ -641,15 +641,13 @@
                     }
                   }
 
-                  show(loginOk, 'Bienvenido ' + (usr?.Nombre || usr?.nombre || '') + ' (' + (usr?.Rol || usr?.rol || '') + ')');
+                  show(loginOk, 'Bienvenido ' + (usr?.Nombre || '') + ' (' + (usr?.Rol || '') + ')');
 
                   const decoded = decodeJwt(token);
                   const rolToken = decoded?.role || decoded?.Rol || decoded?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-                  const rolLocal2 = usr?.Rol || usr?.rol;
-                  const rolFinal = (rolLocal2 || rolToken || '').toString().trim().toLowerCase();
+                  const rolFinal = (usr?.Rol || rolToken || '').toString().trim().toLowerCase();
 
                   let redirectUrl = '/Login';
-
                   if (rolFinal === 'guardia') {
                     sessionStorage.setItem('terminal_auth_ok', '1');
                     redirectUrl = '/Terminal';
@@ -670,6 +668,7 @@
             }
           });
 
+          // Recuperar contraseña
           linkRecuperar.addEventListener('click', async e => {
             e.preventDefault();
             const correo = prompt('Ingresa tu correo para recuperación:');
@@ -687,35 +686,14 @@
               if (!resp.ok) {
                 alert(data.error || data.rawText || 'Error al solicitar recuperación.');
               } else {
-                alert('Si existe una cuenta con ese correo, recibirás un email con instrucciones. Revisa bandeja de entrada y spam.');
+                alert('Si existe una cuenta con ese correo, recibirás un email con instrucciones.');
               }
             } catch {
               alert('Error de conexión.');
             }
           });
 
-          linkVerToken.addEventListener('click', e => {
-            e.preventDefault();
-            const t = localStorage.getItem('auth_token');
-            if(!t) {
-              alert('No hay token guardado.');
-              return;
-            }
-            const d = decodeJwt(t);
-            const rol = d?.role || d?.Rol || d?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-            alert('Token (inicio):\n' + t.substring(0, 55) + '...\n\nRol: ' + (rol || 'N/D'));
-          });
-
-          linkClear.addEventListener('click', e => {
-            e.preventDefault();
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user_info');
-            localStorage.removeItem('guard_id');
-            sessionStorage.removeItem('terminal_auth_ok');
-            alert('Sesión limpiada correctamente.');
-          });
-
-          // REGISTRO
+          // ---------------- REGISTRO ----------------
           const formRegister = document.getElementById('formRegister');
           const regError = document.getElementById('alertRegErr');
           const regOk = document.getElementById('alertRegOk');
@@ -728,6 +706,8 @@
             hide(regOk);
 
             const fd = new FormData(formRegister);
+
+           
             const payload = {
               Nombre: fd.get('Nombre')?.toString().trim(),
               Apellido: fd.get('Apellido')?.toString().trim(),
@@ -736,12 +716,14 @@
               Correo: fd.get('Correo')?.toString().trim(),
               Contraseña: fd.get('Contraseña')?.toString(),
               Rol: fd.get('Rol')?.toString().trim(),
-              CodigoBarras: fd.get('CodigoBarras')?.toString().trim(),
-              Cargo: fd.get('Cargo')?.toString().trim(),
-              Telefono: fd.get('Telefono')?.toString().trim(),
-              FotoUrl: fd.get('FotoUrl')?.toString().trim()
+
+              CodigoBarras: fd.get('CodigoBarras')?.toString().trim() || null,
+              Cargo: fd.get('Cargo')?.toString().trim() || null,
+              Telefono: fd.get('Telefono')?.toString().trim() || null,
+              FotoUrl: fd.get('FotoUrl')?.toString().trim() || null
             };
 
+            // Validación
             if(!payload.Nombre || !payload.Apellido || !payload.TipoDocumento ||
                !payload.NumeroDocumento || !payload.Correo || !payload.Contraseña || !payload.Rol) {
               show(regError, 'Completa todos los campos requeridos.');
@@ -769,7 +751,7 @@
                 const msg = data.error || data.message || data.rawText || 'Error en el registro';
                 show(regError, msg);
               } else {
-                show(regOk, 'Registro exitoso. Redirigiendo a Login...');
+                show(regOk, 'Registro exitoso. Redirigiendo...');
                 setTimeout(() => {
                   toggleBtn.click();
                   hide(regOk);
@@ -783,7 +765,9 @@
               spinnerReg.style.display = 'none';
             }
           });
+
         })();
     </script>
+
 </body>
 </html>
