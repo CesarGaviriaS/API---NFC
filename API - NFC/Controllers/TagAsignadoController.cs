@@ -10,6 +10,7 @@ namespace API___NFC.Controllers
     public class TagAsignadoController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+
         public TagAsignadoController(ApplicationDbContext context) => _context = context;
 
         [HttpPost]
@@ -28,6 +29,7 @@ namespace API___NFC.Controllers
 
             return Ok(new { message = "Tag registrado correctamente.", tag });
         }
+
         [HttpDelete("cleanup/{codigo}")]
         public async Task<IActionResult> CleanupTag(string codigo)
         {
@@ -38,7 +40,7 @@ namespace API___NFC.Controllers
                 // 1. Buscar el tag
                 var tag = await _context.TagAsignado.FirstOrDefaultAsync(t => t.CodigoTag == codigo);
 
-                // 2.  Buscar el elemento asociado
+                // 2. Buscar el elemento asociado
                 var elemento = await _context.Elemento.FirstOrDefaultAsync(e => e.CodigoNFC == codigo);
 
                 if (tag == null && elemento == null)
@@ -79,23 +81,63 @@ namespace API___NFC.Controllers
                 return StatusCode(500, new { message = $"Error al limpiar tag: {ex.Message}" });
             }
         }
+
+        // ✅ MÉTODO ACTUALIZADO: Ahora también limpia el elemento asociado
         [HttpDelete("by-codigo")]
         public async Task<IActionResult> DeleteByCodigo([FromQuery] string codigoTag)
         {
             if (string.IsNullOrWhiteSpace(codigoTag))
                 return BadRequest(new { message = "El código del tag es obligatorio." });
 
-            var tag = await _context.TagAsignado
-                .FirstOrDefaultAsync(t => t.CodigoTag == codigoTag);
+            try
+            {
+                Console.WriteLine($"🧹 Eliminando tag por código: {codigoTag}");
 
-            if (tag == null)
-                return NotFound(new { message = "El tag no se encuentra asignado." });
+                // 1. Buscar el tag
+                var tag = await _context.TagAsignado
+                    .FirstOrDefaultAsync(t => t.CodigoTag == codigoTag);
 
-            _context.TagAsignado.Remove(tag);
-            await _context.SaveChangesAsync();
+                // 2. Buscar el elemento asociado
+                var elemento = await _context.Elemento
+                    .FirstOrDefaultAsync(e => e.CodigoNFC == codigoTag);
 
-            return Ok(new { message = "Tag eliminado correctamente." });
+                if (tag == null && elemento == null)
+                {
+                    Console.WriteLine($"⚠️ Tag {codigoTag} no encontrado");
+                    return NotFound(new { message = "El tag no se encuentra asignado." });
+                }
+
+                // 3. Liberar el elemento (soft delete)
+                if (elemento != null)
+                {
+                    elemento.CodigoNFC = null;
+                    elemento.Estado = false;
+                    elemento.FechaActualizacion = DateTime.Now;
+                    Console.WriteLine($"🔓 Elemento ID {elemento.IdElemento} liberado del tag");
+                }
+
+                // 4. Eliminar el TagAsignado
+                if (tag != null)
+                {
+                    _context.TagAsignado.Remove(tag);
+                    Console.WriteLine($"🗑️ TagAsignado eliminado de la BD");
+                }
+
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"✅ Tag {codigoTag} eliminado completamente");
+
+                return Ok(new
+                {
+                    message = "Tag eliminado correctamente.",
+                    codigoTag,
+                    elementoLiberado = elemento?.IdElemento
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al eliminar tag {codigoTag}: {ex.Message}");
+                return StatusCode(500, new { message = $"Error al eliminar tag: {ex.Message}" });
+            }
         }
-
     }
 }
