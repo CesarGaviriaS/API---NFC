@@ -668,30 +668,210 @@
             }
           });
 
-          // Recuperar contraseña
-          linkRecuperar.addEventListener('click', async e => {
+                 // Recuperar contraseña - VERSIÓN SIMPLE
+        linkRecuperar.addEventListener('click', async e => {
             e.preventDefault();
-            const correo = prompt('Ingresa tu correo para recuperación:');
-            if(!correo) return;
 
-            try {
-              const resp = await fetch('/api/auth/RECUPERAR-password', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ Correo: correo.trim() })
-              });
+            // Ocultar login y mostrar formulario de recuperación
+            loginForm.style.display = 'none';
 
-              const data = await safeParse(resp);
+            // Crear formulario de recuperación
+            const formContainer = document.querySelector('.form-container');
+            const recuperarDiv = document.createElement('div');
+            recuperarDiv.id = 'recuperarForm';
+            recuperarDiv.innerHTML = `
+                <div class="form-header">
+                    <h2>Recuperar Contraseña</h2>
+                    <p>Ingresa tu documento y correo para verificar tu identidad</p>
+                </div>
 
-              if (!resp.ok) {
-                alert(data.error || data.rawText || 'Error al solicitar recuperación.');
-              } else {
-                alert('Si existe una cuenta con ese correo, recibirás un email con instrucciones.');
-              }
-            } catch {
-              alert('Error de conexión.');
-            }
-          });
+                <div id="alertRecuperarErr" class="alert-inline err" style="display: none;"></div>
+                <div id="alertRecuperarOk" class="alert-inline ok" style="display: none;"></div>
+
+                <form id="formRecuperar" autocomplete="off">
+                    <div class="form-group">
+                        <label class="form-label">Número de Documento</label>
+                        <input type="text" class="form-control" id="recuperarDocumento"
+                               required placeholder="123456789">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Correo Electrónico</label>
+                        <input type="email" class="form-control" id="recuperarCorreo"
+                               required placeholder="usuario@correo.com">
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="btnRecuperar">
+                        <span id="spinnerRecuperar" class="spinner-dot"></span>
+                        Verificar Datos
+                    </button>
+
+                    <div class="small-links" style="margin-top: 1rem;">
+                        <a href="#" id="btnVolverLogin" class="small-link">
+                            ← Volver al inicio de sesión
+                        </a>
+                    </div>
+                </form>
+
+                <!-- Formulario para cambiar contraseña (oculto inicialmente) -->
+                <form id="formCambiarPass" style="display: none;" autocomplete="off">
+                    <div class="form-header">
+                        <h2>Nueva Contraseña</h2>
+                        <p id="nombreUsuarioRecuperar"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nueva Contraseña</label>
+                        <input type="password" class="form-control" id="nuevaPassword"
+                               required minlength="6" placeholder="Mínimo 6 caracteres">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Confirmar Nueva Contraseña</label>
+                        <input type="password" class="form-control" id="confirmarPassword"
+                               required minlength="6" placeholder="Repite la contraseña">
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="btnCambiar">
+                        <span id="spinnerCambiar" class="spinner-dot"></span>
+                        Cambiar Contraseña
+                    </button>
+                </form>
+            `;
+
+            formContainer.appendChild(recuperarDiv);
+
+            // ===== EVENTOS =====
+
+            let idUsuarioRecuperar = 0;
+
+            // Volver al login
+            document.getElementById('btnVolverLogin').addEventListener('click', (e) => {
+                e.preventDefault();
+                recuperarDiv.remove();
+                loginForm.style.display = 'block';
+                hide(loginError);
+                hide(loginOk);
+            });
+
+            // Verificar documento y correo
+            document.getElementById('formRecuperar').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const alertErr = document.getElementById('alertRecuperarErr');
+                const alertOk = document.getElementById('alertRecuperarOk');
+                const spinner = document.getElementById('spinnerRecuperar');
+                const btn = document.getElementById('btnRecuperar');
+
+                hide(alertErr);
+                hide(alertOk);
+
+                const documento = document.getElementById('recuperarDocumento').value.trim();
+                const correo = document.getElementById('recuperarCorreo').value.trim();
+
+                if (!documento || !correo) {
+                    show(alertErr, 'Completa todos los campos.');
+                    return;
+                }
+
+                btn.disabled = true;
+                spinner.style.display = 'inline-block';
+
+                try {
+                    const resp = await fetch('/api/auth/recuperar-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            NumeroDocumento: documento,
+                            Correo: correo
+                        })
+                    });
+
+                    const data = await safeParse(resp);
+
+                    if (!resp.ok) {
+                        show(alertErr, data.error || 'No se encontró un usuario con esos datos.');
+                    } else {
+                        // Usuario verificado, mostrar formulario de cambio de contraseña
+                        idUsuarioRecuperar = data.idUsuario;
+                        document.getElementById('nombreUsuarioRecuperar').textContent =
+                            `Usuario: ${data.nombre} ${data.apellido}`;
+
+                        document.getElementById('formRecuperar').style.display = 'none';
+                        document.getElementById('formCambiarPass').style.display = 'block';
+                    }
+                } catch {
+                    show(alertErr, 'Error de conexión. Intenta nuevamente.');
+                } finally {
+                    btn.disabled = false;
+                    spinner.style.display = 'none';
+                }
+            });
+
+            // Cambiar contraseña
+            document.getElementById('formCambiarPass').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const alertErr = document.getElementById('alertRecuperarErr');
+                const alertOk = document.getElementById('alertRecuperarOk');
+                const spinner = document.getElementById('spinnerCambiar');
+                const btn = document.getElementById('btnCambiar');
+
+                hide(alertErr);
+                hide(alertOk);
+
+                const nuevaPass = document.getElementById('nuevaPassword').value;
+                const confirmarPass = document.getElementById('confirmarPassword').value;
+
+                if (nuevaPass.length < 6) {
+                    show(alertErr, 'La contraseña debe tener al menos 6 caracteres.');
+                    return;
+                }
+
+                if (nuevaPass !== confirmarPass) {
+                    show(alertErr, 'Las contraseñas no coinciden.');
+                    return;
+                }
+
+                btn.disabled = true;
+                spinner.style.display = 'inline-block';
+
+                try {
+                    const resp = await fetch('/api/auth/cambiar-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            IdUsuario: idUsuarioRecuperar,
+                            NuevaContraseña: nuevaPass
+                        })
+                    });
+
+                    const data = await safeParse(resp);
+
+                    if (!resp.ok) {
+                        show(alertErr, data.error || 'Error al cambiar la contraseña.');
+                    } else {
+                        show(alertOk, data.message || '✅ Contraseña actualizada correctamente.');
+
+                        // Volver al login después de 2 segundos
+                        setTimeout(() => {
+                            recuperarDiv.remove();
+                            loginForm.style.display = 'block';
+                            hide(loginError);
+                            show(loginOk, 'Contraseña cambiada. Ya puedes iniciar sesión.');
+
+                            // Limpiar después de 5 segundos
+                            setTimeout(() => hide(loginOk), 5000);
+                        }, 2000);
+                    }
+                } catch {
+                    show(alertErr, 'Error de conexión. Intenta nuevamente.');
+                } finally {
+                    btn.disabled = false;
+                    spinner.style.display = 'none';
+                }
+            });
+        });
 
           // ---------------- REGISTRO ----------------
           const formRegister = document.getElementById('formRegister');
