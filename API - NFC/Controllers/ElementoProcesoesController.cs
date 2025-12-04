@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using API_NFC.Data;
@@ -21,13 +20,11 @@ namespace API___NFC.Controllers
             _context = context;
         }
 
-        // ✅ GET: api/ElementoProcesoes
         [HttpGet]
         public async Task<ActionResult<IEnumerable<object>>> GetElementoProcesos()
         {
             var elementoProcesos = await _context.ElementoProceso
-                .Include(e => e.Elemento)
-                    .ThenInclude(e => e.TipoElemento)
+                .Include(e => e.Elemento).ThenInclude(e => e.TipoElemento)
                 .Include(e => e.Proceso)
                 .AsNoTracking()
                 .Select(ep => new
@@ -36,6 +33,7 @@ namespace API___NFC.Controllers
                     ep.IdElemento,
                     ep.IdProceso,
                     ep.Validado,
+                    ep.QuedoEnSena,
                     Elemento = ep.Elemento != null ? new
                     {
                         ep.Elemento.IdElemento,
@@ -57,13 +55,11 @@ namespace API___NFC.Controllers
             return Ok(elementoProcesos);
         }
 
-        // ✅ GET: api/ElementoProcesoes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<object>> GetElementoProceso(int id)
         {
             var elementoProceso = await _context.ElementoProceso
-                .Include(e => e.Elemento)
-                    .ThenInclude(e => e.TipoElemento)
+                .Include(e => e.Elemento).ThenInclude(e => e.TipoElemento)
                 .Include(e => e.Proceso)
                 .AsNoTracking()
                 .Where(ep => ep.IdElementoProceso == id)
@@ -73,6 +69,7 @@ namespace API___NFC.Controllers
                     ep.IdElemento,
                     ep.IdProceso,
                     ep.Validado,
+                    ep.QuedoEnSena,
                     Elemento = ep.Elemento != null ? new
                     {
                         ep.Elemento.IdElemento,
@@ -97,16 +94,12 @@ namespace API___NFC.Controllers
             return Ok(elementoProceso);
         }
 
-        // 🔥 GET: api/ElementoProcesoes/byProceso/106 (MEJORADO)
         [HttpGet("byProceso/{idProceso}")]
         public async Task<ActionResult<IEnumerable<object>>> GetByProceso(int idProceso)
         {
-            Console.WriteLine($"🔍 Buscando dispositivos para proceso: {idProceso}");
-
             var relaciones = await _context.ElementoProceso
                 .Where(e => e.IdProceso == idProceso)
-                .Include(e => e.Elemento)
-                    .ThenInclude(e => e.TipoElemento)
+                .Include(e => e.Elemento).ThenInclude(e => e.TipoElemento)
                 .AsNoTracking()
                 .Select(ep => new
                 {
@@ -114,155 +107,293 @@ namespace API___NFC.Controllers
                     ep.IdElemento,
                     ep.IdProceso,
                     ep.Validado,
+                    ep.QuedoEnSena,
                     Elemento = ep.Elemento != null ? new
                     {
-                        IdElemento = ep.Elemento.IdElemento,
-                        Marca = ep.Elemento.Marca,
-                        Modelo = ep.Elemento.Modelo,
-                        Serial = ep.Elemento.Serial,
-                        Descripcion = ep.Elemento.Descripcion,
-                        ImagenUrl = ep.Elemento.ImagenUrl,
-                        CodigoNFC = ep.Elemento.CodigoNFC,
-                        Estado = ep.Elemento.Estado,
+                        ep.Elemento.IdElemento,
+                        ep.Elemento.Marca,
+                        ep.Elemento.Modelo,
+                        ep.Elemento.Serial,
+                        ep.Elemento.Descripcion,
+                        ep.Elemento.ImagenUrl,
+                        ep.Elemento.CodigoNFC,
+                        ep.Elemento.Estado,
                         TipoElemento = ep.Elemento.TipoElemento != null ? new
                         {
-                            IdTipoElemento = ep.Elemento.TipoElemento.IdTipoElemento,
-                            Tipo = ep.Elemento.TipoElemento.Tipo,
-                            RequiereNFC = ep.Elemento.TipoElemento.RequiereNFC
+                            ep.Elemento.TipoElemento.IdTipoElemento,
+                            ep.Elemento.TipoElemento.Tipo,
+                            ep.Elemento.TipoElemento.RequiereNFC
                         } : null
                     } : null
                 })
                 .ToListAsync();
 
-            Console.WriteLine($"✅ Encontrados {relaciones.Count} dispositivos");
             return Ok(relaciones);
         }
 
-        // 🆕 POST: api/ElementoProcesoes/autoRegister
-        /// <summary>
-        /// Auto-registra todos los dispositivos del propietario en el proceso
-        /// </summary>
+        // ✅ MÉTODO CLAVE: Obtener dispositivos pendientes (QuedoEnSena = true)
+        [HttpGet("pendientes/{tipoPropietario}/{idPropietario}")]
+        public async Task<ActionResult<IEnumerable<object>>> GetPendientes(string tipoPropietario, int idPropietario)
+        {
+            var pendientes = await _context.ElementoProceso
+                .Include(e => e.Elemento).ThenInclude(e => e.TipoElemento)
+                .Where(e =>
+                    e.Elemento.IdPropietario == idPropietario &&
+                    e.Elemento.TipoPropietario == tipoPropietario &&
+                    e.QuedoEnSena == true)
+                .Select(ep => new
+                {
+                    ep.IdElementoProceso,
+                    ep.IdProceso,
+                    ep.IdElemento,
+                    ep.QuedoEnSena,
+                    ep.Validado,
+                    Elemento = new
+                    {
+                        ep.Elemento.IdElemento,
+                        ep.Elemento.Marca,
+                        ep.Elemento.Modelo,
+                        ep.Elemento.Serial,
+                        ep.Elemento.Descripcion,
+                        ep.Elemento.ImagenUrl,
+                        ep.Elemento.CodigoNFC,
+                        TipoElemento = new
+                        {
+                            ep.Elemento.TipoElemento.IdTipoElemento,
+                            ep.Elemento.TipoElemento.Tipo
+                        }
+                    }
+                })
+                .ToListAsync();
+
+            return Ok(pendientes);
+        }
+
+        // ✅ NUEVO: Agregar automáticamente pendientes en SALIDA
+        [HttpPost("agregarPendientesASalida")]
+        public async Task<ActionResult> AgregarPendientesASalida([FromBody] AgregarPendientesRequest request)
+        {
+            try
+            {
+                // Obtener dispositivos pendientes
+                var pendientes = await _context.ElementoProceso
+                    .Include(e => e.Elemento)
+                    .Where(ep =>
+                        ep.Elemento.IdPropietario == request.IdPropietario &&
+                        ep.Elemento.TipoPropietario == request.TipoPropietario &&
+                        ep.QuedoEnSena == true)
+                    .ToListAsync();
+
+                if (pendientes.Count == 0)
+                {
+                    return Ok(new { Message = "No hay dispositivos pendientes", Agregados = 0 });
+                }
+
+                int agregados = 0;
+
+                foreach (var pendiente in pendientes)
+                {
+                    // Cambiar el proceso al actual y marcar como no pendiente
+                    pendiente.IdProceso = request.IdProcesoSalida;
+                    pendiente.QuedoEnSena = false;
+                    pendiente.Validado = true;
+                    agregados++;
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    Message = "Dispositivos pendientes agregados a la salida",
+                    Agregados = agregados
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "Error al agregar pendientes",
+                    Error = ex.Message
+                });
+            }
+        }
+
+        // ✅ MODIFICADO: Auto-registrar SIN incluir pendientes
         [HttpPost("autoRegister")]
         public async Task<ActionResult<object>> AutoRegisterDevices([FromBody] AutoRegisterRequest request)
         {
-            Console.WriteLine($"🤖 Auto-registro iniciado para Proceso: {request.IdProceso}, Tipo: {request.TipoPropietario}, ID: {request.IdPropietario}");
-
-            // Validar que el proceso exista
-            var proceso = await _context.Proceso.FindAsync(request.IdProceso);
-            if (proceso == null)
-                return NotFound(new { Message = "El proceso no existe." });
-
-            // Obtener dispositivos del propietario
-            var dispositivos = await _context.Elemento
-                .Where(e => e.IdPropietario == request.IdPropietario
-                         && e.TipoPropietario == request.TipoPropietario
-                         && e.Estado == true)
-                .ToListAsync();
-
-            Console.WriteLine($"📦 Dispositivos encontrados: {dispositivos.Count}");
-
-            int registrados = 0;
-            int omitidos = 0;
-
-            foreach (var dispositivo in dispositivos)
+            try
             {
-                // Evitar duplicados
-                bool yaExiste = await _context.ElementoProceso
-                    .AnyAsync(ep => ep.IdElemento == dispositivo.IdElemento
-                                 && ep.IdProceso == request.IdProceso);
+                var proceso = await _context.Proceso.FindAsync(request.IdProceso);
+                if (proceso == null)
+                    return NotFound(new { Message = "El proceso no existe." });
 
-                if (yaExiste)
+                // Obtener todos los dispositivos del usuario
+                var dispositivos = await _context.Elemento
+                    .Where(e =>
+                        e.IdPropietario == request.IdPropietario &&
+                        e.TipoPropietario == request.TipoPropietario &&
+                        e.Estado == true)
+                    .ToListAsync();
+
+                // Obtener IDs de dispositivos pendientes (QuedoEnSena = true)
+                var pendientesIds = await _context.ElementoProceso
+                    .Where(ep =>
+                        ep.Elemento.IdPropietario == request.IdPropietario &&
+                        ep.Elemento.TipoPropietario == request.TipoPropietario &&
+                        ep.QuedoEnSena == true)
+                    .Select(ep => ep.IdElemento)
+                    .ToListAsync();
+
+                int registrados = 0, omitidos = 0, omitidosPendientes = 0;
+
+                foreach (var dispositivo in dispositivos)
                 {
-                    omitidos++;
-                    Console.WriteLine($"⚠️ Dispositivo {dispositivo.Serial} ya está registrado");
-                    continue;
+                    // ❌ NO registrar si está pendiente (QuedoEnSena = true)
+                    if (pendientesIds.Contains(dispositivo.IdElemento))
+                    {
+                        omitidosPendientes++;
+                        continue;
+                    }
+
+                    // Verificar si ya existe en este proceso
+                    bool yaExiste = await _context.ElementoProceso
+                        .AnyAsync(ep => ep.IdElemento == dispositivo.IdElemento &&
+                                        ep.IdProceso == request.IdProceso);
+
+                    if (yaExiste)
+                    {
+                        omitidos++;
+                        continue;
+                    }
+
+                    // Registrar dispositivo
+                    var elementoProceso = new ElementoProceso
+                    {
+                        IdElemento = dispositivo.IdElemento,
+                        IdProceso = request.IdProceso,
+                        Validado = true,
+                        QuedoEnSena = false
+                    };
+
+                    _context.ElementoProceso.Add(elementoProceso);
+                    registrados++;
                 }
 
-                // Crear relación
-                var elementoProceso = new ElementoProceso
+                await _context.SaveChangesAsync();
+
+                return Ok(new
                 {
-                    IdElemento = dispositivo.IdElemento,
-                    IdProceso = request.IdProceso,
-                    Validado = true
-                };
-
-                _context.ElementoProceso.Add(elementoProceso);
-                registrados++;
+                    Message = "Auto-registro completado",
+                    Registrados = registrados,
+                    Omitidos = omitidos,
+                    OmitidosPendientes = omitidosPendientes,
+                    Total = dispositivos.Count
+                });
             }
-
-            await _context.SaveChangesAsync();
-
-            Console.WriteLine($"✅ Auto-registro completado: {registrados} registrados, {omitidos} omitidos");
-
-            return Ok(new
+            catch (Exception ex)
             {
-                Message = "Auto-registro completado",
-                Registrados = registrados,
-                Omitidos = omitidos,
-                Total = dispositivos.Count
-            });
+                return StatusCode(500, new
+                {
+                    Message = "Error en auto-registro",
+                    Error = ex.Message
+                });
+            }
         }
 
-        // ✅ PUT: api/ElementoProcesoes/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutElementoProceso(int id, [FromBody] ElementoProceso elementoProceso)
+        // ✅ MODIFICADO: Marcar como "Quedó en SENA"
+        [HttpPost("marcarQuedoSena/{id}")]
+        public async Task<ActionResult> MarcarQuedoSena(int id)
         {
-            if (id != elementoProceso.IdElementoProceso)
-                return BadRequest(new { Message = "El ID del elemento proceso no coincide." });
+            try
+            {
+                var elementoProceso = await _context.ElementoProceso
+                    .Include(ep => ep.Elemento)
+                    .FirstOrDefaultAsync(ep => ep.IdElementoProceso == id);
 
-            var existing = await _context.ElementoProceso.FindAsync(id);
-            if (existing == null)
-                return NotFound(new { Message = "ElementoProceso no encontrado." });
+                if (elementoProceso == null)
+                    return NotFound(new { Message = "Relación no encontrada." });
 
-            existing.IdElemento = elementoProceso.IdElemento;
-            existing.IdProceso = elementoProceso.IdProceso;
-            existing.Validado = elementoProceso.Validado;
+                // Marcar como pendiente
+                elementoProceso.QuedoEnSena = true;
+                elementoProceso.Validado = true;
 
-            await _context.SaveChangesAsync();
-            return NoContent();
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    Message = "El dispositivo permanece en las instalaciones del Centro de Formación CIMM.'",
+                    IdElementoProceso = elementoProceso.IdElementoProceso,
+                    IdElemento = elementoProceso.IdElemento,
+                    QuedoEnSena = elementoProceso.QuedoEnSena
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "Error al marcar dispositivo",
+                    Error = ex.Message
+                });
+            }
         }
 
-        // ✅ POST: api/ElementoProcesoes
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutElementoProceso(int id, [FromBody] ElementoProcesoUpdateDto dto)
+        {
+            try
+            {
+                var existing = await _context.ElementoProceso.FindAsync(id);
+                if (existing == null)
+                    return NotFound(new { Message = "ElementoProceso no encontrado." });
+
+                if (dto.QuedoEnSena.HasValue)
+                    existing.QuedoEnSena = dto.QuedoEnSena.Value;
+
+                if (dto.Validado.HasValue)
+                    existing.Validado = dto.Validado.Value;
+
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Message = "Error interno del servidor",
+                    Details = ex.Message
+                });
+            }
+        }
+
         [HttpPost]
         public async Task<ActionResult<ElementoProceso>> PostElementoProceso([FromBody] ElementoProceso elementoProceso)
         {
-            Console.WriteLine($"📥 Creando ElementoProceso: IdElemento={elementoProceso.IdElemento}, IdProceso={elementoProceso.IdProceso}");
-
-            // Validar existencia de FKs
             if (!await _context.Elemento.AnyAsync(e => e.IdElemento == elementoProceso.IdElemento))
-            {
-                Console.WriteLine($"❌ Elemento {elementoProceso.IdElemento} no existe");
                 return BadRequest(new { Message = "El elemento asociado no existe." });
-            }
 
             if (!await _context.Proceso.AnyAsync(p => p.IdProceso == elementoProceso.IdProceso))
-            {
-                Console.WriteLine($"❌ Proceso {elementoProceso.IdProceso} no existe");
                 return BadRequest(new { Message = "El proceso asociado no existe." });
-            }
 
-            // Evitar duplicados
+            // Verificar duplicado en este proceso
             if (await _context.ElementoProceso.AnyAsync(ep =>
                 ep.IdElemento == elementoProceso.IdElemento &&
                 ep.IdProceso == elementoProceso.IdProceso))
             {
-                Console.WriteLine($"⚠️ Ya existe la relación");
                 return Conflict(new { Message = "Este elemento ya está asociado a este proceso." });
             }
 
-            elementoProceso.Validado ??= false;
+            elementoProceso.Validado = false;
+            elementoProceso.QuedoEnSena = false;
 
             _context.ElementoProceso.Add(elementoProceso);
             await _context.SaveChangesAsync();
-
-            Console.WriteLine($"✅ ElementoProceso creado con ID: {elementoProceso.IdElementoProceso}");
 
             return CreatedAtAction(nameof(GetElementoProceso),
                 new { id = elementoProceso.IdElementoProceso },
                 elementoProceso);
         }
 
-        // ✅ DELETE: api/ElementoProcesoes/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteElementoProceso(int id)
         {
@@ -276,17 +407,25 @@ namespace API___NFC.Controllers
             return NoContent();
         }
 
-        private bool ElementoProcesoExists(int id)
-        {
-            return _context.ElementoProceso.Any(e => e.IdElementoProceso == id);
-        }
-
-        // 🆕 DTO para auto-registro
+        // DTO Classes
         public class AutoRegisterRequest
         {
             public int IdProceso { get; set; }
-            public string TipoPropietario { get; set; } = string.Empty;
+            public string TipoPropietario { get; set; }
             public int IdPropietario { get; set; }
+        }
+
+        public class AgregarPendientesRequest
+        {
+            public int IdPropietario { get; set; }
+            public string TipoPropietario { get; set; }
+            public int IdProcesoSalida { get; set; }
+        }
+
+        public class ElementoProcesoUpdateDto
+        {
+            public bool? QuedoEnSena { get; set; }
+            public bool? Validado { get; set; }
         }
     }
 }

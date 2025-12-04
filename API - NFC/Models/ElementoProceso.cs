@@ -15,6 +15,8 @@ namespace API___NFC.Models
 
         [Required]
         public int IdProceso { get; set; }
+        public bool QuedoEnSena { get; set; } = false;
+
 
         public bool? Validado { get; set; }
 
