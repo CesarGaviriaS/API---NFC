@@ -229,6 +229,103 @@
     html.guard-check-pending {
         visibility: hidden;
     }
+
+    /* ✅ ESTILOS MEJORADOS PARA LAS ALERTAS */
+    .alert-pendientes {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        border: 2px solid #ffc107;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        animation: fadeInAlert 0.5s ease-in-out;
+    }
+
+        .alert-pendientes .alert-heading {
+            color: #856404;
+            font-size: 1.3rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+            .alert-pendientes .alert-heading i {
+                font-size: 1.8rem;
+                animation: pulse 2s infinite;
+            }
+
+        .alert-pendientes .alert-content {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+    .alert-pendientes-list {
+        list-style: none;
+        padding: 0;
+        margin: 1rem 0;
+    }
+
+        .alert-pendientes-list li {
+            background: white;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid #ffc107;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+            .alert-pendientes-list li:before {
+                content: "📦";
+                font-size: 1.2rem;
+            }
+
+    .alert-modo-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+        .alert-modo-badge.ingreso {
+            background: linear-gradient(135deg, #d1ecf1, #b8daff);
+            color: #004085;
+            border: 2px solid #0056b3;
+        }
+
+        .alert-modo-badge.salida {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+  
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    }
+
+    .toast-custom {
+        min-width: 300px;
+        font-size: 1rem;
+    }
 </style>
 
 <div class="container-fluid py-4">
@@ -243,10 +340,7 @@
                         <button id="btnNuevoProceso" class="btn btn-success">
                             <i class="bi bi-broadcast-pin"></i> Iniciar lectura
                         </button>
-                        <!-- 🔴 BOTÓN CERRAR SESIÓN -->
-                        <button id="btnLogout" class="btn btn-outline-danger">
-                            <i class="bi bi-box-arrow-right"></i> Cerrar sesión
-                        </button>
+                     
                     </div>
                 </div>
                 <div id="user-profile-content" class="mt-2 text-muted">
@@ -387,10 +481,10 @@
     </div>
 </div>
 
-<script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
 
 <script>
-             // 🎯 CONFIGURACIÓN Y VARIABLES GLOBALES
+    // 🎯 CONFIGURACIÓN Y VARIABLES GLOBALES
     const HUB_URL = `${window.location.origin}/nfcHub`;
 
     const API = {
@@ -443,7 +537,7 @@
 
     function showToast(msg, type = "info") {
         const div = document.createElement("div");
-        div.className = `toast text-bg-${type} show`;
+        div.className = `toast toast-custom text-bg-${type} show`;
         div.innerHTML = `
             <div class="d-flex">
                 <div class="toast-body">${msg}</div>
@@ -522,37 +616,85 @@
         }
     }
 
-    // ✅ MOSTRAR ALERTA DE PENDIENTES
+    // ✅ MOSTRAR ALERTA DE PENDIENTES MEJORADA
     function mostrarAlertaPendientes(pendientes) {
         const alertDiv = document.getElementById('pendientes-alert');
         if (!alertDiv) return;
 
+        const esIngreso = modoActual === 'Ingreso';
+        const cantidad = pendientes.length;
+
         const listadoDispositivos = pendientes.map(p => {
             const elem = p.elemento || p.Elemento || {};
             const tipo = elem.tipoElemento?.tipo || elem.TipoElemento?.Tipo || 'Dispositivo';
+            const marca = elem.marca || elem.Marca || '';
+            const modelo = elem.modelo || elem.Modelo || '';
             const serial = elem.serial || elem.Serial || 'N/A';
-            return `<li><strong>${tipo}</strong> - Serial: ${serial}</li>`;
+
+            return `
+                <li>
+                    <strong>${tipo}</strong>
+                    ${marca || modelo ? `<br><span style="color: #666;">${marca} ${modelo}</span>` : ''}
+                    <br><small style="color: #888;">Serial: ${serial}</small>
+                </li>
+            `;
         }).join('');
 
         alertDiv.innerHTML = `
-            <div class="alert alert-warning alert-dismissible fade show">
-                <h5 class="alert-heading">
+            <div class="alert-pendientes">
+                <div class="alert-heading">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    ¡Usuario con dispositivos pendientes!
-                </h5>
-                <p class="mb-2">
-                    Este usuario tiene <strong>${pendientes.length} dispositivo(s)</strong>
-                    que quedaron dentro del SENA en un ingreso anterior:
-                </p>
-                <ul class="mb-2">${listadoDispositivos}</ul>
-                <hr>
-                <p class="mb-0">
-                    ${modoActual === 'Ingreso'
-                        ? '⚠️ Estos dispositivos <strong>NO se registrarán</strong> en este ingreso y se mostrarán en <span class="badge bg-danger">ROJO</span>.'
-                        : '✅ Estos dispositivos se <strong>agregarán automáticamente</strong> a esta salida.'
-                    }
-                </p>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    ¡Atención! Dispositivos pendientes detectados
+                </div>
+
+                <div class="alert-content">
+                    <p style="font-size: 1.05rem; color: #856404; margin-bottom: 0.75rem;">
+                        <strong>${nombreUsuarioActual}</strong> tiene <strong>${cantidad} dispositivo${cantidad > 1 ? 's' : ''}</strong>
+                        que ${cantidad > 1 ? 'quedaron' : 'quedó'} dentro del SENA en un ingreso anterior:
+                    </p>
+
+                    <ul class="alert-pendientes-list">
+                        ${listadoDispositivos}
+                    </ul>
+
+                    <hr style="margin: 1.25rem 0; border-color: #ffc107;">
+
+                    <div style="background: white; padding: 1rem; border-radius: 0.75rem; border: 2px dashed #ffc107;">
+                        ${esIngreso
+                            ? `
+                                <div class="alert-modo-badge ingreso">
+                                    <i class="bi bi-info-circle-fill"></i> MODO: INGRESO
+                                </div>
+                                <p style="margin-top: 1rem; color: #004085; font-size: 0.95rem; line-height: 1.6;">
+                                    <strong>📌 ¿Qué significa esto?</strong><br>
+                                    Los dispositivos listados arriba <strong>NO se registrarán automáticamente</strong> en este ingreso
+                                    porque ya están dentro del SENA. Aparecerán marcados en <span class="badge bg-danger">ROJO</span>
+                                    en la lista de "Dispositivos en Proceso".
+                                </p>
+                                <p style="color: #004085; font-size: 0.9rem; margin-bottom: 0;">
+                                    💡 <em>Solo podrás agregar dispositivos nuevos o que no quedaron pendientes.</em>
+                                </p>
+                            `
+                            : `
+                                <div class="alert-modo-badge salida">
+                                    <i class="bi bi-check-circle-fill"></i> MODO: SALIDA
+                                </div>
+                                <p style="margin-top: 1rem; color: #155724; font-size: 0.95rem; line-height: 1.6;">
+                                    <strong>✅ ¿Qué pasará ahora?</strong><br>
+                                    Estos dispositivos <strong>se agregarán automáticamente</strong> a esta salida
+                                    porque estaban pendientes desde el último ingreso.
+                                </p>
+                                <p style="color: #155724; font-size: 0.9rem; margin-bottom: 0;">
+                                    💡 <em>Verás estos dispositivos en la sección "Dispositivos en Proceso" cuando el registro termine.</em>
+                                </p>
+                            `
+                        }
+                    </div>
+                </div>
+
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-3"
+                        data-bs-dismiss="alert" aria-label="Cerrar"
+                        style="filter: brightness(0.8);"></button>
             </div>
         `;
     }
@@ -576,11 +718,11 @@
             console.log("Auto-registro:", result);
 
             if (result.omitidosPendientes > 0) {
-                showToast(`⚠️ ${result.omitidosPendientes} dispositivo(s) pendiente(s) no registrado(s)`, "warning");
+                showToast(`⚠️ ${result.omitidosPendientes} dispositivo(s) pendiente(s) no se registraron en este ingreso`, "warning");
             }
 
             if (result.registrados > 0) {
-                showToast(`✅ ${result.registrados} dispositivo(s) registrado(s)`, "success");
+                showToast(`✅ ${result.registrados} dispositivo(s) registrado(s) correctamente`, "success");
             }
 
         } catch (error) {
@@ -607,7 +749,7 @@
             console.log("Pendientes agregados:", result);
 
             if (result.agregados > 0) {
-                showToast(`✅ ${result.agregados} dispositivo(s) pendiente(s) agregado(s) a la salida`, "success");
+                showToast(`✅ ${result.agregados} dispositivo(s) pendiente(s) agregado(s) automáticamente a la salida`, "success");
             }
 
         } catch (error) {
@@ -640,14 +782,16 @@
                     itemDiv.style.background = '#ffe5e5';
 
                     itemDiv.innerHTML = `
-                        <div class="device-icon">
+                        <div class="device-icon" style="background: #ffcccc;">
                             <i class="bi bi-${getIconoDispositivo(tipo)} text-danger"></i>
                         </div>
                         <div style="flex:1">
                             <strong class="text-danger">${tipo}</strong><br>
                             ${d.marca || ''} ${d.modelo || ''}<br>
-                            Serial: ${d.serial || 'N/A'}<br>
-                            <span class="badge bg-danger mt-1">⚠️ Quedó dentro del SENA</span>
+                            <small style="color: #666;">Serial: ${d.serial || 'N/A'}</small><br>
+                            <span class="badge bg-danger mt-1">
+                                <i class="bi bi-exclamation-triangle"></i> Quedó dentro del SENA
+                            </span>
                         </div>
                     `;
 
@@ -694,7 +838,7 @@
                     <div style="flex:1">
                         <strong>${tipo}</strong><br>
                         ${d.marca || ''} ${d.modelo || ''}<br>
-                        Serial: ${d.serial || 'N/A'}
+                        <small style="color: #666;">Serial: ${d.serial || 'N/A'}</small>
                     </div>
                     ${botonHTML}
                 `;
@@ -758,7 +902,7 @@
                         <div>
                             <strong>${tipo}</strong><br>
                             ${d.marca ? `<strong>${d.marca}</strong>` : ""} ${d.modelo || ""}<br>
-                            Serial: ${d.serial || "N/A"}
+                            <small style="color: #666;">Serial: ${d.serial || "N/A"}</small>
                         </div>
                     </div>
                 `;
@@ -817,7 +961,7 @@
 
         // ✅ LÓGICA SEGÚN MODO
         if (esIngreso) {
-            await autoRegistrarDispositivos(); 
+            await autoRegistrarDispositivos();
         } else {
             await agregarPendientesEnSalida();
         }
@@ -840,7 +984,7 @@
             </div>
         `;
 
-        showToast(`✔️ ${modoActual} registrado`, "success");
+        showToast(`✔️ ${modoActual} registrado correctamente`, "success");
     }
 
     function getIconoDispositivo(tipo) {
@@ -860,14 +1004,14 @@
     }
 
     async function removeFromProcess(relId) {
-        if (!confirm("¿Quitar este dispositivo?")) return;
+        if (!confirm("¿Quitar este dispositivo del proceso actual?")) return;
 
         try {
             await safeFetch(API.desvincular(relId), { method: "DELETE" });
             await cargarDispositivosProceso();
-            showToast("✔️ Dispositivo removido", "warning");
+            showToast("✔️ Dispositivo removido correctamente", "warning");
         } catch (error) {
-            showToast("❌ Error al eliminar", "danger");
+            showToast("❌ Error al eliminar el dispositivo", "danger");
         }
     }
 
@@ -902,9 +1046,9 @@
 
             await cargarDispositivosProceso();
             await cargarDispositivosModal();
-            showToast("🟢 Dispositivo agregado", "success");
+            showToast("🟢 Dispositivo agregado al proceso", "success");
         } catch (error) {
-            showToast("❌ Error al agregar", "danger");
+            showToast("❌ Error al agregar el dispositivo", "danger");
         }
     }
 
@@ -970,7 +1114,7 @@
                         <div style="flex:1">
                             <strong>${tipoNombre}</strong><br>
                             ${d.marca || ""} ${d.modelo || ""}<br>
-                            Serial: ${d.serial || "N/A"}
+                            <small style="color: #666;">Serial: ${d.serial || "N/A"}</small>
                         </div>
                         ${enProceso
                             ? `<span class="badge bg-secondary">En proceso</span>`
@@ -995,7 +1139,7 @@
         const inpDescripcion = document.getElementById("inpDescripcion");
 
         if (!selTipoElemento.value || !inpSerial.value.trim()) {
-            showToast("⚠️ Completa Tipo y Serial", "danger");
+            showToast("⚠️ Debes completar los campos: Tipo y Serial", "danger");
             return;
         }
 
@@ -1017,7 +1161,7 @@
             });
 
             const nuevoElemento = await res.json();
-            showToast("🟢 Dispositivo creado", "success");
+            showToast("🟢 Dispositivo creado exitosamente", "success");
 
             if (modoActual === "Ingreso") {
                 await safeFetch(API.vincular(), {
@@ -1044,7 +1188,7 @@
 
             bootstrap.Modal.getInstance(document.getElementById("modalAddDevice")).hide();
         } catch (error) {
-            showToast(error.message || "❌ Error al crear", "danger");
+            showToast(error.message || "❌ Error al crear el dispositivo", "danger");
         }
     };
 
@@ -1062,7 +1206,7 @@
         const registro = payload.registro || payload.Registro;
 
         if (!validarProceso(proceso)) {
-            showToast("❌ Proceso inválido", "danger");
+            showToast("❌ Proceso inválido recibido", "danger");
             return;
         }
 
@@ -1082,33 +1226,21 @@
     });
 
     connection.start().then(() => {
-        showToast("🟢 Sistema NFC activo", "success");
+        showToast("🟢 Sistema NFC conectado y activo", "success");
     });
 
-    connection.onreconnecting(() => showToast("Reconectando…", "warning"));
-    connection.onreconnected(() => showToast("Reconectado", "success"));
+    connection.onreconnecting(() => showToast("⚠️ Reconectando al servidor...", "warning"));
+    connection.onreconnected(() => showToast("✅ Reconexión exitosa", "success"));
     connection.onclose(() => {
-        showToast("❌ Conexión perdida. Recargando…", "danger");
+        showToast("❌ Conexión perdida. Recargando página...", "danger");
         setTimeout(() => location.reload(), 3000);
     });
 
     // ✅ BOTONES
     document.getElementById("btnNuevoProceso").addEventListener("click", () => {
-        if (procesoActualId && !confirm("¿Iniciar nuevo proceso?")) return;
+        if (procesoActualId && !confirm("¿Deseas iniciar un nuevo proceso? El proceso actual se cerrará.")) return;
         limpiarProceso();
-        showToast("Esperando nuevo escaneo NFC…", "info");
-    });
-
-    document.getElementById("btnLogout").addEventListener("click", () => {
-        if (!confirm("¿Cerrar sesión?")) return;
-
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_info');
-        sessionStorage.removeItem('terminal_auth_ok');
-
-        showToast("👋 Sesión cerrada", "info");
-        setTimeout(() => window.location.replace('/Login'), 500);
+        showToast("🔄 Esperando nuevo escaneo NFC...", "info");
     });
 
 </script>
-   

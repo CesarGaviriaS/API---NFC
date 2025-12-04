@@ -11,7 +11,6 @@ var builder = WebApplication.CreateBuilder(args);
 // ------------------------------------------------------
 // SERVICES
 // ------------------------------------------------------
-
 // Razor Pages
 builder.Services.AddRazorPages();
 
@@ -47,7 +46,6 @@ builder.Services.AddTransient<IEmailSender, EmailSender>();
 // JWT CONFIG  🔐
 // ------------------------------------------------------
 var key = builder.Configuration["Jwt:Key"];
-
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
