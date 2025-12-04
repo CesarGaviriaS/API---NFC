@@ -206,6 +206,12 @@
                     </li>
                 </ul>
             </li>
+            <li class="nav-item">
+                <a class="nav-link @(Context.Request.Path.Value.Contains("/Import") ? "active" : "")"
+                   href="/Admin/Import">
+                    <i class="bi bi-cloud-upload-fill"></i>Importación
+                </a>
+            </li>
         </ul>
     </div>
 </div>

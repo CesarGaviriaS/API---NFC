@@ -124,6 +124,7 @@
                     // Token inválido, limpiar y redirigir
                     localStorage.removeItem('auth_token');
                     localStorage.removeItem('user_info');
+                    document.cookie = "AuthToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; secure; samesite=strict";
                     window.location.replace(LOGIN_URL);
                     return false;
                 }
@@ -133,6 +134,7 @@
                     // Token expirado, limpiar y redirigir
                     localStorage.removeItem('auth_token');
                     localStorage.removeItem('user_info');
+                    document.cookie = "AuthToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; secure; samesite=strict";
                     window.location.replace(LOGIN_URL);
                     return false;
                 }

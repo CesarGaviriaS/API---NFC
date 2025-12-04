@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using API___NFC.Services;
+using API___NFC.Services.Import;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +44,13 @@ builder.Services.AddCors(options =>
 // Email Sender (MailKit)
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 
+// Import Services
+builder.Services.AddScoped<ProgramaImportService>();
+builder.Services.AddScoped<FichaImportService>();
+builder.Services.AddScoped<AprendizImportService>();
+builder.Services.AddScoped<UsuarioImportService>();
+builder.Services.AddScoped<ImportServiceFactory>();
+
 // ------------------------------------------------------
 // JWT CONFIG  🔐
 // ------------------------------------------------------
@@ -60,6 +68,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (context.Request.Cookies.ContainsKey("AuthToken"))
+                {
+                    context.Token = context.Request.Cookies["AuthToken"];
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 
