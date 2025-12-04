@@ -306,7 +306,8 @@
             <div class="card">
                 <div class="card-header blue text-center">Último Detectado</div>
                 <div id="last-detected-item-content" class="card-body text-center">
-                    <p class="text-muted">Esperando escaneo...</p>
+                    <div id="pendientes-alert" class="mt-3"></div>
+
                 </div>
             </div>
         </div>
@@ -389,77 +390,7 @@
 <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
 
 <script>
-    // 🔒 Validación de sesión y rol ANTES de mostrar la Terminal
-    (() => {
-        document.documentElement.classList.add('guard-check-pending');
-
-        // 🚫 Candado extra: Terminal SOLO se puede abrir viniendo del Login
-        const terminalFlag = sessionStorage.getItem('terminal_auth_ok');
-        if (!terminalFlag) {
-            // Si alguien escribe /Terminal directo en la barra → al Login
-            window.location.replace('/Login');
-            return;
-        }
-
-        function decodeJwt(token) {
-            if (!token) return null;
-            const parts = token.split('.');
-            if (parts.length !== 3) return null;
-            try {
-                const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-                return JSON.parse(atob(payload));
-            } catch {
-                return null;
-            }
-        }
-
-        function obtenerRolActivo() {
-            const rawToken = localStorage.getItem('auth_token');
-            const decoded = decodeJwt(rawToken);
-            let localUser = null;
-            const storedUser = localStorage.getItem('user_info');
-
-            if (storedUser) {
-                try {
-                    localUser = JSON.parse(storedUser);
-                } catch {
-                    localUser = null;
-                }
-            }
-
-            const rol = decoded?.role
-                || decoded?.Rol
-                || decoded?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
-                || localUser?.Rol
-                || localUser?.rol
-                || null;
-
-            return typeof rol === 'string' ? rol.trim().toLowerCase() : null;
-        }
-
-        // Si no hay token, manda a Login
-        const rawToken = localStorage.getItem('auth_token');
-        if (!rawToken) {
-            window.location.replace('/Login');
-            return;
-        }
-
-        const rolActivo = obtenerRolActivo();
-        if (rolActivo !== 'guardia') {
-            // Si está logueado pero no es guardia → al panel admin
-            window.location.replace('/Admin/Usuarios');
-            return;
-        }
-
-        document.documentElement.classList.remove('guard-check-pending');
-    })();
-</script>
-
-<script>
-    /* =============================================================================
-       🎯 CONFIGURACIÓN Y VARIABLES GLOBALES
-    ============================================================================= */
-
+             // 🎯 CONFIGURACIÓN Y VARIABLES GLOBALES
     const HUB_URL = `${window.location.origin}/nfcHub`;
 
     const API = {
@@ -472,13 +403,16 @@
         autoRegister: () => `/api/ElementoProcesoes/autoRegister`,
         vincular: () => `/api/ElementoProcesoes`,
         desvincular: id => `/api/ElementoProcesoes/${id}`,
-        procesoActivo: (tipo, id) => `/api/Procesoes/activo/${tipo}/${id}`
+        procesoActivo: (tipo, id) => `/api/Procesoes/activo/${tipo}/${id}`,
+        marcarQuedoSena: (id) => `/api/ElementoProcesoes/marcarQuedoSena/${id}`,
+        pendientes: (tipo, id) => `/api/ElementoProcesoes/pendientes/${tipo}/${id}`,
+        agregarPendientes: () => `/api/ElementoProcesoes/agregarPendientesASalida`
     };
 
     let procesoActualId = null;
     let tipoPersonaActual = null;
     let idPropietarioActual = null;
-    let modoActual = null; // "Ingreso" o "Salida"
+    let modoActual = null;
     let nombreUsuarioActual = null;
 
     const ownerContainer = document.getElementById("user-owner-devices");
@@ -487,14 +421,25 @@
     const lastDetected = document.getElementById("last-detected-item-content");
     const historyList = document.getElementById("history-list");
     const btnAddDevice = document.getElementById("btnAddDevice");
-    const modalUserData = document.getElementById("modalUserData");
-    const modalUserDevices = document.getElementById("modal-user-devices");
-    const selTipoElemento = document.getElementById("selTipoElemento");
-    const inpSerial = document.getElementById("inpSerial");
-    const inpMarca = document.getElementById("inpMarca");
-    const inpModelo = document.getElementById("inpModelo");
-    const inpDescripcion = document.getElementById("inpDescripcion");
-    const btnLogout = document.getElementById("btnLogout");
+
+    // ✅ FUNCIÓN FETCH CON MANEJO DE ERRORES
+    async function safeFetch(url, options = {}) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                let errorMsg = `Error ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.Message || errorData.message || errorMsg;
+                } catch { }
+                throw new Error(errorMsg);
+            }
+            return response;
+        } catch (error) {
+            console.error(`Fetch error for ${url}:`, error);
+            throw error;
+        }
+    }
 
     function showToast(msg, type = "info") {
         const div = document.createElement("div");
@@ -521,6 +466,10 @@
         profileDiv.innerHTML = `<div class="text-muted">Esperando lectura...</div>`;
         lastDetected.innerHTML = `<p class="text-muted">Esperando escaneo...</p>`;
         btnAddDevice.disabled = true;
+
+        // Limpiar alerta de pendientes
+        const alertDiv = document.getElementById('pendientes-alert');
+        if (alertDiv) alertDiv.innerHTML = '';
     }
 
     function validarProceso(proceso) {
@@ -561,16 +510,59 @@
         };
     }
 
-    async function autoRegistrarDispositivos() {
-        if (modoActual !== "Ingreso") {
-            console.log("⏭️ Modo Salida detectado - No se auto-registran dispositivos");
-            return;
+    // ✅ VERIFICAR DISPOSITIVOS PENDIENTES
+    async function verificarPendientes() {
+        try {
+            const res = await safeFetch(API.pendientes(tipoPersonaActual, idPropietarioActual));
+            const pendientes = await res.json();
+            return pendientes;
+        } catch (error) {
+            console.error("Error verificando pendientes:", error);
+            return [];
         }
+    }
 
-        console.log("🤖 Iniciando auto-registro de dispositivos...");
+    // ✅ MOSTRAR ALERTA DE PENDIENTES
+    function mostrarAlertaPendientes(pendientes) {
+        const alertDiv = document.getElementById('pendientes-alert');
+        if (!alertDiv) return;
+
+        const listadoDispositivos = pendientes.map(p => {
+            const elem = p.elemento || p.Elemento || {};
+            const tipo = elem.tipoElemento?.tipo || elem.TipoElemento?.Tipo || 'Dispositivo';
+            const serial = elem.serial || elem.Serial || 'N/A';
+            return `<li><strong>${tipo}</strong> - Serial: ${serial}</li>`;
+        }).join('');
+
+        alertDiv.innerHTML = `
+            <div class="alert alert-warning alert-dismissible fade show">
+                <h5 class="alert-heading">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    ¡Usuario con dispositivos pendientes!
+                </h5>
+                <p class="mb-2">
+                    Este usuario tiene <strong>${pendientes.length} dispositivo(s)</strong>
+                    que quedaron dentro del SENA en un ingreso anterior:
+                </p>
+                <ul class="mb-2">${listadoDispositivos}</ul>
+                <hr>
+                <p class="mb-0">
+                    ${modoActual === 'Ingreso'
+                        ? '⚠️ Estos dispositivos <strong>NO se registrarán</strong> en este ingreso y se mostrarán en <span class="badge bg-danger">ROJO</span>.'
+                        : '✅ Estos dispositivos se <strong>agregarán automáticamente</strong> a esta salida.'
+                    }
+                </p>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+    }
+
+    // ✅ AUTO-REGISTRAR (SIN PENDIENTES)
+    async function autoRegistrarDispositivos() {
+        if (modoActual !== "Ingreso") return;
 
         try {
-            const response = await fetch(API.autoRegister(), {
+            const res = await safeFetch(API.autoRegister(), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -580,25 +572,203 @@
                 })
             });
 
-            if (response.ok) {
-                const result = await response.json();
-                console.log(`✅ Auto-registro completado:`, result);
+            const result = await res.json();
+            console.log("Auto-registro:", result);
 
-                if (result.registrados > 0) {
-                    showToast(`✅ ${result.registrados} dispositivo(s) registrado(s) automáticamente`, "success");
-                } else {
-                    console.log("ℹ️ No hay dispositivos nuevos para registrar");
-                }
-
-                await cargarDispositivosProceso();
-            } else {
-                console.error("❌ Error en auto-registro:", response.statusText);
+            if (result.omitidosPendientes > 0) {
+                showToast(`⚠️ ${result.omitidosPendientes} dispositivo(s) pendiente(s) no registrado(s)`, "warning");
             }
+
+            if (result.registrados > 0) {
+                showToast(`✅ ${result.registrados} dispositivo(s) registrado(s)`, "success");
+            }
+
         } catch (error) {
-            console.error("❌ Excepción en auto-registro:", error);
+            console.error("Error en auto-registro:", error);
         }
     }
 
+    // ✅ AGREGAR PENDIENTES EN SALIDA
+    async function agregarPendientesEnSalida() {
+        if (modoActual !== "Salida") return;
+
+        try {
+            const res = await safeFetch(API.agregarPendientes(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    idPropietario: idPropietarioActual,
+                    tipoPropietario: tipoPersonaActual,
+                    idProcesoSalida: procesoActualId
+                })
+            });
+
+            const result = await res.json();
+            console.log("Pendientes agregados:", result);
+
+            if (result.agregados > 0) {
+                showToast(`✅ ${result.agregados} dispositivo(s) pendiente(s) agregado(s) a la salida`, "success");
+            }
+
+        } catch (error) {
+            console.error("Error agregando pendientes:", error);
+        }
+    }
+
+    // ✅ CARGAR DISPOSITIVOS DEL PROCESO
+    async function cargarDispositivosProceso() {
+        try {
+            processContainer.innerHTML = '';
+
+            // Obtener pendientes
+            const pendientes = await verificarPendientes();
+            const idsPendientes = pendientes.map(p => (p.elemento || p.Elemento)?.idElemento || (p.elemento || p.Elemento)?.IdElemento);
+
+            // Obtener dispositivos del proceso
+            const res = await safeFetch(API.byProceso(procesoActualId));
+            const lista = await res.json();
+
+            // 1️⃣ MOSTRAR PENDIENTES PRIMERO
+            if (pendientes.length > 0 && modoActual === "Ingreso") {
+                pendientes.forEach(p => {
+                    const d = p.elemento || p.Elemento || {};
+                    const tipo = d.tipoElemento?.tipo || d.TipoElemento?.Tipo || "Dispositivo";
+
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'device-item';
+                    itemDiv.style.borderLeft = '5px solid red';
+                    itemDiv.style.background = '#ffe5e5';
+
+                    itemDiv.innerHTML = `
+                        <div class="device-icon">
+                            <i class="bi bi-${getIconoDispositivo(tipo)} text-danger"></i>
+                        </div>
+                        <div style="flex:1">
+                            <strong class="text-danger">${tipo}</strong><br>
+                            ${d.marca || ''} ${d.modelo || ''}<br>
+                            Serial: ${d.serial || 'N/A'}<br>
+                            <span class="badge bg-danger mt-1">⚠️ Quedó dentro del SENA</span>
+                        </div>
+                    `;
+
+                    processContainer.appendChild(itemDiv);
+                });
+            }
+
+            // 2️⃣ MOSTRAR DISPOSITIVOS NORMALES (EXCLUIR PENDIENTES)
+            lista.forEach(ep => {
+                const d = ep.elemento || ep.Elemento || {};
+                const idElem = d.idElemento || d.IdElemento;
+
+                // ❌ NO mostrar si es pendiente
+                if (idsPendientes.includes(idElem)) return;
+
+                const relId = ep.idElementoProceso || ep.IdElementoProceso;
+                const tipo = d.tipoElemento?.tipo || d.TipoElemento?.Tipo || "Dispositivo";
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'device-item';
+
+                let botonHTML = '';
+                if (modoActual === "Salida") {
+                    botonHTML = `
+                        <button class="btn btn-danger btn-sm" onclick="marcarComoQuedoEnSena(${relId})">
+                            <i class="bi bi-x-circle"></i> No lo saqué
+                        </button>
+                    `;
+                } else if (modoActual === "Ingreso") {
+                    botonHTML = `
+                        <button class="btn btn-outline-danger btn-sm" onclick="removeFromProcess(${relId})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    `;
+                }
+
+                itemDiv.innerHTML = `
+                    <div class="device-icon">
+                        ${d.imagenUrl
+                            ? `<img src="${d.imagenUrl}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
+                            : `<i class="bi bi-${getIconoDispositivo(tipo)}"></i>`
+                        }
+                    </div>
+                    <div style="flex:1">
+                        <strong>${tipo}</strong><br>
+                        ${d.marca || ''} ${d.modelo || ''}<br>
+                        Serial: ${d.serial || 'N/A'}
+                    </div>
+                    ${botonHTML}
+                `;
+
+                processContainer.appendChild(itemDiv);
+            });
+
+            if (processContainer.children.length === 0) {
+                processContainer.innerHTML = `<p class="text-center text-muted">No hay dispositivos en proceso.</p>`;
+            }
+
+        } catch (error) {
+            console.error("Error cargando dispositivos:", error);
+            processContainer.innerHTML = `<p class="text-danger text-center">Error de conexión</p>`;
+        }
+    }
+
+    // ✅ MARCAR COMO "QUEDÓ EN SENA"
+    async function marcarComoQuedoEnSena(relId) {
+        if (!confirm("¿Confirmas que este dispositivo QUEDARÁ dentro del SENA?\n\nSe marcará como pendiente y aparecerá en el próximo ingreso.")) {
+            return;
+        }
+
+        try {
+            await safeFetch(API.marcarQuedoSena(relId), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" }
+            });
+
+            showToast("📌 Dispositivo marcado como 'quedó en el SENA'", "warning");
+            await cargarDispositivosProceso();
+
+        } catch (error) {
+            showToast(`❌ Error: ${error.message}`, "danger");
+        }
+    }
+
+    // ✅ CARGAR DISPOSITIVOS DEL USUARIO
+    async function cargarDispositivosUsuario() {
+        try {
+            const res = await safeFetch(API.owner(tipoPersonaActual, idPropietarioActual));
+            const dispositivos = await res.json();
+
+            if (dispositivos.length === 0) {
+                ownerContainer.innerHTML = `<p class="text-muted text-center">Sin dispositivos registrados.</p>`;
+                return;
+            }
+
+            ownerContainer.innerHTML = dispositivos.map(d => {
+                const tipo = d.tipoElemento?.tipo || d.TipoElemento?.Tipo || "Dispositivo";
+                const imagen = d.imagenUrl || d.ImagenUrl;
+
+                return `
+                    <div class="device-item">
+                        <div class="device-icon">
+                            ${imagen
+                                ? `<img src="${imagen}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
+                                : `<i class="bi bi-${getIconoDispositivo(tipo)}"></i>`
+                            }
+                        </div>
+                        <div>
+                            <strong>${tipo}</strong><br>
+                            ${d.marca ? `<strong>${d.marca}</strong>` : ""} ${d.modelo || ""}<br>
+                            Serial: ${d.serial || "N/A"}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        } catch {
+            ownerContainer.innerHTML = `<p class="text-danger text-center">Error al cargar dispositivos</p>`;
+        }
+    }
+
+    // ✅ MOSTRAR PERFIL
     async function showProfile(persona, tipoPersona, proceso, registro) {
         tipoPersonaActual = tipoPersona;
         procesoActualId = proceso.idProceso || proceso.IdProceso;
@@ -608,8 +778,6 @@
         idPropietarioActual = tipoPersona === "Aprendiz"
             ? (proceso.idAprendiz || proceso.IdAprendiz)
             : (proceso.idUsuario || proceso.IdUsuario);
-
-        console.log(`🎯 Proceso activado: ID=${procesoActualId}, Modo=${modoActual}, Tipo=${tipoPersona}, Propietario=${idPropietarioActual}`);
 
         const esIngreso = modoActual === "Ingreso";
         const iconoPersona = esIngreso ? "person-check-fill" : "person-dash-fill";
@@ -637,287 +805,197 @@
         `;
 
         btnAddDevice.disabled = !esIngreso;
-
         addHistory(modoActual, registro.fechaRegistro || new Date(), persona.nombreCompleto);
 
-        await autoRegistrarDispositivos();
+        // ✅ VERIFICAR PENDIENTES
+        const pendientes = await verificarPendientes();
+
+        // ✅ MOSTRAR ALERTA SI HAY PENDIENTES
+        if (pendientes.length > 0) {
+            mostrarAlertaPendientes(pendientes);
+        }
+
+        // ✅ LÓGICA SEGÚN MODO
+        if (esIngreso) {
+            await autoRegistrarDispositivos(); 
+        } else {
+            await agregarPendientesEnSalida();
+        }
+
         await cargarDispositivosUsuario();
         await cargarDispositivosProceso();
-    }
 
-      async function cargarDispositivosUsuario() {
-        try {
-            const res = await fetch(API.owner(tipoPersonaActual, idPropietarioActual));
+        // Mostrar último detectado
+        lastDetected.innerHTML = `
+            <div class="d-flex gap-2 align-items-center justify-content-center">
+                <div class="device-icon">
+                    <i class="bi bi-person-check-fill text-${esIngreso ? "success" : "warning"}" style="font-size:2rem"></i>
+                </div>
+                <div>
+                    <strong>${persona.nombreCompleto}</strong><br>
+                    <small class="badge bg-${esIngreso ? "success" : "warning"}">
+                        ${iconoBadge} ${modoActual}
+                    </small>
+                </div>
+            </div>
+        `;
 
-            if (!res.ok) {
-                ownerContainer.innerHTML = `<p class="text-muted text-center">Sin dispositivos registrados.</p>`;
-                return;
-            }
-
-            const dispositivos = await res.json();
-
-            if (dispositivos.length === 0) {
-                ownerContainer.innerHTML = `<p class="text-muted text-center">Sin dispositivos registrados.</p>`;
-                return;
-            }
-
-            ownerContainer.innerHTML = dispositivos.map(d => {
-                const tipoElem = d.tipoElemento || d.TipoElemento || {};
-                const tipoNombre = tipoElem.tipo || tipoElem.Tipo || "Dispositivo";
-                const imagen = d.imagenUrl || d.ImagenUrl;
-
-                return `
-                    <div class="device-item">
-                        <div class="device-icon">
-                            ${
-                                imagen && imagen.trim() !== ""
-                                ? `<img src="${imagen}" alt="${tipoNombre}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
-                                : `<i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>`
-                            }
-                        </div>
-                        <div>
-                            <strong class="device-name">${tipoNombre}</strong><br>
-                            <span class="device-details">
-                                ${d.marca ? `<strong>${d.marca}</strong> ` : ""}
-                                ${d.modelo || ""}<br>
-                                📟 Serial: ${d.serial || "N/A"}
-                            </span>
-                        </div>
-                    </div>
-                `;
-            }).join("");
-
-        } catch {
-            ownerContainer.innerHTML = `<p class="text-danger text-center">Error al cargar dispositivos</p>`;
-        }
-    }
-
-
-    async function cargarDispositivosProceso() {
-        try {
-            console.log(`📦 Cargando dispositivos del proceso ${procesoActualId}...`);
-
-            const res = await fetch(API.byProceso(procesoActualId));
-
-            if (!res.ok) {
-                console.error(`❌ Error HTTP ${res.status}: ${res.statusText}`);
-                processContainer.innerHTML = `<p class="text-danger text-center">Error al cargar dispositivos del proceso.</p>`;
-                return;
-            }
-
-            const lista = await res.json();
-            console.log(`📊 Dispositivos en proceso: ${lista.length}`);
-
-            if (lista.length === 0) {
-                const esIngreso = modoActual === "Ingreso";
-                processContainer.innerHTML = `
-                    <div class="alert alert-${esIngreso ? 'info' : 'warning'} text-center mb-0">
-                        <i class="bi bi-${esIngreso ? 'info-circle' : 'exclamation-triangle'}"></i>
-                        ${esIngreso
-                            ? "No hay dispositivos registrados. Usa el botón de abajo para agregar."
-                            : "⚠️ No se detectaron dispositivos del ingreso. Verifica que sea el proceso correcto."}
-                    </div>
-                `;
-                return;
-            }
-
-            processContainer.innerHTML = lista.map(ep => {
-                const d = ep.elemento || ep.Elemento || {};
-                const relId = ep.idElementoProceso || ep.IdElementoProceso;
-                const tipoElemento = d.tipoElemento || d.TipoElemento || {};
-                const tipoNombre = tipoElemento.tipo || tipoElemento.Tipo || "Dispositivo";
-
-                const esSalida = modoActual === "Salida";
-
-                return `
-                    <div class="device-item">
-                        <div class="device-icon">
-                              ${
-        d.imagenUrl
-        ? `<img src="${d.imagenUrl}" alt="${tipoNombre}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
-        : `<i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>`
-    }
-
-                        </div>
-                        <div style="flex:1">
-                            <strong class="device-name">${tipoNombre}</strong><br>
-                            <span class="device-details">
-                                ${d.marca ? `<strong>${d.marca}</strong> ` : ''}
-                                ${d.modelo || ''}<br>
-                                📟 Serial: ${d.serial || 'N/A'}
-                            </span>
-                        </div>
-                        ${esSalida ? `
-                            <button class="btn btn-danger btn-sm" onclick="removeFromProcess(${relId})"
-                                    title="No lo saqué (dejarlo en SENA)">
-                                <i class="bi bi-x-circle"></i> No lo saqué
-                            </button>
-                        ` : `
-                            <button class="btn btn-outline-danger btn-sm" onclick="removeFromProcess(${relId})"
-                                    title="Quitar del proceso">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        `}
-                    </div>
-                `;
-            }).join("");
-
-        } catch (error) {
-            console.error("❌ Error cargando dispositivos del proceso:", error);
-            processContainer.innerHTML = `<p class="text-danger text-center">Error de conexión</p>`;
-        }
+        showToast(`✔️ ${modoActual} registrado`, "success");
     }
 
     function getIconoDispositivo(tipo) {
         const iconos = {
             'Portátil': 'laptop',
             'Computador': 'pc-display',
-            'PC': 'pc-display',
             'Tablet': 'tablet',
             'Mouse': 'mouse',
             'Teclado': 'keyboard',
             'Cargador': 'plug',
             'Celular': 'phone',
-            'Teléfono': 'phone',
-            'Audífonos': 'headphones',
-            'Audífono': 'headphones',
-            'Monitor': 'display',
-            'Impresora': 'printer',
             'USB': 'usb-drive',
-            'Disco Duro': 'device-hdd',
-            'Cámara': 'camera'
+            'Monitor': 'display',
+            'Impresora': 'printer'
         };
-
-        return iconos[tipo] || 'hdd';
+        return iconos[tipo] || "hdd";
     }
 
     async function removeFromProcess(relId) {
-        const mensaje = modoActual === "Salida"
-            ? "¿Confirmar que NO sacaste este dispositivo del SENA?"
-            : "¿Quitar este dispositivo del proceso actual?";
-
-        if (!confirm(mensaje)) return;
+        if (!confirm("¿Quitar este dispositivo?")) return;
 
         try {
-            const res = await fetch(API.desvincular(relId), { method: "DELETE" });
-
-            if (res.ok) {
-                showToast("✅ Dispositivo removido del proceso", "warning");
-                await cargarDispositivosProceso();
-            } else {
-                showToast("❌ Error al quitar dispositivo", "danger");
-            }
+            await safeFetch(API.desvincular(relId), { method: "DELETE" });
+            await cargarDispositivosProceso();
+            showToast("✔️ Dispositivo removido", "warning");
         } catch (error) {
-            console.error("❌ Error eliminando dispositivo:", error);
-            showToast("❌ Error de conexión", "danger");
+            showToast("❌ Error al eliminar", "danger");
         }
     }
-        async function agregarExistenteAlProceso(idElemento) {
+
+    function addHistory(tipo, fecha, nombre) {
+        const item = document.createElement("div");
+        const esIngreso = tipo === "Ingreso";
+
+        item.className = `history-item ${esIngreso ? "ingreso" : "salida"}`;
+        item.innerHTML = `
+            <strong>${esIngreso ? "🟢" : "🟠"} ${tipo}</strong> — ${nombre}<br>
+            <small>${new Date(fecha).toLocaleString("es-CO")}</small>
+        `;
+
+        historyList.prepend(item);
+        while (historyList.children.length > 20) historyList.lastChild.remove();
+    }
+
+    async function agregarExistenteAlProceso(idElemento) {
         if (!procesoActualId) return;
 
-        const res = await fetch(API.vincular(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                idElemento,
-                idProceso: procesoActualId,
-                validado: true
-            })
-        });
+        try {
+            await safeFetch(API.vincular(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    idElemento,
+                    idProceso: procesoActualId,
+                    validado: true,
+                    quedoEnSena: false
+                })
+            });
 
-        if (!res.ok) {
-            showToast("❌ No se pudo agregar el dispositivo al proceso", "danger");
-            return;
+            await cargarDispositivosProceso();
+            await cargarDispositivosModal();
+            showToast("🟢 Dispositivo agregado", "success");
+        } catch (error) {
+            showToast("❌ Error al agregar", "danger");
         }
-
-        await cargarDispositivosProceso();
-        await cargarDispositivosModal();
-
-        const modal = bootstrap.Modal.getInstance(document.getElementById("modalAddDevice"));
-        modal.hide();
-
-        showToast("✅ Dispositivo agregado al proceso", "success");
     }
 
-
-
+    // ✅ MODAL - CARGAR AL ABRIR
     document.getElementById("modalAddDevice").addEventListener("show.bs.modal", async () => {
-        modalUserData.innerHTML = "Cargando...";
-        modalUserDevices.innerHTML = `<p class="text-muted text-center">Cargando...</p>`;
-
-        if (!idPropietarioActual) {
-            modalUserData.innerHTML = `<span class="text-danger">⚠️ No hay usuario cargado</span>`;
-            return;
-        }
-
+        const modalUserData = document.getElementById("modalUserData");
         modalUserData.innerHTML = `
             <strong>${nombreUsuarioActual}</strong><br>
             <span class="badge bg-primary">${tipoPersonaActual}</span>
         `;
-
         await cargarDispositivosModal();
+        await cargarTiposElemento();
     });
 
-     async function cargarDispositivosModal() {
+    // ✅ CARGAR TIPOS DE ELEMENTOS EN EL SELECT
+    async function cargarTiposElemento() {
         try {
-            const res = await fetch(API.owner(tipoPersonaActual, idPropietarioActual));
-            if (!res.ok) {
-                modalUserDevices.innerHTML = `<p class="text-muted text-center">Sin dispositivos.</p>`;
-                return;
-            }
+            const res = await safeFetch(API.tipos());
+            const tipos = await res.json();
 
+            const selTipoElemento = document.getElementById("selTipoElemento");
+            selTipoElemento.innerHTML = tipos.map(t => `
+                <option value="${t.idTipoElemento || t.IdTipoElemento}">
+                    ${t.tipo || t.Tipo}
+                </option>
+            `).join("");
+        } catch {
+            document.getElementById("selTipoElemento").innerHTML = `<option value="">Error al cargar</option>`;
+        }
+    }
+
+    // ✅ CARGAR DISPOSITIVOS EN EL MODAL
+    async function cargarDispositivosModal() {
+        const modalUserDevices = document.getElementById("modal-user-devices");
+
+        try {
+            const res = await safeFetch(API.owner(tipoPersonaActual, idPropietarioActual));
             const dispositivos = await res.json();
 
-            const resProc = await fetch(API.byProceso(procesoActualId));
+            const resProc = await safeFetch(API.byProceso(procesoActualId));
             const dispositivosProc = resProc.ok ? await resProc.json() : [];
             const idsEnProceso = dispositivosProc.map(ep => ep.idElemento || ep.IdElemento);
 
-            modalUserDevices.innerHTML = dispositivos.length === 0
-                ? `<p class="text-muted text-center">Sin dispositivos registrados.</p>`
-                : dispositivos.map(d => {
-                    const tipoElem = d.tipoElemento || d.TipoElemento || {};
-                    const tipoNombre = tipoElem.tipo || tipoElem.Tipo || "Dispositivo";
+            if (dispositivos.length === 0) {
+                modalUserDevices.innerHTML = `<p class="text-center text-muted small">Sin dispositivos.</p>`;
+                return;
+            }
 
-                    const idElemento = d.idElemento || d.IdElemento;
-                    const enProceso = idsEnProceso.includes(idElemento);
+            modalUserDevices.innerHTML = dispositivos.map(d => {
+                const tipoElem = d.tipoElemento || d.TipoElemento || {};
+                const tipoNombre = tipoElem.tipo || tipoElem.Tipo || "Dispositivo";
+                const idElemento = d.idElemento || d.IdElemento;
+                const enProceso = idsEnProceso.includes(idElemento);
 
-                    return `
-                        <div class="device-item">
-                            <div class="device-icon">
-                                   ${
-        d.imagenUrl
-        ? `<img src="${d.imagenUrl}" alt="${tipoNombre}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
-        : `<i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>`
-    }
-
-                            </div>
-
-                            <div style="flex:1">
-                                <strong>${tipoNombre}</strong><br>
-                                ${d.marca || ""} ${d.modelo || ""}<br>
-                                Serial: ${d.serial || "N/A"}
-                            </div>
-
-                            ${
-                                enProceso
-                                    ? `<span class="badge bg-secondary">En proceso</span>`
-                                    : `<button class="btn btn-outline-success btn-sm"
-                                          onclick="agregarExistenteAlProceso(${idElemento})">
-                                          <i class="bi bi-plus-circle"></i>
-                                       </button>`
+                return `
+                    <div class="device-item">
+                        <div class="device-icon">
+                            ${d.imagenUrl
+                                ? `<img src="${d.imagenUrl}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
+                                : `<i class="bi bi-${getIconoDispositivo(tipoNombre)}"></i>`
                             }
                         </div>
-                    `;
-                }).join("");
-
+                        <div style="flex:1">
+                            <strong>${tipoNombre}</strong><br>
+                            ${d.marca || ""} ${d.modelo || ""}<br>
+                            Serial: ${d.serial || "N/A"}
+                        </div>
+                        ${enProceso
+                            ? `<span class="badge bg-secondary">En proceso</span>`
+                            : `<button class="btn btn-outline-success btn-sm" onclick="agregarExistenteAlProceso(${idElemento})">
+                                   <i class="bi bi-plus-circle"></i>
+                               </button>`
+                        }
+                    </div>
+                `;
+            }).join("");
         } catch (error) {
             modalUserDevices.innerHTML = `<p class="text-danger text-center">Error al cargar</p>`;
         }
     }
 
+    // ✅ GUARDAR NUEVO DISPOSITIVO
     document.getElementById("btnGuardarDevice").onclick = async () => {
+        const selTipoElemento = document.getElementById("selTipoElemento");
+        const inpSerial = document.getElementById("inpSerial");
+        const inpMarca = document.getElementById("inpMarca");
+        const inpModelo = document.getElementById("inpModelo");
+        const inpDescripcion = document.getElementById("inpDescripcion");
+
         if (!selTipoElemento.value || !inpSerial.value.trim()) {
-            showToast("⚠️ Complete los campos obligatorios (Tipo y Serial)", "danger");
+            showToast("⚠️ Completa Tipo y Serial", "danger");
             return;
         }
 
@@ -932,88 +1010,51 @@
         };
 
         try {
-            const res = await fetch(API.crearElem(), {
+            const res = await safeFetch(API.crearElem(), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
 
-            if (res.ok) {
-                const nuevoElemento = await res.json();
-                console.log("✅ Dispositivo creado:", nuevoElemento);
+            const nuevoElemento = await res.json();
+            showToast("🟢 Dispositivo creado", "success");
 
-                showToast("✅ Dispositivo creado exitosamente", "success");
-
-                if (modoActual === "Ingreso") {
-                    const idElemento = nuevoElemento.idElemento || nuevoElemento.IdElemento;
-
-                    await fetch(API.vincular(), {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            idElemento: idElemento,
-                            idProceso: procesoActualId,
-                            validado: true
-                        })
-                    });
-
-                    console.log("✅ Dispositivo vinculado al proceso automáticamente");
-                }
-
-                inpSerial.value = "";
-                inpMarca.value = "";
-                inpModelo.value = "";
-                inpDescripcion.value = "";
-
-                await cargarDispositivosUsuario();
-                await cargarDispositivosProceso();
-                await cargarDispositivosModal();
-
-                bootstrap.Modal.getInstance(document.getElementById("modalAddDevice")).hide();
-            } else {
-                const error = await res.json();
-                showToast(error.message || "❌ Error al crear dispositivo", "danger");
+            if (modoActual === "Ingreso") {
+                await safeFetch(API.vincular(), {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        idElemento: nuevoElemento.idElemento,
+                        idProceso: procesoActualId,
+                        validado: true,
+                        quedoEnSena: false
+                    })
+                });
             }
+
+            // Limpiar formulario
+            inpSerial.value = "";
+            inpMarca.value = "";
+            inpModelo.value = "";
+            inpDescripcion.value = "";
+
+            await cargarDispositivosUsuario();
+            await cargarDispositivosProceso();
+            await cargarDispositivosModal();
+
+            bootstrap.Modal.getInstance(document.getElementById("modalAddDevice")).hide();
         } catch (error) {
-            console.error("❌ Error creando dispositivo:", error);
-            showToast("❌ Error de conexión", "danger");
+            showToast(error.message || "❌ Error al crear", "danger");
         }
     };
 
-    async function cargarTipos() {
-        try {
-            const res = await fetch(API.tipos());
-            const tipos = await res.json();
-
-            selTipoElemento.innerHTML = tipos.map(t =>
-                `<option value="${t.idTipoElemento || t.IdTipoElemento}">
-                    ${t.tipo || t.Tipo}
-                </option>`
-            ).join("");
-
-            console.log(`✅ ${tipos.length} tipos de dispositivos cargados`);
-        } catch (error) {
-            console.error("❌ Error cargando tipos:", error);
-            selTipoElemento.innerHTML = `<option value="">Error al cargar tipos</option>`;
-        }
-    }
-
-    cargarTipos();
-
+    // ✅ SIGNALR
     const connection = new signalR.HubConnectionBuilder()
         .withUrl(HUB_URL)
         .withAutomaticReconnect([0, 2000, 5000, 10000])
         .build();
 
-    function getCurrentUser() {
-        const storedUser = localStorage.getItem('user_info');
-        if (!storedUser) return null;
-        try { return JSON.parse(storedUser); } catch { return null; }
-    }
-
     connection.on("OperacionProcesada", async raw => {
-        console.log("📡 Evento recibido desde SignalR:", raw);
-
         limpiarProceso();
 
         const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -1021,8 +1062,7 @@
         const registro = payload.registro || payload.Registro;
 
         if (!validarProceso(proceso)) {
-            console.error("❌ Datos de proceso inválidos:", proceso);
-            showToast("❌ Datos inválidos recibidos del servidor", "danger");
+            showToast("❌ Proceso inválido", "danger");
             return;
         }
 
@@ -1032,131 +1072,43 @@
             : (proceso.idUsuario || proceso.IdUsuario);
 
         try {
-            const data = await (await fetch(
-                tipo === "Aprendiz" ? API.aprendiz(id) : API.usuario(id)
-            )).json();
-
+            const res = await safeFetch(tipo === "Aprendiz" ? API.aprendiz(id) : API.usuario(id));
+            const data = await res.json();
             const persona = mapPersona(tipo, data);
             await showProfile(persona, tipo, proceso, registro);
-
-            const tipoReg = registro.tipoRegistro || registro.TipoRegistro;
-            const esIngreso = tipoReg === "Ingreso";
-
-            lastDetected.innerHTML = `
-                <div class="d-flex gap-2 align-items-center justify-content-center">
-                    <div class="device-icon">
-                        <i class="bi bi-person-check-fill text-${esIngreso ? "success" : "warning"}" style="font-size:2rem"></i>
-                    </div>
-                    <div>
-                        <strong>${persona.nombreCompleto}</strong><br>
-                        <small class="badge bg-${esIngreso ? "success" : "warning"}">
-                            ${esIngreso ? "🟢" : "🟠"} ${tipoReg}
-                        </small>
-                    </div>
-                </div>
-            `;
-
-            showToast(`✅ ${tipoReg} registrado: ${persona.nombreCompleto}`, "success");
-
         } catch (error) {
-            console.error("❌ Error procesando datos de la persona:", error);
-            showToast("❌ Error al procesar la operación", "danger");
+            showToast("❌ Error cargando datos del usuario", "danger");
         }
-    });
-
-    connection.onreconnecting(error => {
-        console.warn("⚠️ Reconectando SignalR...", error);
-        showToast("⚠️ Reconectando con el servidor...", "warning");
-    });
-
-    connection.onreconnected(connectionId => {
-        console.log("✅ SignalR reconectado:", connectionId);
-        showToast("✅ Conexión restablecida", "success");
-    });
-
-    connection.onclose(error => {
-        console.error("❌ Conexión SignalR cerrada:", error);
-        showToast("❌ Conexión perdida. Recargando página...", "danger");
-        setTimeout(() => location.reload(), 3000);
     });
 
     connection.start().then(() => {
-        console.log("✅ Conexión SignalR establecida correctamente");
-        showToast("🟢 Sistema NFC habilitado", "success");
-
-        const user = getCurrentUser();
-        if (user) {
-            const rol = (user.Rol || user.rol || '').toString().trim().toLowerCase();
-            if (rol === 'guardia') {
-                let guardId = user.IdUsuario || user.idUsuario || localStorage.getItem('guard_id');
-                if (guardId) {
-                    guardId = parseInt(guardId);
-                    connection.invoke('SetCurrentGuard', guardId)
-                        .then(() => {
-                            console.log("👮‍♂️ Guardia registrado en el hub con Id =", guardId);
-                            showToast(`👮‍♂️ Guardia activo: ID ${guardId}`, "info");
-                        })
-                        .catch(err => {
-                            console.error("❌ Error enviando Id de guardia al hub:", err);
-                            showToast("❌ No se pudo registrar el guardia en el hub", "danger");
-                        });
-                } else {
-                    console.warn("⚠️ No se encontró IdUsuario para el guardia en user_info / guard_id");
-                }
-            }
-        }
-    }).catch(err => {
-        console.error("❌ Error conectando SignalR:", err);
-        showToast("❌ Error de conexión NFC. Verifique el servidor.", "danger");
+        showToast("🟢 Sistema NFC activo", "success");
     });
 
-    function addHistory(tipo, fecha, nombre) {
-        const item = document.createElement("div");
-        const esIngreso = tipo === "Ingreso";
+    connection.onreconnecting(() => showToast("Reconectando…", "warning"));
+    connection.onreconnected(() => showToast("Reconectado", "success"));
+    connection.onclose(() => {
+        showToast("❌ Conexión perdida. Recargando…", "danger");
+        setTimeout(() => location.reload(), 3000);
+    });
 
-        item.className = `history-item ${esIngreso ? "ingreso" : "salida"}`;
-        item.innerHTML = `
-            <strong>${esIngreso ? "🟢" : "🟠"} ${tipo}</strong> — ${nombre}<br>
-            <small>${new Date(fecha).toLocaleString("es-CO", {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            })}</small>
-        `;
-
-        historyList.prepend(item);
-
-        while (historyList.children.length > 20) {
-            historyList.lastChild.remove();
-        }
-    }
-
+    // ✅ BOTONES
     document.getElementById("btnNuevoProceso").addEventListener("click", () => {
-        if (procesoActualId) {
-            if (!confirm("¿Desea iniciar un nuevo proceso? Se limpiará la información actual.")) {
-                return;
-            }
-        }
+        if (procesoActualId && !confirm("¿Iniciar nuevo proceso?")) return;
         limpiarProceso();
-        showToast("🔄 Esperando nueva lectura NFC...", "info");
-        console.log("🔄 Proceso limpiado, esperando nuevo tag");
+        showToast("Esperando nuevo escaneo NFC…", "info");
     });
 
-    // 🔴 BOTÓN CERRAR SESIÓN EN TERMINAL
-    btnLogout.addEventListener("click", () => {
-        if (!confirm("¿Cerrar sesión y salir de la terminal?")) return;
+    document.getElementById("btnLogout").addEventListener("click", () => {
+        if (!confirm("¿Cerrar sesión?")) return;
 
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_info');
-        localStorage.removeItem('guard_id');
         sessionStorage.removeItem('terminal_auth_ok');
 
-        showToast("👋 Sesión cerrada.", "info");
-        setTimeout(() => {
-            window.location.replace('/Login');
-        }, 500);
+        showToast("👋 Sesión cerrada", "info");
+        setTimeout(() => window.location.replace('/Login'), 500);
     });
+
 </script>
+   
