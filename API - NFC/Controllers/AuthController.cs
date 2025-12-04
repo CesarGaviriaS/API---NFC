@@ -9,8 +9,6 @@ using API_NFC.Data;
 using API___NFC.Models;
 using BCrypt.Net;
 using System.Text.RegularExpressions;
-using API___NFC.Services;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace API___NFC.Controllers
 {
@@ -20,13 +18,11 @@ namespace API___NFC.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _config;
-        private readonly IEmailSender _emailSender;
 
-        public AuthController(ApplicationDbContext context, IConfiguration config, IEmailSender emailSender)
+        public AuthController(ApplicationDbContext context, IConfiguration config)
         {
             _context = context;
             _config = config;
-            _emailSender = emailSender;
         }
 
         [HttpPost("login")]
@@ -37,6 +33,7 @@ namespace API___NFC.Controllers
 
             var correo = request.Correo.Trim().ToLower();
             var usuario = await _context.Usuario.FirstOrDefaultAsync(u => u.Correo.ToLower() == correo && u.Estado == true);
+
             if (usuario == null)
                 return Unauthorized(new { error = "Usuario no encontrado o inactivo." });
 
@@ -107,112 +104,62 @@ namespace API___NFC.Controllers
             return Ok(new { message = "Registrado" });
         }
 
-        [HttpPost("RECUPERAR-password")]
-        public async Task<IActionResult> Forgot([FromBody] ForgotPasswordRequest req)
+        // ✅ NUEVO: Recuperación simple por documento + correo
+        [HttpPost("recuperar-password")]
+        public async Task<IActionResult> RecuperarPassword([FromBody] RecuperarPasswordRequest request)
         {
-            if (req == null || string.IsNullOrWhiteSpace(req.Correo))
-                return BadRequest(new { error = "Correo requerido." });
+            if (request == null || string.IsNullOrWhiteSpace(request.NumeroDocumento) || string.IsNullOrWhiteSpace(request.Correo))
+                return BadRequest(new { error = "Número de documento y correo son requeridos." });
 
-            var correo = req.Correo.Trim().ToLower();
-            var usuario = await _context.Usuario.FirstOrDefaultAsync(u => u.Correo.ToLower() == correo);
+            var documento = request.NumeroDocumento.Trim();
+            var correo = request.Correo.Trim().ToLower();
 
-            var genericMsg = new { message = "Si existe una cuenta con ese correo, recibirás un email con instrucciones." };
+            var usuario = await _context.Usuario
+                .FirstOrDefaultAsync(u =>
+                    u.NumeroDocumento == documento &&
+                    u.Correo.ToLower() == correo &&
+                    u.Estado == true);
 
             if (usuario == null)
-                return Ok(genericMsg);
+                return NotFound(new { error = "No se encontró un usuario con ese documento y correo." });
 
-            // Generar token seguro URL-safe
-            var rawToken = GenerateResetToken();
-            var hashed = HashToken(rawToken);
-            usuario.TokenRecuperacion = hashed;
-            usuario.FechaTokenExpira = DateTime.UtcNow.AddMinutes(30);
-            await _context.SaveChangesAsync();
-
-            var frontendBase = _config["FrontendUrl"]?.TrimEnd('/') ?? "http://localhost:3000";
-            var resetUrl = $"{frontendBase}/reset-password?token={Uri.EscapeDataString(rawToken)}&id={usuario.IdUsuario}";
-
-            var html = $@"
-        <p>Hola {usuario.Nombre},</p>
-        <p>Has solicitado recuperar tu contraseña. Haz click en el siguiente enlace para establecer una nueva contraseña. El enlace expirará en 30 minutos.</p>
-        <p><a href=""{resetUrl}"">Resetear contraseña</a></p>
-        <p>Si el enlace no abre, copia y pega esta URL en tu navegador:</p>
-        <p>{resetUrl}</p>
-        <hr/>
-        <p>Si no solicitaste este cambio, ignora este correo.</p>
-    ";
-
-            // Disparar envío en background para no bloquear la petición
-            _ = Task.Run(async () =>
+            return Ok(new
             {
-                try
-                {
-                    await _emailSender.SendEmailAsync(usuario.Correo, "Recuperación de contraseña - NFC", html, $"Visita {resetUrl} para resetear tu contraseña.");
-                }
-                catch (Exception ex)
-                {
-                    // Log con detalle
-                    Console.Error.WriteLine("[Forgot->Background] Error enviando correo: " + ex);
-
-                    // Limpiar token si fallo el envío (porque no queremos que quede token sin que usuario reciba nada)
-                    try
-                    {
-                        var u = await _context.Usuario.FirstOrDefaultAsync(x => x.IdUsuario == usuario.IdUsuario);
-                        if (u != null)
-                        {
-                            u.TokenRecuperacion = null;
-                            u.FechaTokenExpira = null;
-                            await _context.SaveChangesAsync();
-                        }
-                    }
-                    catch (Exception e2)
-                    {
-                        Console.Error.WriteLine("[Forgot->Background] Error limpiando token tras fallo de envío: " + e2);
-                    }
-                }
+                message = "Usuario verificado",
+                idUsuario = usuario.IdUsuario,
+                nombre = usuario.Nombre,
+                apellido = usuario.Apellido,
+                correo = usuario.Correo
             });
-
-            // Responder inmediatamente (no exponemos si el usuario existe)
-            return Ok(genericMsg);
         }
 
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> Reset([FromBody] ResetPasswordRequest req)
+        // ✅ NUEVO: Cambiar contraseña directamente
+        [HttpPost("cambiar-password")]
+        public async Task<IActionResult> CambiarPassword([FromBody] CambiarPasswordRequest request)
         {
-            if (req == null || string.IsNullOrWhiteSpace(req.Token) || string.IsNullOrWhiteSpace(req.NuevaContraseña))
+            if (request == null || request.IdUsuario <= 0 || string.IsNullOrWhiteSpace(request.NuevaContraseña))
                 return BadRequest(new { error = "Datos incompletos." });
 
-            var hashed = HashToken(req.Token);
-            var usuario = await _context.Usuario.FirstOrDefaultAsync(u =>
-                u.TokenRecuperacion == hashed && u.FechaTokenExpira > DateTime.UtcNow);
-
-            if (usuario == null)
-                return BadRequest(new { error = "Token inválido o expirado." });
-
-            if (req.NuevaContraseña.Length < 6)
+            if (request.NuevaContraseña.Length < 6)
                 return BadRequest(new { error = "La contraseña debe tener al menos 6 caracteres." });
 
-            usuario.Contraseña = BCrypt.Net.BCrypt.HashPassword(req.NuevaContraseña);
-            usuario.TokenRecuperacion = null;
-            usuario.FechaTokenExpira = null;
+            var usuario = await _context.Usuario.FindAsync(request.IdUsuario);
+
+            if (usuario == null)
+                return NotFound(new { error = "Usuario no encontrado." });
+
+            if (usuario.Estado != true)
+                return BadRequest(new { error = "Usuario inactivo." });
+
+            usuario.Contraseña = BCrypt.Net.BCrypt.HashPassword(request.NuevaContraseña);
             usuario.FechaActualizacion = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 
-            // enviar confirmación (no bloquear si falla)
-            try
-            {
-                var html = $"<p>Hola {usuario.Nombre},</p><p>Tu contraseña ha sido actualizada correctamente. Si no fuiste tú, contacta soporte.</p>";
-                await _emailSender.SendEmailAsync(usuario.Correo, "Contraseña actualizada - NFC", html, $"Tu contraseña ha sido actualizada.");
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine("Error enviando confirmación: " + ex);
-            }
-
-            return Ok(new { message = "Contraseña actualizada correctamente." });
+            return Ok(new { message = "✅ Contraseña actualizada correctamente. Ya puedes iniciar sesión." });
         }
 
-        // --------- helpers & métodos existentes ---------
+        // ========== MÉTODOS AUXILIARES ==========
 
         private string GenerateJwtToken(Usuario usuario)
         {
@@ -226,9 +173,13 @@ namespace API___NFC.Controllers
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            var keyStr = _config["Jwt:Key"] ?? throw new Exception("Falta Jwt:Key");
+            var keyStr = _config["Jwt:Key"];
+            if (string.IsNullOrEmpty(keyStr))
+                throw new Exception("Falta Jwt:Key en configuración");
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
             var token = new JwtSecurityToken(
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
@@ -236,21 +187,24 @@ namespace API___NFC.Controllers
                 expires: DateTime.UtcNow.AddHours(6),
                 signingCredentials: creds
             );
+
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         private PasswordCheckResult VerificarContraseñaYPosibleMigracion(string input, string stored)
         {
-            if (string.IsNullOrEmpty(stored)) return new(false, false, "vacío");
+            if (string.IsNullOrEmpty(stored))
+                return new PasswordCheckResult(false, false, "vacío");
+
             if (stored.StartsWith("$2a$") || stored.StartsWith("$2b$") || stored.StartsWith("$2y$"))
-                return new(BCrypt.Net.BCrypt.Verify(input, stored), false, "bcrypt");
+                return new PasswordCheckResult(BCrypt.Net.BCrypt.Verify(input, stored), false, "bcrypt");
 
             bool isBase64 = stored.Length == 44 && Regex.IsMatch(stored, @"^[A-Za-z0-9+/=]+$");
             if (isBase64)
             {
                 using var sha = SHA256.Create();
                 var b64 = Convert.ToBase64String(sha.ComputeHash(Encoding.UTF8.GetBytes(input)));
-                return new(stored == b64, stored == b64, "sha256-b64");
+                return new PasswordCheckResult(stored == b64, stored == b64, "sha256-b64");
             }
 
             bool isHex = stored.Length == 64 && Regex.IsMatch(stored, "^[0-9a-fA-F]+$");
@@ -258,32 +212,36 @@ namespace API___NFC.Controllers
             {
                 using var sha = SHA256.Create();
                 var hex = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(input))).Replace("-", "").ToLower();
-                return new(stored.Equals(hex, StringComparison.OrdinalIgnoreCase), stored.Equals(hex, StringComparison.OrdinalIgnoreCase), "sha256-hex");
+                bool match = stored.Equals(hex, StringComparison.OrdinalIgnoreCase);
+                return new PasswordCheckResult(match, match, "sha256-hex");
             }
 
-            if (stored == input) return new(true, true, "plaintext");
-            return new(false, false, "mismatch");
+            if (stored == input)
+                return new PasswordCheckResult(true, true, "plaintext");
+
+            return new PasswordCheckResult(false, false, "mismatch");
         }
 
-        private static string GenerateResetToken()
-        {
-            var bytes = new byte[32];
-            RandomNumberGenerator.Fill(bytes);
-            return WebEncoders.Base64UrlEncode(bytes);
-        }
-
-        private static string HashToken(string token)
-        {
-            using var sha = SHA256.Create();
-            var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(token));
-            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-        }
+        // ========== RECORDS Y DTOs ==========
 
         private record PasswordCheckResult(bool EsValida, bool NecesitaUpgrade, string Info);
 
-        // DTOs
-        public class LoginRequest { public string Correo { get; set; } = ""; public string Contraseña { get; set; } = ""; }
-        public class ForgotPasswordRequest { public string Correo { get; set; } = ""; }
-        public class ResetPasswordRequest { public string Token { get; set; } = ""; public string NuevaContraseña { get; set; } = ""; }
+        public class LoginRequest
+        {
+            public string Correo { get; set; } = string.Empty;
+            public string Contraseña { get; set; } = string.Empty;
+        }
+
+        public class RecuperarPasswordRequest
+        {
+            public string NumeroDocumento { get; set; } = string.Empty;
+            public string Correo { get; set; } = string.Empty;
+        }
+
+        public class CambiarPasswordRequest
+        {
+            public int IdUsuario { get; set; }
+            public string NuevaContraseña { get; set; } = string.Empty;
+        }
     }
 }
