@@ -628,6 +628,7 @@
                 } else {
                 
                   localStorage.setItem('auth_token', token);
+                  document.cookie = `AuthToken=${token}; path=/; secure; samesite=strict`;
                   if(usr) localStorage.setItem('user_info', JSON.stringify(usr));
 
                  
