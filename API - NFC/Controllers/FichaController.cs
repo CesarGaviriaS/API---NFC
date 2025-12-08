@@ -93,6 +93,28 @@ namespace API___NFC.Controllers
 
             return NoContent();
         }
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchFicha([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return Ok(new List<object>());
+
+            query = query.Trim().ToLower();
+
+            var result = await _context.Ficha
+                .Where(f =>
+                    f.Codigo.ToLower().Contains(query) ||
+                    f.IdFicha.ToString().Contains(query)
+                )
+                .Select(f => new {
+                    id = f.IdFicha,
+                    codigo = f.Codigo
+                })
+                .Take(20)
+                .ToListAsync();
+
+            return Ok(result);
+        }
 
         private bool FichaExists(int id)
         {

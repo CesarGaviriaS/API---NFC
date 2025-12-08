@@ -1,0 +1,9 @@
+Changed database context to 'NFCSENA'.
+Msg 207, Level 16, State 1, Server HPexperto, Line 36
+Invalid column name 'EstaDentro'.
+Msg 207, Level 16, State 1, Server HPexperto, Line 51
+Invalid column name 'EstaDentro'.
+Msg 207, Level 16, State 1, Server HPexperto, Line 52
+Invalid column name 'EstaDentro'.
+Msg 207, Level 16, State 1, Server HPexperto, Line 52
+Invalid column name 'EstaDentro'.

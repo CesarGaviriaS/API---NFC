@@ -1,0 +1,109 @@
+Changed database context to 'NFCSENA'.
+========================================
+1. VERIFICAR TIPOS DE PROCESO
+========================================
+IdTipoProceso Tipo                                               Estado
+------------- -------------------------------------------------- ------
+            1 Ingreso                                                 1
+            2 Salida                                                  1
+            3 PrÈstamo                                                1
+            4 DevoluciÛn                                              1
+            5 Error de ValidaciÛn                                     1
+            9 prueba                                                  1
+
+(6 rows affected)
+ 
+========================================
+2. √öLTIMOS 10 PROCESOS CREADOS
+========================================
+IdProceso   TipoProceso                                        IdProcesoIngreso EstadoProceso        Fecha                Persona                                 CantidadDispositivos
+----------- -------------------------------------------------- ---------------- -------------------- -------------------- --------------------------------------- --------------------
+        144 Salida                                                          143 Cerrado              2025-12-08 10:18:42  Aprendiz 8                                                 1
+        143 Salida                                                          142 EnCurso              2025-12-08 10:18:28  Aprendiz 8                                                 1
+        142 Salida                                                          140 Abierto              2025-12-08 10:18:23  Aprendiz 8                                                 0
+        141 Salida                                                          140 Cerrado              2025-12-08 10:18:02  Aprendiz 8                                                 2
+        140 Salida                                                          139 EnCurso              2025-12-08 10:17:46  Aprendiz 8                                                 1
+        139 Salida                                                          137 EnCurso              2025-12-08 10:06:06  Aprendiz 8                                                 1
+        138 Salida                                                          137 Cerrado              2025-12-08 09:56:23  Aprendiz 8                                                 0
+        137 Salida                                                          136 EnCurso              2025-12-08 09:56:14  Aprendiz 8                                                 1
+        136 Salida                                                         NULL Abierto              2025-12-08 09:42:15  Aprendiz 8                                                 0
+        135 Salida                                                         NULL EnCurso              2025-12-08 09:41:59  Aprendiz 8                                                 1
+
+(10 rows affected)
+ 
+========================================
+3. √öLTIMOS 10 REGISTROS NFC
+========================================
+IdRegistro  Fecha                TipoRegistro                                       Persona                                
+----------- -------------------- -------------------------------------------------- ---------------------------------------
+        249 2025-12-08 10:18:47  Salida                                             Aprendiz 8                             
+        248 2025-12-08 10:18:33  Ingreso                                            Aprendiz 8                             
+        247 2025-12-08 10:18:21  Salida                                             Aprendiz 8                             
+        246 2025-12-08 10:17:51  Ingreso                                            Aprendiz 8                             
+        245 2025-12-08 10:06:11  Ingreso                                            Aprendiz 8                             
+        244 2025-12-08 09:56:26  Salida                                             Aprendiz 8                             
+        243 2025-12-08 09:56:20  Ingreso                                            Aprendiz 8                             
+        242 2025-12-08 09:42:04  Ingreso                                            Aprendiz 8                             
+        241 2025-12-08 09:41:50  Salida                                             Aprendiz 8                             
+        240 2025-12-08 09:41:35  Ingreso                                            Aprendiz 8                             
+
+(10 rows affected)
+ 
+========================================
+4. DISPOSITIVOS POR PROCESO (√öltimos 5)
+========================================
+IdProceso   TipoProceso                                        Serial                                                                                                                                                 Marca                                                                                                QuedoEnSena Validado EstaDentro
+----------- -------------------------------------------------- ------------------------------------------------------------------------------------------------------------------------------------------------------ ---------------------------------------------------------------------------------------------------- ----------- -------- ----------
+        144 Salida                                             123P                                                                                                                                                   HP                                                                                                             0        1          0
+        143 Salida                                             123P                                                                                                                                                   HP                                                                                                             0        1          0
+        141 Salida                                             113R                                                                                                                                                   poco                                                                                                           0        1          0
+        141 Salida                                             123P                                                                                                                                                   HP                                                                                                             0        1          0
+        140 Salida                                             123P                                                                                                                                                   HP                                                                                                             0        1          0
+
+(5 rows affected)
+ 
+========================================
+5. DISPOSITIVOS CON ESTADO EST√ÅDENTRO
+========================================
+IdElemento  Serial                                                                                                                                                 Marca                                                                                                Modelo                                                                                               EstaDentro TipoPropietario      IdPropietario TipoElemento                                                                                        
+----------- ------------------------------------------------------------------------------------------------------------------------------------------------------ ---------------------------------------------------------------------------------------------------- ---------------------------------------------------------------------------------------------------- ---------- -------------------- ------------- ----------------------------------------------------------------------------------------------------
+         18 113R                                                                                                                                                   poco                                                                                                 5 G                                                                                                           0 Aprendiz                         8 Celular                                                                                             
+         16 123H                                                                                                                                                   DELL                                                                                                 5 G                                                                                                           0 Aprendiz                         7 Laptop                                                                                              
+         17 123P                                                                                                                                                   HP                                                                                                   6G                                                                                                            0 Aprendiz                         8 Laptop                                                                                              
+         19 Q32                                                                                                                                                    Lenovo                                                                                               TAP 5                                                                                                         0 Aprendiz                         7 Tablet                                                                                              
+         20 QQ                                                                                                                                                     ICH                                                                                                  ww                                                                                                            0 Aprendiz                         7 Casco                                                                                               
+         21 WWW                                                                                                                                                    poco                                                                                                 9 G Pro                                                                                                       0 Aprendiz                         9 Celular                                                                                             
+
+(6 rows affected)
+ 
+========================================
+6. PROBLEMA: PROCESOS SIN TIPO CORRECTO
+========================================
+Tipo                                               Cantidad    PrimerProceso UltimoProceso
+-------------------------------------------------- ----------- ------------- -------------
+Ingreso                                                     67            54           130
+Salida                                                      24           105           144
+
+(2 rows affected)
+ 
+========================================
+7. VERIFICAR IdTipoProceso EN PROCESOS
+========================================
+IdProceso   IdTipoProceso Tipo                                              
+----------- ------------- --------------------------------------------------
+        144             2 Salida                                            
+        143             2 Salida                                            
+        142             2 Salida                                            
+        141             2 Salida                                            
+        140             2 Salida                                            
+        139             2 Salida                                            
+        138             2 Salida                                            
+        137             2 Salida                                            
+        136             2 Salida                                            
+        135             2 Salida                                            
+
+(10 rows affected)
+ 
+========================================
+DIAGN√ìSTICO COMPLETADO
+========================================

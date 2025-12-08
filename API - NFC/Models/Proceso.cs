@@ -22,8 +22,10 @@ namespace API___NFC.Models
 
         public bool? RequiereOtrosProcesos { get; set; }  
 
-        public int? IdProceso_Relacionado { get; set; }  
+        public int? IdProceso_Relacionado { get; set; }
 
+        [MaxLength(20)]
+        public string? EstadoProceso { get; set; } = "Abierto";
         public string? Observaciones { get; set; } 
 
         public bool? SincronizadoBD { get; set; }  
