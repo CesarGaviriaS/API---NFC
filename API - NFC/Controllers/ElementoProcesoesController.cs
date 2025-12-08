@@ -131,43 +131,118 @@ namespace API___NFC.Controllers
             return Ok(relaciones);
         }
 
-        // ✅ MÉTODO CLAVE: Obtener dispositivos pendientes (QuedoEnSena = true)
+        // ✅ MÉTODO CORREGIDO: Solo obtener pendientes que NO hayan salido después
         [HttpGet("pendientes/{tipoPropietario}/{idPropietario}")]
         public async Task<ActionResult<IEnumerable<object>>> GetPendientes(string tipoPropietario, int idPropietario)
         {
-            var pendientes = await _context.ElementoProceso
-                .Include(e => e.Elemento).ThenInclude(e => e.TipoElemento)
-                .Where(e =>
-                    e.Elemento.IdPropietario == idPropietario &&
-                    e.Elemento.TipoPropietario == tipoPropietario &&
-                    e.QuedoEnSena == true)
-                .Select(ep => new
-                {
-                    ep.IdElementoProceso,
-                    ep.IdProceso,
-                    ep.IdElemento,
-                    ep.QuedoEnSena,
-                    ep.Validado,
-                    Elemento = new
-                    {
-                        ep.Elemento.IdElemento,
-                        ep.Elemento.Marca,
-                        ep.Elemento.Modelo,
-                        ep.Elemento.Serial,
-                        ep.Elemento.Descripcion,
-                        ep.Elemento.ImagenUrl,
-                        ep.Elemento.CodigoNFC,
-                        TipoElemento = new
-                        {
-                            ep.Elemento.TipoElemento.IdTipoElemento,
-                            ep.Elemento.TipoElemento.Tipo
-                        }
-                    }
-                })
-                .ToListAsync();
+            try
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"\n🔍 ═══════════════════════════════════════");
+                Console.WriteLine($"🔍 BUSCANDO PENDIENTES");
+                Console.WriteLine($"🔍 Propietario: {tipoPropietario} ID: {idPropietario}");
+                Console.WriteLine($"🔍 ═══════════════════════════════════════");
+                Console.ResetColor();
 
-            return Ok(pendientes);
+                // ✅ PASO 1: Obtener TODOS los ElementoProceso con QuedoEnSena = true
+                var todosPendientes = await _context.ElementoProceso
+                    .Include(e => e.Elemento).ThenInclude(e => e.TipoElemento)
+                    .Include(e => e.Proceso)
+                    .Where(e =>
+                        e.Elemento.IdPropietario == idPropietario &&
+                        e.Elemento.TipoPropietario == tipoPropietario &&
+                        e.QuedoEnSena == true)
+                    .OrderBy(e => e.IdProceso)
+                    .ToListAsync();
+
+                Console.WriteLine($"📦 Total con QuedoEnSena=true: {todosPendientes.Count}");
+
+                // ✅ PASO 2: Filtrar solo los que NO han salido después
+                var pendientesReales = new List<object>();
+
+                foreach (var pendiente in todosPendientes)
+                {
+                    var idElemento = pendiente.IdElemento;
+                    var idProcesoQueQuedo = pendiente.IdProceso;
+                    var serial = pendiente.Elemento?.Serial ?? "N/A";
+
+                    Console.WriteLine($"\n🔍 Analizando: {serial}");
+                    Console.WriteLine($"   • Quedó en proceso: {idProcesoQueQuedo}");
+
+                    // ✅ BUSCAR SI ESTE DISPOSITIVO SALIÓ EN UN PROCESO POSTERIOR
+                    var salidaPosterior = await _context.ElementoProceso
+                        .Include(ep => ep.Proceso)
+                        .Where(ep =>
+                            ep.IdElemento == idElemento &&
+                            ep.IdProceso > idProcesoQueQuedo && // Proceso POSTERIOR
+                            ep.QuedoEnSena == false && // Dispositivo SALIÓ
+                            ep.Proceso.EstadoProceso == "Cerrado") // Proceso está CERRADO
+                        .OrderBy(ep => ep.IdProceso)
+                        .FirstOrDefaultAsync();
+
+                    if (salidaPosterior != null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"   ✅ YA SALIÓ en proceso {salidaPosterior.IdProceso}");
+                        Console.WriteLine($"   ➡️ NO agregar a pendientes");
+                        Console.ResetColor();
+                        continue; // NO es pendiente, ya salió
+                    }
+
+                    // ✅ SÍ ES PENDIENTE (no ha salido)
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"   🟠 AÚN PENDIENTE (no ha salido)");
+                    Console.WriteLine($"   ➡️ Agregar a pendientes");
+                    Console.ResetColor();
+
+                    pendientesReales.Add(new
+                    {
+                        pendiente.IdElementoProceso,
+                        pendiente.IdProceso,
+                        pendiente.IdElemento,
+                        pendiente.QuedoEnSena,
+                        pendiente.Validado,
+                        Elemento = new
+                        {
+                            pendiente.Elemento.IdElemento,
+                            pendiente.Elemento.Marca,
+                            pendiente.Elemento.Modelo,
+                            pendiente.Elemento.Serial,
+                            pendiente.Elemento.Descripcion,
+                            pendiente.Elemento.ImagenUrl,
+                            pendiente.Elemento.CodigoNFC,
+                            TipoElemento = new
+                            {
+                                pendiente.Elemento.TipoElemento.IdTipoElemento,
+                                pendiente.Elemento.TipoElemento.Tipo
+                            }
+                        }
+                    });
+                }
+
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"\n📊 RESUMEN:");
+                Console.WriteLine($"   • Total con QuedoEnSena=true: {todosPendientes.Count}");
+                Console.WriteLine($"   • Pendientes reales (no han salido): {pendientesReales.Count}");
+                Console.WriteLine($"═══════════════════════════════════════\n");
+                Console.ResetColor();
+
+                return Ok(pendientesReales);
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ ERROR en GetPendientes: {ex.Message}");
+                Console.ResetColor();
+
+                return StatusCode(500, new
+                {
+                    Message = "Error al obtener pendientes",
+                    Error = ex.Message
+                });
+            }
         }
+
 
         // ✅ NUEVO: Agregar automáticamente pendientes en SALIDA
         [HttpPost("agregarPendientesASalida")]
@@ -175,7 +250,7 @@ namespace API___NFC.Controllers
         {
             try
             {
-                // Obtener dispositivos pendientes
+                // Obtener dispositivos pendientes (lógica simple del código antiguo)
                 var pendientes = await _context.ElementoProceso
                     .Include(e => e.Elemento)
                     .Where(ep =>
@@ -193,10 +268,22 @@ namespace API___NFC.Controllers
 
                 foreach (var pendiente in pendientes)
                 {
-                    // Cambiar el proceso al actual y marcar como no pendiente
-                    pendiente.IdProceso = request.IdProcesoSalida;
+                    // ✅ FIX CRÍTICO: CREAR NUEVO registro en lugar de reutilizar
+                    // Esto evita modificar el registro de ingreso cuando procesamos la salida
+                    var nuevoElementoProceso = new ElementoProceso
+                    {
+                        IdProceso = request.IdProcesoSalida,
+                        IdElemento = pendiente.IdElemento,
+                        QuedoEnSena = false,  // Se está sacando ahora
+                        Validado = false      // Se validará al confirmar salida
+                    };
+
+                    _context.ElementoProceso.Add(nuevoElementoProceso);
+                    
+                    // ✅ Marcar el pendiente anterior como liberado (ya no está pendiente)
                     pendiente.QuedoEnSena = false;
-                    pendiente.Validado = true;
+                    _context.Entry(pendiente).State = EntityState.Modified;
+                    
                     agregados++;
                 }
 
@@ -388,6 +475,29 @@ namespace API___NFC.Controllers
 
             _context.ElementoProceso.Add(elementoProceso);
             await _context.SaveChangesAsync();
+
+            // ✅ NUEVO: Crear DetalleRegistroNFC para este dispositivo agregado
+            // Buscar el RegistroNFC de ingreso asociado a este proceso
+            var registroIngreso = await _context.RegistroNFC
+                .FirstOrDefaultAsync(r => r.IdProceso == elementoProceso.IdProceso && r.TipoRegistro == "Ingreso");
+
+            if (registroIngreso != null)
+            {
+                var detalle = new DetalleRegistroNFC
+                {
+                    IdRegistroNFC = registroIngreso.IdRegistro,
+                    IdElemento = elementoProceso.IdElemento,
+                    IdProceso = elementoProceso.IdProceso,
+                    Accion = "Ingreso",
+                    FechaHora = DateTime.Now,
+                    Validado = false  // Se validará al confirmar ingreso
+                };
+
+                _context.DetalleRegistroNFC.Add(detalle);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"✅ DetalleRegistroNFC creado para dispositivo agregado: IdElemento={elementoProceso.IdElemento}");
+            }
 
             return CreatedAtAction(nameof(GetElementoProceso),
                 new { id = elementoProceso.IdElementoProceso },

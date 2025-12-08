@@ -229,9 +229,18 @@
                                 </h6>
                                 <div class="mb-3">
                                     <label class="form-label required">Ficha</label>
-                                    <select id="aprendizFichaSelect" class="form-select">
-                                        <option value="">Seleccione una ficha...</option>
-                                    </select>
+                                    <div class="position-relative">
+                                        <input id="fichaSearchInput" class="form-control" placeholder="Buscar ficha por código..." autocomplete="off">
+
+                                        <div id="fichaSearchResults"
+                                             class="list-group position-absolute w-100 shadow-sm"
+                                             style="z-index:1000; max-height:200px; overflow-y:auto; display:none;">
+                                        </div>
+                                    </div>
+
+                                    <!-- mantiene compatibilidad con backend -->
+                                    <input type="hidden" id="aprendizFichaSelect">
+
                                 </div>
                             </div>
                         </div>
@@ -367,6 +376,61 @@
             // Guardar
             userSaveBtn.addEventListener('click', guardarUsuario);
         }
+
+            // ==========================
+    // 🔍 BÚSQUEDA DINÁMICA FICHAS
+    // ==========================
+    const fichaSearchInput = document.getElementById("fichaSearchInput");
+    const fichaSearchResults = document.getElementById("fichaSearchResults");
+
+    async function buscarFichas(query) {
+        if (!query || query.length < 2) {
+            fichaSearchResults.style.display = "none";
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/Ficha/search?query=${query}`);
+
+            if (!res.ok) return;
+
+            const fichas = await res.json();
+
+            if (fichas.length === 0) {
+                fichaSearchResults.innerHTML = `<div class="list-group-item">Sin resultados</div>`;
+                fichaSearchResults.style.display = "block";
+                return;
+            }
+
+            fichaSearchResults.innerHTML = "";
+
+            fichas.forEach(f => {
+                const item = document.createElement("button");
+                item.className = "list-group-item list-group-item-action";
+                item.textContent = `${f.codigo} (ID: ${f.id})`;
+                item.dataset.id = f.id;
+
+                item.addEventListener("click", () => {
+                    fichaSearchInput.value = f.codigo;
+                    aprendizFichaSelect.value = f.id;
+
+                    fichaSearchResults.style.display = "none";
+                });
+
+                fichaSearchResults.appendChild(item);
+            });
+
+            fichaSearchResults.style.display = "block";
+
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    fichaSearchInput.addEventListener("input", () => {
+        buscarFichas(fichaSearchInput.value.trim());
+    });
+
 
         // ========== MOSTRAR/OCULTAR CAMPOS ==========
         function mostrarCamposPorRol() {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
@@ -14,7 +15,7 @@ namespace API___NFC.Models
 
 
         public int? IdUsuario { get; set; } = null;
-
+   
         [Required, MaxLength(50)]
         public string TipoRegistro { get; set; } = null!; // Lectura | Escritura | Limpieza | etc.
 
@@ -22,6 +23,9 @@ namespace API___NFC.Models
 
         [MaxLength(20)]
         public string? Estado { get; set; } // p.ej. "Activo" | "Inactivo"
+
+        // ✨ NUEVO: Vinculación con Proceso
+        public int? IdProceso { get; set; }
 
         // Relaciones
         [ForeignKey(nameof(IdAprendiz))]
@@ -31,5 +35,14 @@ namespace API___NFC.Models
         [ForeignKey(nameof(IdUsuario))]
         [JsonIgnore]
         public virtual Usuario? Usuario { get; set; }
+
+        // ✨ NUEVO: Navegación a Proceso
+        [ForeignKey(nameof(IdProceso))]
+        [JsonIgnore]
+        public virtual Proceso? Proceso { get; set; }
+
+        // ✨ NUEVO: Navegación inversa a DetalleRegistroNFC
+        [JsonIgnore]
+        public virtual ICollection<DetalleRegistroNFC>? Detalles { get; set; }
     }
 }

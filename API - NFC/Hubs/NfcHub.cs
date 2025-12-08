@@ -17,6 +17,9 @@ namespace API___NFC.Hubs
         // 👮‍♂️ Guardia actualmente activo en la terminal
         private static int _currentGuardId = 0;
 
+        // 🎯 Modo de operación del Hub
+        private static string _modoOperacion = "TERMINAL"; // TERMINAL | GESTION_TAGS
+
         public NfcHub(IServiceScopeFactory scopeFactory)
         {
             _scopeFactory = scopeFactory;
@@ -30,28 +33,66 @@ namespace API___NFC.Hubs
             Console.WriteLine($"👮‍♂️ [NfcHub] Guardia activo actualizado: Id = {guardId}");
             Console.ResetColor();
 
-            // Opcional: notificar a las UIs
             await Clients.All.SendAsync("GuardChanged", guardId);
         }
 
-        // --- MODO MANUAL DESDE DASHBOARD ---
+        // --- MODO MANUAL DESDE DASHBOARD (GESTIÓN DE TAGS) ---
         public async Task SetAgentModeToWrite(string data)
-            => await Clients.All.SendAsync("RequestWriteMode", data);
+        {
+            _modoOperacion = "GESTION_TAGS";
+            Console.WriteLine($"🏷️ [NfcHub] Modo cambiado a: GESTION_TAGS (Escritura)");
+            await Clients.All.SendAsync("RequestWriteMode", data);
+        }
 
         public async Task SetAgentModeToClean()
-            => await Clients.All.SendAsync("RequestCleanMode");
+        {
+            _modoOperacion = "GESTION_TAGS";
+            Console.WriteLine($"🧹 [NfcHub] Modo cambiado a: GESTION_TAGS (Limpieza)");
+            await Clients.All.SendAsync("RequestCleanMode");
+        }
 
         public async Task SetAgentModeToRead()
-            => await Clients.All.SendAsync("RequestReadMode");
+        {
+            _modoOperacion = "GESTION_TAGS";
+            Console.WriteLine($"📖 [NfcHub] Modo cambiado a: GESTION_TAGS (Lectura)");
+            await Clients.All.SendAsync("RequestReadMode");
+        }
+
+        // --- CAMBIAR A MODO TERMINAL (llamado desde Terminal.cshtml) ---
+        public async Task SetModoTerminal()
+        {
+            _modoOperacion = "TERMINAL";
+            Console.WriteLine($"🖥️ [NfcHub] Modo cambiado a: TERMINAL");
+            await Task.CompletedTask;
+        }
 
         // --- AGENTE → API (LECTURA DE TAG) ---
         public async Task ProcesarLecturaTag(string tagData)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"📡 Procesando tag recibido: {tagData}");
+            Console.WriteLine($"\n📡 ═══════════════════════════════════════");
+            Console.WriteLine($"📡 TAG RECIBIDO: {tagData}");
+            Console.WriteLine($"📡 MODO ACTUAL: {_modoOperacion}");
+            Console.WriteLine($"📡 ═══════════════════════════════════════");
             Console.ResetColor();
 
+            // ✅ SIEMPRE ENVIAR A TODOS LOS CLIENTES
             await Clients.All.SendAsync("RecibirDatosTag", tagData);
+
+            // 🎯 SI ESTÁ EN MODO GESTIÓN DE TAGS, NO PROCESAR AUTOMÁTICAMENTE
+            if (_modoOperacion == "GESTION_TAGS")
+            {
+                Console.ForegroundColor = ConsoleColor.Magenta;
+                Console.WriteLine("🏷️ MODO GESTIÓN DE TAGS → No se procesa automáticamente");
+                Console.WriteLine("   Esperando acción del usuario (Grabar/Limpiar/Leer)");
+                Console.ResetColor();
+                return;
+            }
+
+            // 🎯 MODO TERMINAL: ENVIAR A TERMINAL PARA PROCESAMIENTO MANUAL
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("🖥️ MODO TERMINAL → Enviando al Terminal NFC");
+            Console.ResetColor();
 
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -73,67 +114,41 @@ namespace API___NFC.Hubs
                 int id = int.Parse(parts[1]);
                 string tipoPersona = (tipo == 1) ? "Aprendiz" : "Usuario";
 
-                Console.WriteLine($"→ TipoPersona: {tipoPersona}, ID: {id}");
+                Console.WriteLine($"   → TipoPersona: {tipoPersona}, ID: {id}");
 
-                // 🔥 BUSCAR PROCESO ACTIVO (sin salida registrada)
+                // 🔥 BUSCAR O CREAR PROCESO "ABIERTO" PARA EL TERMINAL
                 Proceso procesoActivo = null;
 
                 if (tipoPersona == "Aprendiz")
                 {
-                    // Buscar el último proceso del aprendiz
-                    var ultimoProceso = await context.Proceso
-                        .Where(p => p.IdAprendiz == id && p.TipoPersona == "Aprendiz")
+                    procesoActivo = await context.Proceso
+                        .Where(p => p.IdAprendiz == id &&
+                                   p.TipoPersona == "Aprendiz" &&
+                                   (p.EstadoProceso == "Abierto" || p.EstadoProceso == "EnCurso"))
                         .Include(p => p.TipoProceso)
                         .OrderByDescending(p => p.IdProceso)
                         .FirstOrDefaultAsync();
-
-                    if (ultimoProceso != null)
-                    {
-                        // Verificar si ya tiene salida registrada
-                        var tieneSalida = await context.RegistroNFC
-                            .AnyAsync(r => r.IdAprendiz == id &&
-                                          r.TipoRegistro == "Salida" &&
-                                          r.FechaRegistro >= ultimoProceso.TimeStampEntradaSalida);
-
-                        if (!tieneSalida)
-                        {
-                            procesoActivo = ultimoProceso;
-                        }
-                    }
                 }
                 else
                 {
-                    // Buscar el último proceso del usuario
-                    var ultimoProceso = await context.Proceso
-                        .Where(p => p.IdUsuario == id && p.TipoPersona == "Usuario")
+                    procesoActivo = await context.Proceso
+                        .Where(p => p.IdUsuario == id &&
+                                   p.TipoPersona == "Usuario" &&
+                                   (p.EstadoProceso == "Abierto" || p.EstadoProceso == "EnCurso"))
                         .Include(p => p.TipoProceso)
                         .OrderByDescending(p => p.IdProceso)
                         .FirstOrDefaultAsync();
-
-                    if (ultimoProceso != null)
-                    {
-                        // Verificar si ya tiene salida registrada
-                        var tieneSalida = await context.RegistroNFC
-                            .AnyAsync(r => r.IdUsuario == id &&
-                                          r.TipoRegistro == "Salida" &&
-                                          r.FechaRegistro >= ultimoProceso.TimeStampEntradaSalida);
-
-                        if (!tieneSalida)
-                        {
-                            procesoActivo = ultimoProceso;
-                        }
-                    }
                 }
 
                 Proceso proceso;
-                RegistroNFC registro;
                 string nombreTipo;
+                string estadoProceso;
 
-                // 🔥 SI NO HAY PROCESO ACTIVO → CREAR INGRESO
+                // 🔥 SI NO HAY PROCESO ACTIVO → CREAR PROCESO "ABIERTO" (INGRESO)
                 if (procesoActivo == null)
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("🆕 No hay proceso activo → Creando INGRESO");
+                    Console.WriteLine("🆕 No hay proceso activo → Creando proceso ABIERTO (Ingreso)");
                     Console.ResetColor();
 
                     nombreTipo = "Ingreso";
@@ -153,9 +168,10 @@ namespace API___NFC.Hubs
                     {
                         IdTipoProceso = tipoProc.IdTipoProceso,
                         TipoPersona = tipoPersona,
-                        IdGuardia = _currentGuardId, // 👈 AHORA USA EL GUARDIA ACTIVO
+                        IdGuardia = _currentGuardId,
                         TimeStampEntradaSalida = DateTime.Now,
-                        Observaciones = $"{nombreTipo} registrada por NFC",
+                        EstadoProceso = "Abierto", // ✅ MODO TERMINAL: Esperando confirmación
+                        Observaciones = $"Proceso {nombreTipo} iniciado por NFC - Pendiente de confirmación",
                         SincronizadoBD = true,
                         IdAprendiz = (tipo == 1) ? id : null,
                         IdUsuario = (tipo == 2) ? id : null
@@ -164,57 +180,43 @@ namespace API___NFC.Hubs
                     context.Proceso.Add(proceso);
                     await context.SaveChangesAsync();
 
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"✅ Proceso INGRESO creado. IdProceso = {proceso.IdProceso}, Guardia = {_currentGuardId}");
-                    Console.ResetColor();
-
-                    registro = new RegistroNFC
-                    {
-                        IdAprendiz = (tipo == 1) ? id : null,
-                        IdUsuario = (tipo == 2) ? id : null,
-                        TipoRegistro = nombreTipo,
-                        FechaRegistro = DateTime.Now,
-                        Estado = "Activo"
-                    };
-
-                    context.RegistroNFC.Add(registro);
-                    await context.SaveChangesAsync();
+                    estadoProceso = "Abierto";
 
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"✅ Registro NFC INGRESO guardado. IdRegistro = {registro.IdRegistro}");
+                    Console.WriteLine($"✅ Proceso INGRESO creado:");
+                    Console.WriteLine($"   • IdProceso: {proceso.IdProceso}");
+                    Console.WriteLine($"   • Estado: Abierto (Pendiente de confirmación)");
+                    Console.WriteLine($"   • Guardia: {_currentGuardId}");
                     Console.ResetColor();
                 }
-                // 🔥 SI HAY PROCESO ACTIVO → REGISTRAR SALIDA (REUTILIZAR PROCESO)
+                // 🔥 SI HAY PROCESO ACTIVO → PREPARAR SALIDA
                 else
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine($"🔄 Proceso activo encontrado (ID: {procesoActivo.IdProceso}) → Registrando SALIDA");
+                    Console.WriteLine($"🔄 Proceso activo encontrado:");
+                    Console.WriteLine($"   • IdProceso: {procesoActivo.IdProceso}");
+                    Console.WriteLine($"   • Estado: {procesoActivo.EstadoProceso}");
+                    Console.WriteLine($"   • Preparando SALIDA");
                     Console.ResetColor();
 
                     proceso = procesoActivo;
                     nombreTipo = "Salida";
-
-                    registro = new RegistroNFC
-                    {
-                        IdAprendiz = (tipo == 1) ? id : null,
-                        IdUsuario = (tipo == 2) ? id : null,
-                        TipoRegistro = nombreTipo,
-                        FechaRegistro = DateTime.Now,
-                        Estado = "Activo"
-                    };
-
-                    context.RegistroNFC.Add(registro);
-                    await context.SaveChangesAsync();
-
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"✅ Registro NFC SALIDA guardado. IdRegistro = {registro.IdRegistro}");
-                    Console.WriteLine($"   → Asociado al Proceso ID: {proceso.IdProceso}, Guardia = {proceso.IdGuardia}");
-                    Console.ResetColor();
+                    estadoProceso = proceso.EstadoProceso;
                 }
+
+                // ✅ CREAR UN "REGISTRO TEMPORAL" SOLO PARA EL FRONTEND
+                // (El registro real se creará cuando se confirme en el Terminal)
+                var registroTemporal = new
+                {
+                    IdRegistro = 0,
+                    TipoRegistro = nombreTipo,
+                    FechaRegistro = DateTime.Now,
+                    Estado = "Pendiente"
+                };
 
                 var result = new
                 {
-                    Message = $"✅ {nombreTipo} registrado correctamente.",
+                    Message = $"✅ {nombreTipo} detectado. Esperando confirmación en Terminal.",
                     Proceso = new
                     {
                         proceso.IdProceso,
@@ -222,33 +224,32 @@ namespace API___NFC.Hubs
                         proceso.IdAprendiz,
                         proceso.IdUsuario,
                         proceso.TimeStampEntradaSalida,
+                        EstadoProceso = estadoProceso,
                         proceso.Observaciones
                     },
-                    Registro = new
-                    {
-                        registro.IdRegistro,
-                        registro.TipoRegistro,
-                        registro.FechaRegistro,
-                        registro.Estado
-                    }
+                    Registro = registroTemporal
                 };
 
                 await Clients.All.SendAsync("OperacionProcesada", JsonSerializer.Serialize(result));
 
                 Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine("📤 Notificación enviada a clientes conectados.");
+                Console.WriteLine("📤 Datos enviados al Terminal NFC");
+                Console.WriteLine($"   • Usuario debe confirmar {nombreTipo} manualmente");
+                Console.WriteLine($"═══════════════════════════════════════\n");
                 Console.ResetColor();
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ Error interno en ProcesarLecturaTag: {ex.Message}");
+                Console.WriteLine($"❌ ERROR en ProcesarLecturaTag:");
+                Console.WriteLine($"   Mensaje: {ex.Message}");
                 Console.WriteLine($"   Stack: {ex.StackTrace}");
                 Console.ResetColor();
 
                 await Clients.All.SendAsync("OperacionError", $"Error interno: {ex.Message}");
             }
         }
+
 
         // --- ESTADOS DEL AGENTE ---
         public async Task SendStatusUpdate(string message, string statusType)
@@ -260,10 +261,10 @@ namespace API___NFC.Hubs
         public async Task SendOperationFailure(string errorMessage)
             => await Clients.All.SendAsync("OperationFailed", errorMessage);
 
-        // --- NUEVO EVENTO GLOBAL PARA MENSAJES EN TIEMPO REAL ---
         public async Task SendTagEvent(string tipoEvento, string mensaje)
-        {
-            await Clients.All.SendAsync(tipoEvento, mensaje);
-        }
+            => await Clients.All.SendAsync(tipoEvento, mensaje);
+
+        public async Task SendTagCleanedSuccess(string cleanedTagCode)
+            => await Clients.All.SendAsync("TagCleanedSuccess", cleanedTagCode);
     }
 }

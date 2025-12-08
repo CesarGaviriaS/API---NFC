@@ -205,10 +205,53 @@ namespace API___NFC.Controllers
             return NoContent();
         }
 
+        [HttpGet("byDocumento/{documento}")]
+        public async Task<ActionResult<Aprendiz>> GetAprendizByDocumento(string documento)
+        {
+            var aprendiz = await _context.Aprendiz
+                .Include(a => a.Ficha)
+                    .ThenInclude(f => f.Programa)
+                .FirstOrDefaultAsync(a => a.NumeroDocumento == documento);
+
+            if (aprendiz == null)
+            {
+                return NotFound();
+            }
+
+            return aprendiz;
+        }
         private bool AprendizExists(int id)
         {
             return _context.Aprendiz.Any(e => e.IdAprendiz == id);
         }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchAprendiz([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return Ok(new List<object>());
+
+            query = query.Trim().ToLower();
+
+            var result = await _context.Aprendiz
+                .Where(a => a.Estado == true &&
+                       (a.NumeroDocumento.Contains(query) ||
+                        a.Nombre.ToLower().Contains(query) ||
+                        a.Apellido.ToLower().Contains(query)))
+                .Select(a => new {
+                    id = a.IdAprendiz,
+                    nombre = a.Nombre + " " + a.Apellido,
+                    documento = a.NumeroDocumento
+                })
+                .Take(15)
+                .ToListAsync();
+
+            return Ok(result);
+        }
+
+
+
+
 
         // ✅ GET: api/Aprendiz/paged (CON Include)
         [HttpGet("paged")]

@@ -22,6 +22,9 @@ namespace API_NFC.Data
         public DbSet<TipoProceso> TipoProceso { get; set; }
         public DbSet<Usuario> Usuario { get; set; }
         public DbSet<TagAsignado> TagAsignado { get; set; }
+        
+        // ✨ NUEVO: DbSet para DetalleRegistroNFC
+        public DbSet<DetalleRegistroNFC> DetalleRegistroNFC { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -135,7 +138,7 @@ namespace API_NFC.Data
                       .HasForeignKey(e => e.IdTipoProceso)
                       .OnDelete(DeleteBehavior.Restrict);
 
-                // CHECK TipoPersona (‘Usuario’ o ‘Aprendiz’)
+                // CHECK TipoPersona ('Usuario' o 'Aprendiz')
                 entity.HasCheckConstraint("CHK_Proceso_TipoPersona", "(TipoPersona='Usuario' OR TipoPersona='Aprendiz')");
             });
 
@@ -186,7 +189,55 @@ namespace API_NFC.Data
                       .HasForeignKey(e => e.IdUsuario)
                       .OnDelete(DeleteBehavior.Restrict)
                       .IsRequired(false);  // ✅ también permite null
+
+                // ✨ NUEVO: Relación con Proceso
+                entity.HasOne(e => e.Proceso)
+                      .WithMany()
+                      .HasForeignKey(e => e.IdProceso)
+                      .OnDelete(DeleteBehavior.Restrict)
+                      .IsRequired(false);
+
+                // ✨ NUEVO: Relación con DetalleRegistroNFC
+                entity.HasMany(e => e.Detalles)
+                      .WithOne(d => d.RegistroNFC)
+                      .HasForeignKey(d => d.IdRegistroNFC)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // ✨ NUEVO: DetalleRegistroNFC
+            modelBuilder.Entity<DetalleRegistroNFC>(entity =>
+            {
+                entity.HasKey(e => e.IdDetalleRegistro);
+
+                entity.Property(e => e.Accion)
+                      .HasMaxLength(20)
+                      .IsRequired();
+
+                entity.Property(e => e.FechaHora)
+                      .HasDefaultValueSql("GETDATE()");
+
+                entity.Property(e => e.Validado)
+                      .HasDefaultValue(false);
+
+                entity.HasOne(e => e.RegistroNFC)
+                      .WithMany(r => r.Detalles)
+                      .HasForeignKey(e => e.IdRegistroNFC)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Elemento)
+                      .WithMany()
+                      .HasForeignKey(e => e.IdElemento)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Proceso)
+                      .WithMany()
+                      .HasForeignKey(e => e.IdProceso)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // CHECK Accion
+                entity.HasCheckConstraint("CHK_DetalleRegistroNFC_Accion", "(Accion='Ingreso' OR Accion='Salida' OR Accion='Quedo')");
+            });
+
 
 
             // TipoElemento

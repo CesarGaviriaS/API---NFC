@@ -56,53 +56,55 @@ namespace API___NFC.Controllers
             if (existing == null)
                 return NotFound();
 
-            // ✅ Validar TipoDocumento
+            // Validar tipo documento
             var tiposValidos = new[] { "CC", "TI", "CE", "PA" };
             if (!tiposValidos.Contains(usuario.TipoDocumento))
-            {
                 return BadRequest("El tipo de documento debe ser CC, TI, CE o PA");
-            }
 
-            // ✅ Validar Rol
+            // Validar rol
             var rolesValidos = new[] { "Administrador", "Guardia", "Funcionario" };
             if (!rolesValidos.Contains(usuario.Rol))
-            {
                 return BadRequest("El rol debe ser Administrador, Guardia o Funcionario");
-            }
 
-            // ✅ Validar duplicados (excepto el mismo usuario)
-            if (await _context.Usuario.AnyAsync(u =>
-                    (u.NumeroDocumento == usuario.NumeroDocumento ||
-                     u.Correo == usuario.Correo ||
-                     u.CodigoBarras == usuario.CodigoBarras) &&
-                    u.IdUsuario != id))
-            {
+            // ⚠️ VALIDACIÓN DE DUPLICADOS (Código de barras ahora es opcional)
+            bool existeDuplicado = await _context.Usuario.AnyAsync(u =>
+                u.IdUsuario != id &&
+                (
+                    u.NumeroDocumento == usuario.NumeroDocumento ||
+                    u.Correo == usuario.Correo ||
+                    (!string.IsNullOrWhiteSpace(usuario.CodigoBarras) && u.CodigoBarras == usuario.CodigoBarras)
+                )
+            );
+
+            if (existeDuplicado)
                 return Conflict("Ya existe un usuario con ese documento, correo o código de barras.");
-            }
 
-            // ✅ Actualizar campos
+            // Normalizar Código de Barras vacío → null
+            existing.CodigoBarras = string.IsNullOrWhiteSpace(usuario.CodigoBarras)
+                ? null
+                : usuario.CodigoBarras;
+
+            // Actualizar campos
             existing.Nombre = usuario.Nombre;
             existing.Apellido = usuario.Apellido;
             existing.TipoDocumento = usuario.TipoDocumento;
             existing.NumeroDocumento = usuario.NumeroDocumento;
             existing.Correo = usuario.Correo;
             existing.Rol = usuario.Rol;
-            existing.CodigoBarras = usuario.CodigoBarras;
             existing.Cargo = usuario.Cargo;
             existing.Telefono = usuario.Telefono;
             existing.FotoUrl = usuario.FotoUrl;
             existing.Estado = usuario.Estado ?? true;
             existing.FechaActualizacion = DateTime.Now;
 
-            // ⚠️ SOLO ACTUALIZAR CONTRASEÑA SI SE ENVIÓ UNA NUEVA
+            // Actualizar contraseña solo si viene nueva
             if (!string.IsNullOrWhiteSpace(usuario.Contraseña))
-            {
                 existing.Contraseña = HashPasswordIfNeeded(usuario.Contraseña);
-            }
 
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
 
         // ✅ POST: api/Usuario
         [HttpPost]
@@ -153,6 +155,20 @@ namespace API___NFC.Controllers
             return NoContent();
         }
 
+        [HttpGet("byDocumento/{documento}")]
+        public async Task<ActionResult<Usuario>> GetUsuarioByDocumento(string documento)
+        {
+            var usuario = await _context.Usuario
+                .FirstOrDefaultAsync(u => u.NumeroDocumento == documento);
+
+            if (usuario == null)
+            {
+                return NotFound();
+            }
+
+            return usuario;
+        }
+
         // ✅ GET Paginado
         [HttpGet("paged")]
         public async Task<ActionResult> GetUsuariosPaged([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
@@ -194,6 +210,31 @@ namespace API___NFC.Controllers
                 metadata.TotalPages
             });
         }
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchUsuario([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return Ok(new List<object>());
+
+            query = query.Trim().ToLower();
+
+            var result = await _context.Usuario
+                .Where(u => u.Estado == true &&
+                       (u.NumeroDocumento.Contains(query) ||
+                        u.Nombre.ToLower().Contains(query) ||
+                        u.Apellido.ToLower().Contains(query)))
+                .Select(u => new {
+                    id = u.IdUsuario,
+                    nombre = u.Nombre + " " + u.Apellido,
+                    documento = u.NumeroDocumento,
+                    rol = u.Rol 
+                })
+                .Take(15)
+                .ToListAsync();
+
+            return Ok(result);
+        }
+
 
         private bool UsuarioExists(int id)
         {
