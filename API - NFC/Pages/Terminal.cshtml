@@ -302,10 +302,6 @@
                         <div class="switch-wrapper">
                             <div class="mode-switch ingreso" id="modeSwitch" onclick="toggleMode()">
                                 <div class="mode-switch-slider" id="modeSwitchSlider">INGRESO</div>
-                                <div class="mode-switch-labels">
-                                    <span class="mode-switch-label ingreso">INGRESO</span>
-                                    <span class="mode-switch-label salida">SALIDA</span>
-                                </div>
                             </div>
                         </div>
                         <div style="display: flex; gap: 10px;">
@@ -480,27 +476,23 @@
                 <div class="alert alert-info border-start border-4 border-primary rounded-3">
                     <p class="mb-0">
                         <i class="bi bi-info-circle"></i>
-                        Usa esta opción cuando el aprendiz/usuario no tenga tag o quiera registrar dispositivos adicionales.
+                        Ingresa el número de documento o nombre. 
                     </p>
                 </div>
 
                 <form id="formBuscarManual" class="row g-3 mt-2">
-                    <div class="col-md-6">
-                        <label for="selTipoPersonaBuscar" class="form-label">Tipo de Persona *</label>
-                        <select id="selTipoPersonaBuscar" class="form-select" required>
-                            <option value="Aprendiz">Aprendiz</option>
-                            <option value="Usuario">Usuario/Funcionario</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label for="inpDocumentoBuscar" class="form-label">Número de Documento *</label>
-                        <input id="inpDocumentoBuscar" type="text" class="form-control"
-                               placeholder="Ej: 1234567890" required>
+                    <div class="col-12" style="position: relative;">
+                        <label for="inpDocumentoBuscar" class="form-label">Número de Documento o Nombre *</label>
+                        <input id="inpDocumentoBuscar" type="text" class="form-control form-control-lg"
+                               placeholder="Ej: 1234567890 o Juan Pérez" required autofocus autocomplete="off">
+                        
+                        <!-- 🔍 DROPDOWN DE AUTOCOMPLETE -->
+                        <div id="autocompleteResults" class="list-group" style="position: absolute; z-index: 1000; width: 100%; max-height: 300px; overflow-y: auto; display: none;">
+                        </div>
                     </div>
 
                     <div class="col-12">
-                        <button type="button" id="btnBuscarPersona" class="btn btn-primary w-100">
+                        <button type="button" id="btnBuscarPersona" class="btn btn-primary btn-lg w-100">
                             <i class="bi bi-search"></i> Buscar
                         </button>
                     </div>
@@ -535,6 +527,8 @@
         aprendizByDoc: doc => `/api/Aprendiz/byDocumento/${doc}`,
         usuario: id => `/api/Usuario/${id}`,
         usuarioByDoc: doc => `/api/Usuario/byDocumento/${doc}`,
+        personaByDoc: doc => `/api/Persona/byDocumento/${doc}`, // ✅ Búsqueda exacta
+        personaSearch: query => `/api/Persona/search?q=${encodeURIComponent(query)}`, // 🔍 Búsqueda dinámica
         tipos: () => `/api/TipoElementoes`,
         tiposProceso: () => `/api/TipoProcesoes`,
         owner: (tipo, id) => `/api/Elementoes/byOwner/${tipo}/${id}`,
@@ -1376,12 +1370,115 @@
         }
     };
 
-    // ✅ BÚSQUEDA MANUAL
+    // ✅ BÚSQUEDA MANUAL CON AUTOCOMPLETE DINÁMICO
     let personaEncontrada = null;
+    let timeoutBusqueda = null;
+    const autocompleteResults = document.getElementById('autocompleteResults');
+    const inpDocumentoBuscar = document.getElementById('inpDocumentoBuscar');
 
+    // 🔍 BÚSQUEDA DINÁMICA (mientras escribe)
+    inpDocumentoBuscar.addEventListener('input', async (e) => {
+        const query = e.target.value.trim();
+
+        // Limpiar timeout anterior
+        if (timeoutBusqueda) clearTimeout(timeoutBusqueda);
+
+        // Si el query es muy corto, ocultar resultados
+        if (query.length < 2) {
+            autocompleteResults.style.display = 'none';
+            autocompleteResults.innerHTML = '';
+            return;
+        }
+
+        // Esperar 300ms antes de buscar (debounce)
+        timeoutBusqueda = setTimeout(async () => {
+            try {
+                const response = await safeFetch(API.personaSearch(query));
+                const resultados = await response.json();
+
+                if (!resultados || resultados.length === 0) {
+                    autocompleteResults.style.display = 'none';
+                    autocompleteResults.innerHTML = '';
+                    return;
+                }
+
+                // Mostrar resultados
+                autocompleteResults.innerHTML = resultados.map(r => {
+                    const tipoPersona = r.tipoPersona || r.TipoPersona;
+                    const badgeClass = tipoPersona === 'Aprendiz' ? 'bg-primary' : 'bg-secondary';
+                    const icon = tipoPersona === 'Aprendiz' ? '🎓' : '👔';
+                    const nombre = r.nombreCompleto || r.NombreCompleto;
+                    const doc = r.numeroDocumento || r.NumeroDocumento;
+                    const correo = r.correo || r.Correo;
+
+                    return `
+                        <button type="button" class="list-group-item list-group-item-action" 
+                                data-persona='${JSON.stringify(r).replace(/'/g, "&apos;")}'>
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">${icon} ${nombre}</h6>
+                                    <small>Doc: ${doc} • ${correo}</small>
+                                </div>
+                                <span class="badge ${badgeClass}">${tipoPersona}</span>
+                            </div>
+                        </button>
+                    `;
+                }).join('');
+
+                autocompleteResults.style.display = 'block';
+
+                // Agregar event listeners a cada resultado
+                autocompleteResults.querySelectorAll('.list-group-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const personaData = JSON.parse(item.dataset.persona);
+                        seleccionarPersonaDesdeAutocomplete(personaData);
+                    });
+                });
+
+            } catch (error) {
+                console.error('Error en búsqueda dinámica:', error);
+                autocompleteResults.style.display = 'none';
+            }
+        }, 300);
+    });
+
+    // 📌 SELECCIONAR PERSONA DESDE AUTOCOMPLETE
+    function seleccionarPersonaDesdeAutocomplete(personaData) {
+        const tipoPersona = personaData.tipoPersona || personaData.TipoPersona;
+        const data = personaData.data || personaData.Data;
+        const idPersona = personaData.idPersona || personaData.IdPersona;
+        const doc = personaData.numeroDocumento || personaData.NumeroDocumento;
+
+        personaEncontrada = mapPersona(tipoPersona, data);
+        personaEncontrada.idReal = idPersona;
+        personaEncontrada.tipoPersona = tipoPersona;
+
+        const badgeClass = tipoPersona === "Aprendiz" ? "bg-primary" : "bg-secondary";
+        const badgeIcon = tipoPersona === "Aprendiz" ? "🎓" : "👔";
+
+        // Actualizar campo de búsqueda
+        inpDocumentoBuscar.value = doc;
+
+        // Ocultar autocomplete
+        autocompleteResults.style.display = 'none';
+
+        // Mostrar resultado
+        document.getElementById('datosPersonaEncontrada').innerHTML = `
+            <strong>${personaEncontrada.nombreCompleto}</strong><br>
+            <span class="badge ${badgeClass} mt-1">${badgeIcon} ${tipoPersona}</span><br>
+            ${personaEncontrada.documento}<br>
+            ${personaEncontrada.correo}
+        `;
+
+        document.getElementById('resultadoBusqueda').style.display = 'block';
+        document.getElementById('btnCargarPersona').style.display = 'block';
+
+        showToast(`✅ ${tipoPersona} seleccionado`, "success");
+    }
+
+    // ✅ BÚSQUEDA EXACTA (botón Buscar)
     document.getElementById('btnBuscarPersona').onclick = async () => {
-        const tipoPersona = document.getElementById('selTipoPersonaBuscar').value;
-        const documento = document.getElementById('inpDocumentoBuscar').value.trim();
+        const documento = inpDocumentoBuscar.value.trim();
 
         if (!documento) {
             showToast("⚠️ Ingresa un documento", "warning");
@@ -1389,18 +1486,25 @@
         }
 
         try {
-            const endpoint = tipoPersona === "Aprendiz" ? API.aprendizByDoc(documento) : API.usuarioByDoc(documento);
-            const response = await safeFetch(endpoint);
-            const data = await response.json();
+            // 🎯 Usar endpoint unificado que busca automáticamente
+            const response = await safeFetch(API.personaByDoc(documento));
+            const result = await response.json();
+            
+            // result = { TipoPersona: "Aprendiz"|"Usuario", IdPersona: 123, Data: {...} }
+            const tipoPersona = result.tipoPersona || result.TipoPersona;
+            const data = result.data || result.Data;
+            const idPersona = result.idPersona || result.IdPersona;
 
             personaEncontrada = mapPersona(tipoPersona, data);
-            personaEncontrada.idReal = tipoPersona === "Aprendiz"
-                ? (data.idAprendiz || data.IdAprendiz)
-                : (data.idUsuario || data.IdUsuario);
+            personaEncontrada.idReal = idPersona;
             personaEncontrada.tipoPersona = tipoPersona;
+
+            const badgeClass = tipoPersona === "Aprendiz" ? "bg-primary" : "bg-secondary";
+            const badgeIcon = tipoPersona === "Aprendiz" ? "🎓" : "👔";
 
             document.getElementById('datosPersonaEncontrada').innerHTML = `
                 <strong>${personaEncontrada.nombreCompleto}</strong><br>
+                <span class="badge ${badgeClass} mt-1">${badgeIcon} ${tipoPersona}</span><br>
                 ${personaEncontrada.documento}<br>
                 ${personaEncontrada.correo}
             `;
@@ -1408,9 +1512,10 @@
             document.getElementById('resultadoBusqueda').style.display = 'block';
             document.getElementById('btnCargarPersona').style.display = 'block';
 
-            showToast("✅ Persona encontrada", "success");
+            showToast(`✅ ${tipoPersona} encontrado`, "success");
 
         } catch (error) {
+            console.error('Error en búsqueda:', error);
             showToast("❌ Persona no encontrada", "danger");
             document.getElementById('resultadoBusqueda').style.display = 'none';
             document.getElementById('btnCargarPersona').style.display = 'none';
