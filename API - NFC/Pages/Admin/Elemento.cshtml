@@ -294,11 +294,15 @@
         // ========== INICIALIZACIÓN ==========
         init();
 
-        function init() {
-            cargarTiposElemento();
-            cargarPropietarios();
-            cargarTodosLosDatos();
+        async function init() {
             setupEventListeners();
+            // Cargar tipos y propietarios primero (en paralelo entre sí)
+            await Promise.all([
+                cargarTiposElemento(),
+                cargarPropietarios()
+            ]);
+            // Luego cargar los elementos (después de que las listas estén listas)
+            await cargarTodosLosDatos();
         }
 
         // ========== EVENT LISTENERS ==========
@@ -439,9 +443,21 @@
 
             tablaDatos.innerHTML = elementosPagina.map(e => {
                 const tipoNombre = listaTiposElemento.find(t => t.idTipoElemento === e.idTipoElemento)?.tipo || 'N/A';
-                const nfcBadge = e.codigoNFC
+                // NFC: mostrar "Sí" solo si tiene código real (no TEMP-)
+                const tieneNfcReal = e.codigoNFC && !e.codigoNFC.startsWith('TEMP-');
+                const nfcBadge = tieneNfcReal
                     ? '<span class="badge bg-success"><i class="bi bi-wifi"></i> Sí</span>'
                     : '<span class="badge bg-secondary"><i class="bi bi-wifi-off"></i> No</span>';
+
+                // Buscar nombre del propietario
+                let nombrePropietario = 'N/A';
+                if (e.tipoPropietario === 'Usuario') {
+                    const usuario = listaUsuarios.find(u => u.idUsuario === e.idPropietario);
+                    nombrePropietario = usuario ? `${usuario.nombre} ${usuario.apellido}` : 'N/A';
+                } else if (e.tipoPropietario === 'Aprendiz') {
+                    const aprendiz = listaAprendices.find(a => a.idAprendiz === e.idPropietario);
+                    nombrePropietario = aprendiz ? `${aprendiz.nombre} ${aprendiz.apellido}` : 'N/A';
+                }
 
                 return `
                     <tr>
@@ -449,7 +465,10 @@
                         <td>${e.marca || 'N/A'}<br><small class="text-muted">${e.modelo || 'Sin modelo'}</small></td>
                         <td><span class="badge bg-light text-dark">${e.serial || 'N/A'}</span></td>
                         <td><span class="badge bg-info text-dark">${tipoNombre}</span></td>
-                        <td><span class="badge ${e.tipoPropietario === 'Usuario' ? 'bg-warning' : 'bg-primary'}">${e.tipoPropietario || 'N/A'}</span></td>
+                        <td>
+                            <span class="badge ${e.tipoPropietario === 'Usuario' ? 'bg-warning' : 'bg-primary'}">${e.tipoPropietario || 'N/A'}</span>
+                            <br><small class="text-muted">${nombrePropietario}</small>
+                        </td>
                         <td>${nfcBadge}</td>
                         <td><span class="badge ${e.estado ? 'bg-success' : 'bg-danger'}">${e.estado ? 'Activo' : 'Inactivo'}</span></td>
                         <td class="text-center">
