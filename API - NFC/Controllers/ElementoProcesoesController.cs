@@ -425,6 +425,49 @@ namespace API___NFC.Controllers
             }
         }
 
+        // ✅ NUEVO: Desmarcar "Quedó en SENA" (mover de vuelta a SALIDA)
+        [HttpDelete("marcarQuedoSena/{id}")]
+        public async Task<ActionResult> DesmarcarQuedoSena(int id)
+        {
+            try
+            {
+                var elementoProceso = await _context.ElementoProceso
+                    .Include(ep => ep.Elemento)
+                    .FirstOrDefaultAsync(ep => ep.IdElementoProceso == id);
+
+                if (elementoProceso == null)
+                    return NotFound(new { Message = "Relación no encontrada." });
+
+                Console.WriteLine($"🔄 Desmarcando QuedoEnSena para ElementoProceso {id}");
+                Console.WriteLine($"   Estado anterior: QuedoEnSena={elementoProceso.QuedoEnSena}");
+
+                // Desmarcar como pendiente (va a salir)
+                elementoProceso.QuedoEnSena = false;
+                elementoProceso.Validado = true;
+
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"   Estado nuevo: QuedoEnSena={elementoProceso.QuedoEnSena}");
+
+                return Ok(new
+                {
+                    Message = "El dispositivo saldrá del Centro de Formación CIMM.",
+                    IdElementoProceso = elementoProceso.IdElementoProceso,
+                    IdElemento = elementoProceso.IdElemento,
+                    QuedoEnSena = elementoProceso.QuedoEnSena
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error en DesmarcarQuedoSena: {ex.Message}");
+                return StatusCode(500, new
+                {
+                    Message = "Error al desmarcar dispositivo",
+                    Error = ex.Message
+                });
+            }
+        }
+
         [HttpPut("{id}")]
         public async Task<IActionResult> PutElementoProceso(int id, [FromBody] ElementoProcesoUpdateDto dto)
         {
