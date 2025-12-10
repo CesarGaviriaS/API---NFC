@@ -1,0 +1,973 @@
+@page "/Admin/Import"
+@model API___NFC.Pages.Admin.Import.IndexModel
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Importación Masiva";
+}
+
+<style>
+    /* ========== Variables ========== */
+    :root {
+        --card-bg: rgba(255, 255, 255, 0.95);
+        --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --danger-gradient: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        --border-radius: 12px;
+        --transition: all 0.3s ease;
+    }
+
+    /* ========== Wizard Steps ========== */
+    .wizard-container {
+        background: var(--card-bg);
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        padding: 2rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .wizard-steps {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+
+    .wizard-steps::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 10%;
+        right: 10%;
+        height: 3px;
+        background: #e0e0e0;
+        z-index: 0;
+    }
+
+    .wizard-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+        flex: 1;
+    }
+
+    .step-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e0e0e0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #666;
+        margin-bottom: 0.5rem;
+        transition: var(--transition);
+    }
+
+    .wizard-step.active .step-circle {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .wizard-step.completed .step-circle {
+        background: var(--success-gradient);
+        color: white;
+    }
+
+    .step-label {
+        font-size: 0.85rem;
+        color: #666;
+        text-align: center;
+    }
+
+    /* ========== Column Cards ========== */
+    .columns-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        min-height: 60px;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 2px dashed #dee2e6;
+        transition: var(--transition);
+    }
+
+    .columns-container.drag-over {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .column-card {
+        padding: 8px 16px;
+        background: white;
+        border-radius: 20px;
+        border: 2px solid #e0e0e0;
+        cursor: pointer;
+        transition: var(--transition);
+        user-select: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .column-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .column-card.selected {
+        background: var(--primary-gradient);
+        color: white;
+        border-color: transparent;
+    }
+
+    .column-card.dragging {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+
+    .column-card[draggable="true"] {
+        cursor: grab;
+    }
+
+    .column-card[draggable="true"]:active {
+        cursor: grabbing;
+    }
+
+    /* ========== Mapping Table ========== */
+    .mapping-section {
+        margin-top: 2rem;
+    }
+
+    .mapping-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .mapping-table th,
+    .mapping-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .mapping-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        text-align: left;
+    }
+
+    .db-column-name {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .required-badge {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        background: #dc3545;
+        color: white;
+        border-radius: 4px;
+    }
+
+    .drop-zone {
+        min-height: 50px;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        transition: var(--transition);
+    }
+
+    .drop-zone.drag-over {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .drop-zone .column-card {
+        background: var(--primary-gradient);
+        color: white;
+        border-color: transparent;
+    }
+
+    .drop-zone .column-card .remove-btn {
+        margin-left: 6px;
+        cursor: pointer;
+        opacity: 0.8;
+    }
+
+    .drop-zone .column-card .remove-btn:hover {
+        opacity: 1;
+    }
+
+    .drop-zone-placeholder {
+        color: #999;
+        font-size: 0.85rem;
+        font-style: italic;
+    }
+
+    /* ========== Buttons ========== */
+    .btn-wizard {
+        padding: 12px 32px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: var(--transition);
+        border: none;
+    }
+
+    .btn-wizard-primary {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .btn-wizard-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .btn-wizard-secondary {
+        background: #e0e0e0;
+        color: #333;
+    }
+
+    /* ========== Step Content ========== */
+    .step-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .step-content.active {
+        display: block;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ========== Results ========== */
+    .result-card {
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        color: white;
+        text-align: center;
+    }
+
+    .result-card.primary { background: var(--primary-gradient); }
+    .result-card.success { background: var(--success-gradient); }
+    .result-card.danger { background: var(--danger-gradient); }
+
+    .result-card h2 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Importación Masiva de Datos</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="/Admin/Dashboard">Dashboard</a></li>
+        <li class="breadcrumb-item active">Importación</li>
+    </ol>
+
+    <div class="wizard-container">
+        <!-- Wizard Steps Indicator -->
+        <div class="wizard-steps">
+            <div class="wizard-step active" data-step="1">
+                <div class="step-circle">1</div>
+                <span class="step-label">Seleccionar Tabla</span>
+            </div>
+            <div class="wizard-step" data-step="2">
+                <div class="step-circle">2</div>
+                <span class="step-label">Subir CSV</span>
+            </div>
+            <div class="wizard-step" data-step="3">
+                <div class="step-circle">3</div>
+                <span class="step-label">Seleccionar Columnas</span>
+            </div>
+            <div class="wizard-step" data-step="4">
+                <div class="step-circle">4</div>
+                <span class="step-label">Mapear Columnas</span>
+            </div>
+            <div class="wizard-step" data-step="5">
+                <div class="step-circle">5</div>
+                <span class="step-label">Importar</span>
+            </div>
+        </div>
+
+        <!-- Step 1: Select Entity -->
+        <div class="step-content active" id="step1">
+            <h4 class="mb-4"><i class="fas fa-database me-2"></i>Seleccione el tipo de entidad a importar</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <select class="form-select form-select-lg" id="entityType">
+                        <option value="" selected disabled>-- Seleccionar tabla --</option>
+                        <option value="programas">Programas</option>
+                        <option value="fichas">Fichas (Requiere Programas)</option>
+                        <option value="aprendices">Aprendices (Requiere Fichas)</option>
+                        <option value="funcionarios">Funcionarios (Usuarios)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button class="btn btn-wizard btn-wizard-primary" id="btnStep1Next" disabled>
+                    Continuar <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Upload CSV -->
+        <div class="step-content" id="step2">
+            <h4 class="mb-4"><i class="fas fa-file-csv me-2"></i>Subir archivo CSV</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="fileInput" class="form-label">Archivo CSV:</label>
+                        <input class="form-control form-control-lg" type="file" id="fileInput" accept=".csv">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label for="csvSeparator" class="form-label">Separador de columnas:</label>
+                        <div class="input-group">
+                            <select class="form-select form-select-lg" id="csvSeparatorSelect">
+                                <option value=";">Punto y coma (;)</option>
+                                <option value=",">Coma (,)</option>
+                                <option value=":">Dos puntos (:)</option>
+                                <option value="|">Barra (|)</option>
+                                <option value="tab">Tabulador</option>
+                                <option value="custom">Otro...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3" id="customSeparatorContainer" style="display: none;">
+                        <label for="customSeparator" class="form-label">Separador personalizado:</label>
+                        <input type="text" class="form-control form-control-lg" id="customSeparator" maxlength="1" placeholder="Ej: -">
+                    </div>
+                </div>
+            </div>
+            <div class="alert alert-light border mt-2" style="font-size: 0.9rem;">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                <strong>Tip:</strong> Selecciona el carácter que separa las columnas en tu archivo CSV.
+            </div>
+            <div class="mt-4 d-flex gap-2">
+                <button class="btn btn-wizard btn-wizard-secondary" id="btnStep2Back">
+                    <i class="fas fa-arrow-left me-2"></i> Atrás
+                </button>
+                <button class="btn btn-wizard btn-wizard-primary" id="btnStep2Next" disabled>
+                    Analizar CSV <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Select Columns -->
+        <div class="step-content" id="step3">
+            <h4 class="mb-4"><i class="fas fa-columns me-2"></i>Columnas encontradas en el CSV</h4>
+            <p class="text-muted">Haz clic en las columnas que deseas importar. Las columnas no seleccionadas serán ignoradas.</p>
+            
+            <div class="columns-container" id="csvColumnsContainer">
+                <!-- Dynamic CSV columns here -->
+            </div>
+
+            <h5 class="mt-4 mb-3">Columnas seleccionadas para mapear:</h5>
+            <div class="columns-container" id="selectedColumnsContainer">
+                <span class="drop-zone-placeholder">Las columnas seleccionadas aparecerán aquí</span>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button class="btn btn-wizard btn-wizard-secondary" id="btnStep3Back">
+                    <i class="fas fa-arrow-left me-2"></i> Atrás
+                </button>
+                <button class="btn btn-wizard btn-wizard-primary" id="btnStep3Next" disabled>
+                    Continuar al Mapeo <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Map Columns -->
+        <div class="step-content" id="step4">
+            <h4 class="mb-4"><i class="fas fa-random me-2"></i>Mapear columnas CSV a la base de datos</h4>
+            <p class="text-muted">Arrastra las columnas del CSV a las columnas de la base de datos. Puedes arrastrar varias columnas para concatenarlas.</p>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>Columnas disponibles del CSV:</h5>
+                    <div class="columns-container" id="availableColumnsForMapping">
+                        <!-- Draggable columns -->
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <h5>Columnas de la tabla: <span id="tableNameDisplay" class="text-primary"></span></h5>
+                    <table class="mapping-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%">Columna BD</th>
+                                <th>Columnas CSV asignadas (arrastra aquí)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mappingTableBody">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button class="btn btn-wizard btn-wizard-secondary" id="btnStep4Back">
+                    <i class="fas fa-arrow-left me-2"></i> Atrás
+                </button>
+                <button class="btn btn-wizard btn-wizard-primary" id="btnStep4Next">
+                    Revisar e Importar <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 5: Review and Import -->
+        <div class="step-content" id="step5">
+            <h4 class="mb-4"><i class="fas fa-check-circle me-2"></i>Revisar y ejecutar importación</h4>
+            
+            <div class="alert alert-info">
+                <h5><i class="fas fa-info-circle me-2"></i>Resumen de la importación</h5>
+                <ul id="importSummary" class="mb-0"></ul>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button class="btn btn-wizard btn-wizard-secondary" id="btnStep5Back">
+                    <i class="fas fa-arrow-left me-2"></i> Atrás
+                </button>
+                <button class="btn btn-wizard btn-wizard-primary" id="btnImport">
+                    <span class="spinner-border spinner-border-sm d-none" id="spinner" role="status"></span>
+                    <span id="btnImportText"><i class="fas fa-play me-2"></i>Ejecutar Importación</span>
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultSection" class="mt-4 d-none">
+                <hr>
+                <h4>Resultados</h4>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="result-card primary">
+                            <h2 id="totalProcesados">0</h2>
+                            <div>Total Procesados</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="result-card success">
+                            <h2 id="totalExitosos">0</h2>
+                            <div>Exitosos</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="result-card danger">
+                            <h2 id="totalFallidos">0</h2>
+                            <div>Fallidos</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="errorListContainer" class="d-none mt-4">
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Detalles de Errores</h5>
+                        <ul id="errorList" class="mb-0" style="max-height: 200px; overflow-y: auto;"></ul>
+                    </div>
+                </div>
+
+                <!-- Botón Nueva Importación -->
+                <div class="mt-4 text-center">
+                    <button class="btn btn-wizard btn-wizard-secondary" id="btnNewImport" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                        <i class="fas fa-redo me-2"></i>Nueva Importación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación Nueva Importación -->
+<div class="modal fade" id="newImportModal" tabindex="-1" aria-labelledby="newImportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                <h5 class="modal-title" id="newImportModalLabel">
+                    <i class="fas fa-exclamation-circle me-2"></i>Confirmar Nueva Importación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="fas fa-question-circle fa-3x mb-3" style="color: #667eea;"></i>
+                <p class="mb-0 fs-5">¿Está seguro que desea iniciar una nueva importación?</p>
+                <p class="text-muted">La información no guardada se perderá.</p>
+            </div>
+            <div class="modal-footer justify-content-center" style="border: none;">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn px-4" id="btnConfirmNewImport" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <i class="fas fa-check me-2"></i>Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ==================== State Management ====================
+    const state = {
+        currentStep: 1,
+        entityType: '',
+        file: null,
+        csvHeaders: [],
+        selectedColumns: [],
+        dbSchema: [],
+        columnMapping: {},  // { "DbColumn": ["csvCol1", "csvCol2"] }
+        separator: ';'  // Separador de columnas del CSV
+    };
+
+    // ==================== DOM Elements ====================
+    const elements = {
+        steps: document.querySelectorAll('.wizard-step'),
+        stepContents: document.querySelectorAll('.step-content'),
+        entitySelect: document.getElementById('entityType'),
+        fileInput: document.getElementById('fileInput'),
+        csvColumnsContainer: document.getElementById('csvColumnsContainer'),
+        selectedColumnsContainer: document.getElementById('selectedColumnsContainer'),
+        availableColumnsForMapping: document.getElementById('availableColumnsForMapping'),
+        mappingTableBody: document.getElementById('mappingTableBody'),
+        tableNameDisplay: document.getElementById('tableNameDisplay'),
+        importSummary: document.getElementById('importSummary')
+    };
+
+    // ==================== Wizard Navigation ====================
+    function goToStep(stepNumber) {
+        // Update step indicators
+        elements.steps.forEach((step, idx) => {
+            const stepNum = idx + 1;
+            step.classList.remove('active', 'completed');
+            if (stepNum < stepNumber) {
+                step.classList.add('completed');
+            } else if (stepNum === stepNumber) {
+                step.classList.add('active');
+            }
+        });
+
+        // Update step content
+        elements.stepContents.forEach((content, idx) => {
+            content.classList.toggle('active', idx + 1 === stepNumber);
+        });
+
+        state.currentStep = stepNumber;
+    }
+
+    // ==================== Step 1: Entity Selection ====================
+    elements.entitySelect.addEventListener('change', function() {
+        state.entityType = this.value;
+        document.getElementById('btnStep1Next').disabled = !this.value;
+    });
+
+    document.getElementById('btnStep1Next').addEventListener('click', () => goToStep(2));
+
+    // ==================== Step 2: File Upload ====================
+    const separatorSelect = document.getElementById('csvSeparatorSelect');
+    const customSeparatorContainer = document.getElementById('customSeparatorContainer');
+    const customSeparatorInput = document.getElementById('customSeparator');
+
+    // Mostrar/ocultar campo de separador personalizado
+    separatorSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customSeparatorContainer.style.display = 'block';
+            customSeparatorInput.focus();
+        } else {
+            customSeparatorContainer.style.display = 'none';
+        }
+    });
+
+    elements.fileInput.addEventListener('change', async function() {
+        state.file = this.files[0];
+        document.getElementById('btnStep2Next').disabled = !state.file;
+    });
+
+    document.getElementById('btnStep2Back').addEventListener('click', () => goToStep(1));
+    
+    document.getElementById('btnStep2Next').addEventListener('click', async () => {
+        if (!state.file) return;
+        
+        // Obtener el separador seleccionado
+        let separator = separatorSelect.value;
+        if (separator === 'custom') {
+            separator = customSeparatorInput.value || ';';
+        } else if (separator === 'tab') {
+            separator = '\t';
+        }
+        state.separator = separator;
+        
+        // Read CSV headers locally using the selected separator
+        const text = await state.file.text();
+        const firstLine = text.split('\n')[0];
+        state.csvHeaders = firstLine.split(separator).map(h => h.trim().replace(/\r/g, '')).filter(h => h);
+        
+        // Also fetch DB schema
+        try {
+            const response = await fetch(`/api/csvanalyzer/schema/${state.entityType}`, {
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('auth_token') }
+            });
+            if (response.ok) {
+                state.dbSchema = await response.json();
+            }
+        } catch (error) {
+            console.error('Error fetching schema:', error);
+        }
+
+        // Render CSV columns
+        renderCsvColumns();
+        goToStep(3);
+    });
+
+    // ==================== Step 3: Column Selection ====================
+    function renderCsvColumns() {
+        elements.csvColumnsContainer.innerHTML = '';
+        state.selectedColumns = [];
+
+        state.csvHeaders.forEach(header => {
+            const card = document.createElement('div');
+            card.className = 'column-card';
+            card.textContent = header;
+            card.dataset.column = header;
+            
+            card.addEventListener('click', () => toggleColumnSelection(card, header));
+            
+            elements.csvColumnsContainer.appendChild(card);
+        });
+
+        updateSelectedColumnsDisplay();
+    }
+
+    function toggleColumnSelection(card, header) {
+        const idx = state.selectedColumns.indexOf(header);
+        
+        if (idx === -1) {
+            state.selectedColumns.push(header);
+            card.classList.add('selected');
+        } else {
+            state.selectedColumns.splice(idx, 1);
+            card.classList.remove('selected');
+        }
+
+        updateSelectedColumnsDisplay();
+        document.getElementById('btnStep3Next').disabled = state.selectedColumns.length === 0;
+    }
+
+    function updateSelectedColumnsDisplay() {
+        elements.selectedColumnsContainer.innerHTML = '';
+        
+        if (state.selectedColumns.length === 0) {
+            elements.selectedColumnsContainer.innerHTML = '<span class="drop-zone-placeholder">Las columnas seleccionadas aparecerán aquí</span>';
+            return;
+        }
+
+        state.selectedColumns.forEach(col => {
+            const card = document.createElement('div');
+            card.className = 'column-card selected';
+            card.textContent = col;
+            elements.selectedColumnsContainer.appendChild(card);
+        });
+    }
+
+    document.getElementById('btnStep3Back').addEventListener('click', () => goToStep(2));
+    
+    document.getElementById('btnStep3Next').addEventListener('click', () => {
+        renderMappingUI();
+        goToStep(4);
+    });
+
+    // ==================== Step 4: Column Mapping with Drag & Drop ====================
+    function renderMappingUI() {
+        const entityNames = {
+            'programas': 'Programas',
+            'fichas': 'Fichas',
+            'aprendices': 'Aprendices',
+            'funcionarios': 'Funcionarios'
+        };
+        elements.tableNameDisplay.textContent = entityNames[state.entityType] || state.entityType;
+
+        // Reset mapping
+        state.columnMapping = {};
+
+        // Render available columns for dragging
+        elements.availableColumnsForMapping.innerHTML = '';
+        state.selectedColumns.forEach(col => {
+            const card = document.createElement('div');
+            card.className = 'column-card';
+            card.textContent = col;
+            card.draggable = true;
+            card.dataset.column = col;
+            
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragend', handleDragEnd);
+            
+            elements.availableColumnsForMapping.appendChild(card);
+        });
+
+        // Render DB schema rows
+        elements.mappingTableBody.innerHTML = '';
+        state.dbSchema.forEach(dbCol => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="db-column-name">
+                        <strong>${dbCol.name}</strong>
+                        ${dbCol.required ? '<span class="required-badge">Requerido</span>' : ''}
+                    </div>
+                    <small class="text-muted">${dbCol.type}${dbCol.maxLength ? ` (max: ${dbCol.maxLength})` : ''}</small>
+                </td>
+                <td>
+                    <div class="drop-zone" data-db-column="${dbCol.name}">
+                        <span class="drop-zone-placeholder">Arrastra columnas aquí...</span>
+                    </div>
+                </td>
+            `;
+            elements.mappingTableBody.appendChild(row);
+        });
+
+        // Setup drop zones
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.addEventListener('dragover', handleDragOver);
+            zone.addEventListener('dragleave', handleDragLeave);
+            zone.addEventListener('drop', handleDrop);
+        });
+    }
+
+    // Drag & Drop Handlers
+    let draggedColumn = null;
+
+    function handleDragStart(e) {
+        draggedColumn = e.target.dataset.column;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+        e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag-over');
+        
+        if (!draggedColumn) return;
+
+        const dbColumn = e.currentTarget.dataset.dbColumn;
+        
+        // Add to mapping
+        if (!state.columnMapping[dbColumn]) {
+            state.columnMapping[dbColumn] = [];
+        }
+        
+        // Avoid duplicates
+        if (!state.columnMapping[dbColumn].includes(draggedColumn)) {
+            state.columnMapping[dbColumn].push(draggedColumn);
+            
+            // Add visual card to drop zone
+            addColumnToDropZone(e.currentTarget, draggedColumn, dbColumn);
+        }
+
+        draggedColumn = null;
+    }
+
+    function addColumnToDropZone(dropZone, csvColumn, dbColumn) {
+        // Remove placeholder if exists
+        const placeholder = dropZone.querySelector('.drop-zone-placeholder');
+        if (placeholder) placeholder.remove();
+
+        const card = document.createElement('div');
+        card.className = 'column-card';
+        card.innerHTML = `${csvColumn} <span class="remove-btn">&times;</span>`;
+        card.dataset.column = csvColumn;
+
+        card.querySelector('.remove-btn').addEventListener('click', () => {
+            // Remove from mapping
+            const idx = state.columnMapping[dbColumn].indexOf(csvColumn);
+            if (idx > -1) {
+                state.columnMapping[dbColumn].splice(idx, 1);
+            }
+            card.remove();
+
+            // Restore placeholder if empty
+            if (dropZone.children.length === 0) {
+                dropZone.innerHTML = '<span class="drop-zone-placeholder">Arrastra columnas aquí...</span>';
+            }
+        });
+
+        dropZone.appendChild(card);
+    }
+
+    document.getElementById('btnStep4Back').addEventListener('click', () => goToStep(3));
+    
+    document.getElementById('btnStep4Next').addEventListener('click', () => {
+        renderImportSummary();
+        goToStep(5);
+    });
+
+    // ==================== Step 5: Review and Import ====================
+    function renderImportSummary() {
+        const entityNames = {
+            'programas': 'Programas',
+            'fichas': 'Fichas',
+            'aprendices': 'Aprendices',
+            'funcionarios': 'Funcionarios'
+        };
+
+        let html = `
+            <li><strong>Tabla destino:</strong> ${entityNames[state.entityType]}</li>
+            <li><strong>Archivo:</strong> ${state.file.name}</li>
+            <li><strong>Mapeo de columnas:</strong></li>
+        `;
+
+        for (const [dbCol, csvCols] of Object.entries(state.columnMapping)) {
+            if (csvCols.length > 0) {
+                html += `<li class="ms-3">• ${dbCol} ← [${csvCols.join(' + ')}]</li>`;
+            }
+        }
+
+        elements.importSummary.innerHTML = html;
+    }
+
+    document.getElementById('btnStep5Back').addEventListener('click', () => goToStep(4));
+
+    document.getElementById('btnImport').addEventListener('click', async function() {
+        const btn = this;
+        const spinner = document.getElementById('spinner');
+        const btnText = document.getElementById('btnImportText');
+        const resultSection = document.getElementById('resultSection');
+        const errorListContainer = document.getElementById('errorListContainer');
+
+        // UI Loading
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        btnText.textContent = 'Procesando...';
+        resultSection.classList.add('d-none');
+        errorListContainer.classList.add('d-none');
+
+        const formData = new FormData();
+        formData.append('file', state.file);
+        formData.append('columnMapping', JSON.stringify(state.columnMapping));
+        formData.append('separator', state.separator);
+
+        try {
+            const response = await fetch(`/api/import/${state.entityType}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('auth_token')
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Error en la solicitud');
+            }
+
+            const result = await response.json();
+
+            // Show Results
+            document.getElementById('totalProcesados').textContent = result.totalProcesados;
+            document.getElementById('totalExitosos').textContent = result.totalExitosos;
+            document.getElementById('totalFallidos').textContent = result.totalFallidos;
+
+            const errorList = document.getElementById('errorList');
+            errorList.innerHTML = '';
+
+            if (result.errores && result.errores.length > 0) {
+                result.errores.forEach(err => {
+                    const li = document.createElement('li');
+                    li.textContent = err;
+                    errorList.appendChild(li);
+                });
+                errorListContainer.classList.remove('d-none');
+            }
+
+            resultSection.classList.remove('d-none');
+
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            btnText.innerHTML = '<i class="fas fa-play me-2"></i>Ejecutar Importación';
+        }
+    });
+
+    // ==================== Nueva Importación ====================
+    document.getElementById('btnNewImport').addEventListener('click', function() {
+        // Mostrar el modal de confirmación
+        const modal = new bootstrap.Modal(document.getElementById('newImportModal'));
+        modal.show();
+    });
+
+    document.getElementById('btnConfirmNewImport').addEventListener('click', function() {
+        // Cerrar el modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('newImportModal'));
+        modal.hide();
+
+        // Resetear todo el estado
+        resetImportWizard();
+
+        // Ir al paso 1
+        goToStep(1);
+    });
+
+    function resetImportWizard() {
+        // Resetear estado
+        state.entityType = '';
+        state.file = null;
+        state.csvHeaders = [];
+        state.selectedColumns = [];
+        state.dbSchema = [];
+        state.columnMapping = {};
+
+        // Resetear UI
+        document.getElementById('entityType').value = '';
+        document.getElementById('fileInput').value = '';
+        document.getElementById('btnStep1Next').disabled = true;
+        document.getElementById('btnStep2Next').disabled = true;
+        document.getElementById('btnStep3Next').disabled = true;
+
+        // Limpiar contenedores
+        document.getElementById('csvColumnsContainer').innerHTML = '';
+        document.getElementById('selectedColumnsContainer').innerHTML = '<span class="drop-zone-placeholder">Las columnas seleccionadas aparecerán aquí</span>';
+        document.getElementById('availableColumnsForMapping').innerHTML = '';
+        document.getElementById('mappingTableBody').innerHTML = '';
+        document.getElementById('importSummary').innerHTML = '';
+
+        // Ocultar resultados
+        document.getElementById('resultSection').classList.add('d-none');
+        document.getElementById('errorListContainer').classList.add('d-none');
+        document.getElementById('totalProcesados').textContent = '0';
+        document.getElementById('totalExitosos').textContent = '0';
+        document.getElementById('totalFallidos').textContent = '0';
+        document.getElementById('errorList').innerHTML = '';
+    }
+</script>
+}

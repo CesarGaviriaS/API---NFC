@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>API___NFC</RootNamespace>
+    <UserSecretsId>3cbc65b0-dc01-4fcb-bb0d-be8ea20f63ed</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
