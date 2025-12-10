@@ -6,10 +6,10 @@ using System.Text.Json.Serialization;
 
 namespace API___NFC.Models
 {
-    
+
     public class Aprendiz
     {
-         [Key]
+        [Key]
         public int IdAprendiz { get; set; }
 
         [Required, MaxLength(100)]
@@ -27,8 +27,8 @@ namespace API___NFC.Models
         [Required, MaxLength(150)]
         public string Correo { get; set; } = null!; // NOT NULL en BD
 
-        [Required, MaxLength(100)]
-        public string CodigoBarras { get; set; } = null!; // NOT NULL en BD
+        [MaxLength(100)]
+        public string? CodigoBarras { get; set; } // NULLABLE en BD
 
         public int IdFicha { get; set; } // FK, NOT NULL en BD
 
@@ -50,4 +50,3 @@ namespace API___NFC.Models
         public virtual Ficha? Ficha { get; set; }
     }
 }
-
