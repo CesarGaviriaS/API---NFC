@@ -210,14 +210,24 @@
                             <input type="email" id="correoInput" class="form-control" required />
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label required">Código de Barras</label>
-                            <input type="text" id="codigoBarrasInput" class="form-control" required />
+                            <label class="form-label">Código de Barras (Opcional)</label>
+                            <input type="text" id="codigoBarrasInput" class="form-control" />
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Foto URL</label>
-                        <input type="url" id="fotoUrlInput" class="form-control" placeholder="https://..." />
+                        <label class="form-label">Foto</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size: 0.9rem; color: #6c757d;">Seleccionar archivo</label>
+                                <input type="file" id="fotoFileInput" class="form-control" accept="image/*" />
+                                <small class="text-muted">Formatos: JPG, PNG, GIF</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size: 0.9rem; color: #6c757d;">O ingresar URL</label>
+                                <input type="url" id="fotoUrlInput" class="form-control" placeholder="https://..." />
+                            </div>
+                        </div>
                     </div>
 
                     <!-- CAMPOS ESPECÍFICOS DE APRENDIZ -->
@@ -319,6 +329,7 @@
         const telefonoInput = document.getElementById('telefonoInput');
         const correoInput = document.getElementById('correoInput');
         const codigoBarrasInput = document.getElementById('codigoBarrasInput');
+        const fotoFileInput = document.getElementById('fotoFileInput');
         const fotoUrlInput = document.getElementById('fotoUrlInput');
         const estadoInput = document.getElementById('estadoInput');
 
@@ -753,8 +764,8 @@
                 return;
             }
 
-            if (!correoInput.value.trim() || !codigoBarrasInput.value.trim()) {
-                alert('El correo y código de barras son obligatorios');
+            if (!correoInput.value.trim()) {
+                alert('El correo es obligatorio');
                 return;
             }
 
@@ -772,7 +783,7 @@
                 numeroDocumento: numeroDocumentoInput.value.trim(),
                 telefono: telefonoInput.value.trim() || null,
                 correo: correoInput.value.trim(),
-                codigoBarras: codigoBarrasInput.value.trim(),
+                codigoBarras: codigoBarrasInput.value.trim() || null,
                 fotoUrl: fotoUrlInput.value.trim() || null,
                 estado: estadoInput.checked
             };
@@ -890,3 +901,4 @@
         };
     });
 </script>
+
