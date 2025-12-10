@@ -371,6 +371,15 @@
             }
 
             function cerrarSesion() {
+                // ✅ Notificar a otras pestañas que la sesión se cerró
+                try {
+                    const sessionChannel = new BroadcastChannel('session_channel');
+                    sessionChannel.postMessage({ type: 'SESSION_CLOSED' });
+                    sessionChannel.close();
+                } catch (e) {
+                    console.warn('BroadcastChannel no soportado:', e);
+                }
+
                 // Limpiar todo
                 localStorage.clear();
                 sessionStorage.clear();
@@ -383,6 +392,26 @@
                     window.location.replace('/Login');
                 }, 300);
             }
+
+            // ✅ BROADCAST CHANNEL - Responder a consultas de sesión activa
+            (function initSessionBroadcast() {
+                try {
+                    const sessionChannel = new BroadcastChannel('session_channel');
+                    const token = localStorage.getItem('auth_token');
+                    
+                    sessionChannel.onmessage = (event) => {
+                        if (event.data?.type === 'SESSION_CHECK' && token) {
+                            // Hay sesión activa, responder
+                            sessionChannel.postMessage({ 
+                                type: 'SESSION_ACTIVE',
+                                user: obtenerNombreUsuario()
+                            });
+                        }
+                    };
+                } catch (e) {
+                    console.warn('BroadcastChannel no soportado:', e);
+                }
+            })();
 
             // ✅ EVENTOS
             const btnLogout = document.getElementById('btnLogoutNav');

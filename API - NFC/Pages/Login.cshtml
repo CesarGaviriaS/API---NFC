@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model LoginModel
 @{
     Layout = null;
@@ -521,6 +521,43 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function(){
+          // ✅ VALIDACIÓN DE SESIÓN EXISTENTE
+          (function checkExistingSession() {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+              let rol = null;
+              try {
+                const payload = token.split('.')[1];
+                const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+                rol = decoded?.role || decoded?.Rol || decoded?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+              } catch (e) {
+                const userInfo = localStorage.getItem('user_info');
+                if (userInfo) { try { const user = JSON.parse(userInfo); rol = user.Rol || user.rol; } catch {} }
+              }
+              const rolLower = (rol || '').toString().trim().toLowerCase();
+              if (rolLower === 'guardia') { window.location.replace('/Terminal'); return; }
+              else if (rolLower === 'administrador') { window.location.replace('/Admin/Usuarios'); return; }
+            }
+          })();
+
+          // ✅ DETECCIÓN DE SESIÓN EN OTRAS PESTAÑAS
+          let otherTabHasSession = false;
+          let sessionChannel = null;
+          (function initSessionCheck() {
+            try {
+              sessionChannel = new BroadcastChannel('session_channel');
+              sessionChannel.onmessage = (event) => {
+                if (event.data?.type === 'SESSION_ACTIVE') { otherTabHasSession = true; }
+                else if (event.data?.type === 'SESSION_CLOSED') { otherTabHasSession = false; }
+                else if (event.data?.type === 'LOGIN_SUCCESS') {
+                  // Otra pestaña de login acaba de iniciar sesión
+                  otherTabHasSession = true;
+                }
+              };
+              sessionChannel.postMessage({ type: 'SESSION_CHECK' });
+            } catch (e) { console.warn('BroadcastChannel no soportado:', e); }
+          })();
+
           // Toggle entre Login y Registro
           const toggleBtn = document.getElementById('toggleBtn');
           const welcomeTitle = document.getElementById('welcomeTitle');
@@ -603,6 +640,12 @@
               return;
             }
 
+            // ✅ Verificar si hay sesión activa en otra pestaña
+            if (otherTabHasSession) {
+              show(loginError, 'Hay una sesión activa en otra pestaña, primero ciérrela.');
+              return;
+            }
+
             btnLogin.disabled = true;
             spinnerLogin.style.display = 'inline-block';
 
@@ -629,6 +672,11 @@
                   localStorage.setItem('auth_token', token);
                   document.cookie = `AuthToken=${token}; path=/; secure; samesite=strict`;
                   if(usr) localStorage.setItem('user_info', JSON.stringify(usr));
+
+                  // ✅ Notificar a otras pestañas de login que se inició sesión
+                  if (sessionChannel) {
+                    sessionChannel.postMessage({ type: 'LOGIN_SUCCESS' });
+                  }
 
                  
                   if (usr && (usr.Rol || usr.rol)) {
