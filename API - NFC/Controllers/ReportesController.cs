@@ -58,6 +58,20 @@ public class ReportesController : ControllerBase
         return File(docBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
     }
 
+    // ✅ NUEVO: Endpoint para exportar CSV
+    [HttpGet("FlujoNFC/export/csv")]
+    public async Task<IActionResult> ExportFlujoCsv(
+        DateTime? desde = null,
+        DateTime? hasta = null,
+        string? tipoRegistro = null,
+        string? tipoPersona = null)
+    {
+        var datos = await BuildFlujoAsync(desde, hasta, tipoRegistro, tipoPersona);
+        var csvBytes = CsvExporter.GenerateCsv(datos);
+        var fileName = $"flujo_nfc_{DateTime.Now:yyyyMMddHHmmss}.csv";
+        return File(csvBytes, "text/csv", fileName);
+    }
+
     // Método reutilizable optimizado - 4 queries en lugar de 400+
     private async Task<List<FlujoNfcItemDto>> BuildFlujoAsync(
  DateTime? desde = null,
