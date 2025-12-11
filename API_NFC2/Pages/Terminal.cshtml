@@ -1,0 +1,1804 @@
+﻿@page
+@model API___NFC.Pages.TerminalModel
+@{
+    ViewData["Title"] = "NFC HUB (Terminal)";
+    Layout = "_AdminLayout";
+}
+
+<style>
+    :root {
+        --sena-verde: #39A900;
+        --sena-azul: #0B7CBD;
+        --sena-naranja: #FF6600;
+        --borde-suave: #dee2e6;
+        --fondo: #f0f2f5;
+        --texto: #212529;
+        --sombra: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --sombra-hover: 0 8px 24px rgba(0, 0, 0, 0.15);
+        --radio: 14px;
+    }
+
+    body {
+        background: linear-gradient(135deg, #f0f2f5 0%, #e9ecef 100%);
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        color: var(--texto);
+    }
+
+    /* Cards premium con bordes redondeados y sombras profundas */
+    .card {
+        border-radius: var(--radio);
+        box-shadow: var(--sombra);
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        overflow: hidden;
+    }
+
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--sombra-hover);
+    }
+
+    /* Headers con gradientes vibrantes y text-shadow */
+    .card-header {
+        font-weight: 700;
+        border: none;
+        color: #fff;
+        padding: 1.25rem;
+        font-size: 1.05rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        letter-spacing: 0.3px;
+    }
+
+    .card-header.blue {
+        background: linear-gradient(135deg, #0B7CBD 0%, #1d7ed6 50%, #3d9ee8 100%);
+        box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1);
+    }
+
+    .card-header.green {
+        background: linear-gradient(135deg, #39A900 0%, #4bbb3f 50%, #5dd058 100%);
+        box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1);
+    }
+
+    .card-header.orange {
+        background: linear-gradient(135deg, #FF6600 0%, #ff8533 50%, #ffa366 100%);
+        box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1);
+    }
+
+    /* Perfil con avatar mejorado */
+    .profile-card {
+        display: flex;
+        gap: 1.25rem;
+        align-items: center;
+        padding: 1.25rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: var(--radio);
+    }
+
+    .profile-avatar {
+        width: 90px;
+        height: 90px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--sena-verde) 0%, var(--sena-azul) 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2.25rem;
+        color: #fff;
+        box-shadow: 0 6px 16px rgba(57, 169, 0, 0.3);
+        border: 4px solid #fff;
+        font-weight: 700;
+    }
+
+    .profile-details {
+        background: #fff;
+        border-left: 5px solid var(--sena-verde);
+        padding: 1rem 1.25rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        line-height: 1.7;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        flex: 1;
+    }
+
+    /* Dispositivos con diseño mejorado y animaciones */
+    .device-item {
+        display: flex;
+        background: #fff;
+        padding: 1.15rem;
+        border-radius: 12px;
+        border: 2px solid var(--borde-suave);
+        margin-bottom: 0.85rem;
+        gap: 1.15rem;
+        align-items: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .device-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--sena-verde);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+    }
+
+    .device-item:hover {
+        transform: translateX(6px) translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+        border-color: var(--sena-verde);
+    }
+
+    .device-item:hover::before {
+        transform: scaleY(1);
+    }
+
+    .device-item.selected {
+        border: 3px solid var(--sena-verde);
+        background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f1 100%);
+        box-shadow: 0 4px 12px rgba(57, 169, 0, 0.2);
+    }
+
+    .device-item.pendiente {
+        border-left: 6px solid #ffc107;
+        background: linear-gradient(135deg, #fff8e1 0%, #fffbf0 100%);
+        box-shadow: 0 3px 10px rgba(255, 193, 7, 0.15);
+    }
+
+    .device-item.pendiente-rojo {
+        border-left: 6px solid #dc3545;
+        background: linear-gradient(135deg, #ffe5e5 0%, #fff0f0 100%);
+        cursor: not-allowed;
+        opacity: 0.75;
+    }
+
+    /* Icono de dispositivo mejorado */
+    .device-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #e7f1fa 0%, #d0e8f7 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.65rem;
+        color: var(--sena-azul);
+        box-shadow: 0 2px 8px rgba(11, 124, 189, 0.15);
+    }
+
+    /* Historial con mejor diseño */
+    #history-list {
+        max-height: 80vh;
+        overflow-y: auto;
+        padding: 0.75rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--sena-azul) #e9ecef;
+    }
+
+    #history-list::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #history-list::-webkit-scrollbar-track {
+        background: #e9ecef;
+        border-radius: 4px;
+    }
+
+    #history-list::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, var(--sena-azul) 0%, #1d7ed6 100%);
+        border-radius: 4px;
+    }
+
+    .history-item {
+        padding: 0.9rem 1.15rem;
+        background: #fff;
+        border-radius: 10px;
+        border-left: 5px solid var(--sena-azul);
+        margin-bottom: 0.65rem;
+        font-size: 0.88rem;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+        transition: all 0.2s ease;
+    }
+
+    .history-item:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .history-item.ingreso {
+        border-left-color: var(--sena-verde);
+        background: linear-gradient(135deg, #fff 0%, #f8fff8 100%);
+    }
+
+    .history-item.salida {
+        border-left-color: var(--sena-naranja);
+        background: linear-gradient(135deg, #fff 0%, #fff8f5 100%);
+    }
+
+    /* Switch premium con animación suave */
+    .mode-switch-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.25rem;
+        padding: 0.85rem 0;
+    }
+
+    .switch-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .mode-switch {
+        position: relative;
+        width: 210px;
+        height: 54px;
+        background: linear-gradient(135deg, #e0e0e0 0%, #d4d4d4 100%);
+        border-radius: 27px;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .mode-switch:hover {
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .mode-switch-slider {
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        width: 100px;
+        height: 44px;
+        background: linear-gradient(135deg, var(--sena-verde) 0%, #4bbb3f 100%);
+        border-radius: 22px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.95rem;
+        letter-spacing: 0.5px;
+        box-shadow: 0 4px 12px rgba(57, 169, 0, 0.4);
+    }
+
+    .mode-switch.salida .mode-switch-slider {
+        left: 105px;
+        background: linear-gradient(135deg, var(--sena-naranja) 0%, #ff8533 100%);
+        box-shadow: 0 4px 12px rgba(255, 102, 0, 0.4);
+    }
+
+    .mode-switch-labels {
+        display: flex;
+        justify-content: space-around;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        align-items: center;
+        pointer-events: none;
+    }
+
+    .mode-switch-label {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #888;
+        transition: all 0.4s;
+        width: 50%;
+        text-align: center;
+        letter-spacing: 0.3px;
+    }
+
+    .mode-switch.ingreso .mode-switch-label.ingreso {
+        color: white;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .mode-switch.salida .mode-switch-label.salida {
+        color: white;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    /* Contenedores con scroll mejorado */
+    .process-container, .device-list-container {
+        max-height: 60vh;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--sena-verde) #e9ecef;
+    }
+
+    .process-container::-webkit-scrollbar, .device-list-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .process-container::-webkit-scrollbar-track, .device-list-container::-webkit-scrollbar-track {
+        background: #e9ecef;
+        border-radius: 4px;
+    }
+
+    .process-container::-webkit-scrollbar-thumb, .device-list-container::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, var(--sena-verde) 0%, #4bbb3f 100%);
+        border-radius: 4px;
+    }
+
+    /* Botón confirmar sticky mejorado */
+    .confirm-button-container {
+        position: sticky;
+        bottom: 0;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        padding: 1.25rem;
+        border-top: 3px solid var(--borde-suave);
+        margin-top: 1.25rem;
+        border-radius: 0 0 var(--radio) var(--radio);
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+    }
+
+    /* Botones premium con gradientes y sombras */
+    button.btn {
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        letter-spacing: 0.3px;
+        border: none;
+        position: relative;
+        overflow: hidden;
+    }
+
+    button.btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    button.btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    button.btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    }
+
+    button.btn:active {
+        transform: translateY(-1px);
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, var(--sena-verde) 0%, #4bbb3f 100%);
+        box-shadow: 0 4px 12px rgba(57, 169, 0, 0.3);
+    }
+
+    .btn-warning {
+        background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+    }
+
+    .btn-outline-success, .btn-outline-primary {
+        border: 2px solid currentColor;
+        transition: all 0.3s ease;
+    }
+
+    .btn-outline-success:hover {
+        background: var(--sena-verde);
+        color: white;
+    }
+
+    /* Alerta pendientes mejorada con animación */
+    .alert-pendientes {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        border: 3px solid #ffc107;
+        border-radius: 14px;
+        padding: 1.75rem;
+        box-shadow: 0 6px 16px rgba(255, 193, 7, 0.35);
+        animation: fadeInAlert 0.6s ease-in-out;
+    }
+
+    .alert-pendientes .alert-heading {
+        color: #856404;
+        font-size: 1.35rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 1.15rem;
+    }
+
+    .alert-pendientes .alert-heading i {
+        font-size: 1.9rem;
+        animation: pulse 2s infinite;
+    }
+
+
+    /* Toast mejorado */
+    .toast {
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+        border: none;
+    }
+
+    /* Badges mejorados */
+    .badge {
+        border-radius: 8px;
+        padding: 0.45rem 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+</style>
+
+<div class="container-fluid py-4">
+
+    <!-- PERFIL -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-success mb-0"><i class="bi bi-person-badge"></i> Perfil</h5>
+
+                    <div class="mode-switch-container">
+                        <div class="switch-wrapper">
+                            <div class="mode-switch ingreso" id="modeSwitch" onclick="toggleMode()">
+                                <div class="mode-switch-slider" id="modeSwitchSlider">INGRESO</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btnNuevoProceso" class="btn btn-success">
+                                <i class="bi bi-broadcast-pin"></i> Iniciar lectura
+                            </button>
+                            <button id="btnBuscarManual" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalBuscarManual">
+                                <i class="bi bi-search"></i> Búsqueda Manual
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="user-profile-content" class="text-muted">
+                    Esperando lectura...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DISPOSITIVOS -->
+    <div class="row g-3">
+
+        <!-- HISTORIAL -->
+        <div class="col-md-3">
+            <div class="card h-100">
+                <div class="card-header blue text-center">
+                    <i class="bi bi-clock-history"></i> Historial
+                </div>
+                <div id="history-list" class="card-body">
+                    <p class="text-center text-muted small">Sin registros</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA IZQUIERDA -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header green text-center" id="left-header">
+                    <i class="bi bi-hdd-stack"></i> <span id="left-title">Dispositivos Disponibles</span>
+                </div>
+                <div class="card-body device-list-container" id="user-owner-devices">
+                    <p class="text-center text-muted">Sin dispositivos.</p>
+                </div>
+
+                <!-- BOTÓN CONFIRMAR QUEDARON EN SENA -->
+                <div id="btnConfirmarQuedanSenaContainer" style="display: none; padding: 1rem; border-top: 2px solid var(--borde-suave);">
+                    <button id="btnConfirmarQuedanSena" class="btn btn-warning w-100">
+                        <i class="bi bi-building"></i> Confirmar Quedaron en SENA (<span id="contadorQuedanSena">0</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA (CARRITO) -->
+        <div class="col-md-5">
+            <div class="card h-100">
+                <div class="card-header" id="right-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span id="right-title">
+                            <i class="bi bi-box-arrow-in-right"></i> Proceso de Ingreso
+                        </span>
+                        <span class="badge bg-white text-dark" id="process-count">0</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="process-container" id="user-process-devices">
+                        <p class="text-center text-muted">No hay dispositivos seleccionados.</p>
+                    </div>
+
+                    <div class="confirm-button-container">
+                        <button id="btnConfirmarProceso" class="btn btn-lg btn-success w-100" disabled>
+                            <i class="bi bi-check-circle"></i> <span id="btn-confirm-text">Confirmar Ingreso</span>
+                            (<span id="contadorConfirmar">0</span>)
+                        </button>
+                        <button id="btnAddDevice" class="btn btn-outline-success w-100 mt-2" disabled
+                                data-bs-toggle="modal" data-bs-target="#modalAddDevice">
+                            <i class="bi bi-plus-circle"></i> Crear Nuevo Dispositivo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <!-- ÚLTIMO DETECTADO -->
+    <div class="row g-3 mt-2">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header blue text-center">Último Detectado</div>
+                <div id="last-detected-item-content" class="card-body text-center">
+                    <p class="text-muted">Esperando escaneo...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" style="position:fixed;bottom:1rem;right:1rem;z-index:2000;"></div>
+</div>
+
+<!-- MODAL CREAR DISPOSITIVO -->
+<div class="modal fade" id="modalAddDevice" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pc"></i> Crear Nuevo Dispositivo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body bg-light">
+                <div class="alert alert-info border-start border-4 border-primary rounded-3">
+                    <h6 class="mb-1"><i class="bi bi-person-lines-fill"></i> Usuario</h6>
+                    <div id="modalUserData" class="small text-muted">Cargando...</div>
+                </div>
+
+                <form id="formDevice" class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <label for="selTipoElemento" class="form-label">Tipo *</label>
+                        <select id="selTipoElemento" class="form-select" required>
+                            <option value="">Cargando...</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="inpSerial" class="form-label">Serial *</label>
+                        <input id="inpSerial" type="text" class="form-control" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="inpMarca" class="form-label">Marca</label>
+                        <input id="inpMarca" type="text" class="form-control">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="inpModelo" class="form-label">Modelo</label>
+                        <input id="inpModelo" type="text" class="form-control">
+                    </div>
+
+                    <div class="col-12">
+                        <label for="inpDescripcion" class="form-label">Descripción</label>
+                        <input id="inpDescripcion" type="text" class="form-control">
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer bg-white">
+                <button id="btnGuardarDevice" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Guardar y Agregar
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL BÚSQUEDA MANUAL -->
+<div class="modal fade" id="modalBuscarManual" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-search"></i> Búsqueda Manual por Documento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body bg-light">
+                <div class="alert alert-info border-start border-4 border-primary rounded-3">
+                    <p class="mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        Ingresa el número de documento o nombre. 
+                    </p>
+                </div>
+
+                <form id="formBuscarManual" class="row g-3 mt-2">
+                    <div class="col-12" style="position: relative;">
+                        <label for="inpDocumentoBuscar" class="form-label">Número de Documento o Nombre *</label>
+                        <input id="inpDocumentoBuscar" type="text" class="form-control form-control-lg"
+                               placeholder="Ej: 1234567890 o Juan Pérez" required autofocus autocomplete="off">
+                        
+                        <!-- 🔍 DROPDOWN DE AUTOCOMPLETE -->
+                        <div id="autocompleteResults" class="list-group" style="position: absolute; z-index: 1000; width: 100%; max-height: 300px; overflow-y: auto; display: none;">
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <button type="button" id="btnBuscarPersona" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-search"></i> Buscar
+                        </button>
+                    </div>
+                </form>
+
+                <div id="resultadoBusqueda" class="mt-3" style="display: none;">
+                    <div class="alert alert-success border-start border-4 border-success rounded-3">
+                        <h6 class="mb-2"><i class="bi bi-person-check-fill"></i> Persona Encontrada</h6>
+                        <div id="datosPersonaEncontrada"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-white">
+                <button id="btnCargarPersona" class="btn btn-success" style="display: none;">
+                    <i class="bi bi-check-circle"></i> Cargar en Terminal
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+
+<script>
+    // 🎯 CONFIGURACIÓN Y VARIABLES GLOBALES
+    const HUB_URL = `${window.location.origin}/nfcHub`;
+
+    const API = {
+        aprendiz: id => `/api/Aprendiz/${id}`,
+        aprendizByDoc: doc => `/api/Aprendiz/byDocumento/${doc}`,
+        usuario: id => `/api/Usuario/${id}`,
+        usuarioByDoc: doc => `/api/Usuario/byDocumento/${doc}`,
+        personaByDoc: doc => `/api/Persona/byDocumento/${doc}`, // ✅ Búsqueda exacta
+        personaSearch: query => `/api/Persona/search?q=${encodeURIComponent(query)}`, // 🔍 Búsqueda dinámica
+        tipos: () => `/api/TipoElementoes`,
+        tiposProceso: () => `/api/TipoProcesoes`,
+        owner: (tipo, id) => `/api/Elementoes/byOwner/${tipo}/${id}`,
+        crearElem: () => `/api/Elementoes`,
+        vincular: () => `/api/ElementoProcesoes`,
+        desvincular: id => `/api/ElementoProcesoes/${id}`,
+        pendientes: (tipo, id) => `/api/ElementoProcesoes/pendientes/${tipo}/${id}`,
+        marcarQuedoSena: (id) => `/api/ElementoProcesoes/marcarQuedoSena/${id}`,
+        byProceso: (idProceso) => `/api/ElementoProcesoes/byProceso/${idProceso}`,
+        procesoActivo: (tipo, id) => `/api/Procesoes/activo/${tipo}/${id}`,
+        crearProceso: () => `/api/Procesoes`
+    };
+
+    let procesoActualId = null;
+    let tipoPersonaActual = null;
+    let idPropietarioActual = null;
+    let modoActual = null;
+    let nombreUsuarioActual = null;
+    let modoForzado = "Ingreso";
+
+    // ✅ VARIABLES PARA EL CARRITO
+    let dispositivosSeleccionados = new Set(); // IDs que VAN A SALIR o están en el carrito de ingreso
+    let dispositivosQuedanSena = new Set();    // IDs que SE QUEDAN EN EL SENA
+    let dispositivosPendientes = [];           // Array completo de pendientes (QuedoEnSena=true)
+    let todosPendientes = [];                  // Todos los ElementoProceso del proceso actual
+
+    const ownerContainer = document.getElementById("user-owner-devices");
+    const processContainer = document.getElementById("user-process-devices");
+    const profileDiv = document.getElementById("user-profile-content");
+    const lastDetected = document.getElementById("last-detected-item-content");
+    const historyList = document.getElementById("history-list");
+    const btnAddDevice = document.getElementById("btnAddDevice");
+    const btnConfirmarProceso = document.getElementById("btnConfirmarProceso");
+    const processCount = document.getElementById("process-count");
+
+
+
+    // ✅ TOGGLE MODO (SWITCH)
+    function toggleMode() {
+        const switchEl = document.getElementById('modeSwitch');
+        const sliderEl = document.getElementById('modeSwitchSlider');
+
+        if (switchEl.classList.contains('ingreso')) {
+            switchEl.classList.remove('ingreso');
+            switchEl.classList.add('salida');
+            sliderEl.textContent = 'SALIDA';
+            modoForzado = 'Salida';
+        } else {
+            switchEl.classList.remove('salida');
+            switchEl.classList.add('ingreso');
+            sliderEl.textContent = 'INGRESO';
+            modoForzado = 'Ingreso';
+        }
+        console.log(`🔄 Modo cambiado a: ${modoForzado}`);
+    }
+
+    // ✅ ACTUALIZAR UI HEADERS
+    function actualizarUIHeaders() {
+        const esIngreso = modoActual === 'Ingreso';
+        const leftHeader = document.getElementById('left-header');
+        const rightHeader = document.getElementById('right-header');
+        const leftTitle = document.getElementById('left-title');
+        const rightTitle = document.getElementById('right-title');
+        const btnConfirmText = document.getElementById('btn-confirm-text');
+
+        if (esIngreso) {
+            leftHeader.className = 'card-header green text-center';
+            rightHeader.className = 'card-header green';
+            leftTitle.innerHTML = '<i class="bi bi-hdd-stack"></i> Dispositivos Disponibles';
+            rightTitle.innerHTML = '<i class="bi bi-clipboard-check"></i> Proceso de Ingreso';
+            btnConfirmText.textContent = 'Confirmar Ingreso';
+            btnConfirmarProceso.className = 'btn btn-lg btn-success w-100';
+        } else {
+            leftHeader.className = 'card-header orange text-center';
+            rightHeader.className = 'card-header orange';
+            leftTitle.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Quedan en el SENA';
+            rightTitle.innerHTML = '<i class="bi bi-clipboard-minus"></i> Proceso de Salida';
+            btnConfirmText.textContent = 'Confirmar Salida';
+            btnConfirmarProceso.className = 'btn btn-lg btn-warning w-100';
+        }
+
+        document.getElementById('contadorConfirmar').textContent = dispositivosSeleccionados.size;
+        processCount.textContent = dispositivosSeleccionados.size;
+        btnConfirmarProceso.disabled = dispositivosSeleccionados.size === 0;
+
+        actualizarBotonQuedanSena();
+    }
+
+    // ✅ TOGGLE DISPOSITIVO EN INGRESO
+    function toggleDispositivoIngreso(idElemento) {
+        if (dispositivosSeleccionados.has(idElemento)) {
+            dispositivosSeleccionados.delete(idElemento);
+        } else {
+            dispositivosSeleccionados.add(idElemento);
+        }
+        actualizarUIHeaders();
+        renderizarColumnaIzquierda();
+        renderizarColumnaDerecha();
+    }
+
+       // ✅ TOGGLE DISPOSITIVO EN SALIDA (Sale <-> Queda)
+     async function toggleDispositivoSalida(idElemento) {
+        console.log(`🔄 Toggle dispositivo ${idElemento} en SALIDA`);
+
+        // Buscar el ElementoProceso en BD
+        const ep = todosPendientes.find(p => {
+            const d = p.elemento || p.Elemento;
+            return (d.idElemento || d.IdElemento) === idElemento;
+        });
+
+        if (!ep) {
+            console.error("❌ ERROR: No se encontró ElementoProceso para este dispositivo.");
+            showToast("❌ No se pudo identificar el registro del dispositivo en el proceso", "danger");
+            return;
+        }
+
+        const idEP = ep.idElementoProceso || ep.IdElementoProceso;
+        console.log(`📌 ElementoProceso encontrado: ${idEP}`);
+
+        // SI ESTÁ EN QUEDAN ➜ PASARLO A SALEN
+        if (dispositivosQuedanSena.has(idElemento)) {
+
+            console.log(`➡️ Dispositivo ${idElemento} movido a SALEN`);
+
+            // ACTUALIZAR EN BD → QuedoEnSena = false
+            try {
+                await safeFetch(API.marcarQuedoSena(idEP), { method: "DELETE" });
+                console.log("🗃️ BD: QuedoEnSena = false");
+            } catch (error) {
+                console.error("❌ Error actualizando BD (false):", error);
+            }
+
+            dispositivosQuedanSena.delete(idElemento);
+            dispositivosSeleccionados.add(idElemento);
+        }
+        // SI ESTÁ EN SALEN ➜ PASARLO A QUEDAN
+        else {
+
+            console.log(`⬅️ Dispositivo ${idElemento} movido a QUEDAN EN SENA`);
+
+            // ACTUALIZAR EN BD → QuedoEnSena = true
+            try {
+                await safeFetch(API.marcarQuedoSena(idEP), { method: "POST" });
+                console.log("🗃️ BD: QuedoEnSena = true");
+            } catch (error) {
+                console.error("❌ Error actualizando BD (true):", error);
+            }
+
+            dispositivosSeleccionados.delete(idElemento);
+            dispositivosQuedanSena.add(idElemento);
+        }
+
+        console.log(`📊 Estado actualizado:`, {
+            salen: Array.from(dispositivosSeleccionados),
+            quedan: Array.from(dispositivosQuedanSena)
+        });
+
+        actualizarUIHeaders();
+        await renderizarColumnaIzquierda();
+        await renderizarColumnaDerecha();
+    }
+
+  
+
+    // ✅ RENDERIZAR COLUMNA IZQUIERDA
+    async function renderizarColumnaIzquierda() {
+        const esIngreso = modoActual === 'Ingreso';
+
+        try {
+            if (esIngreso) {
+                // ========================================
+                // MODO INGRESO: Mostrar dispositivos disponibles
+                // ========================================
+                const res = await safeFetch(API.owner(tipoPersonaActual, idPropietarioActual));
+                const dispositivos = await res.json();
+
+                if (dispositivos.length === 0) {
+                    ownerContainer.innerHTML = '<p class="text-center text-muted">Sin dispositivos registrados.</p>';
+                    return;
+                }
+
+                ownerContainer.innerHTML = '';
+
+                dispositivos.forEach(d => {
+                    const idElem = d.idElemento || d.IdElemento;
+
+                    // ✅ NO MOSTRAR DISPOSITIVOS PENDIENTES (que quedaron en SENA)
+                    const esPendiente = dispositivosPendientes.some(p => {
+                        const pElem = p.elemento || p.Elemento;
+                        return (pElem.idElemento || pElem.IdElemento) === idElem;
+                    });
+
+                    if (esPendiente) {
+                        return; // No mostrar en columna izquierda
+                    }
+
+                    const enCarrito = dispositivosSeleccionados.has(idElem);
+                    renderDeviceLeft(d, enCarrito, false, () => toggleDispositivoIngreso(idElem));
+                });
+
+            } else {
+                // ========================================
+                // MODO SALIDA: Mostrar dispositivos que quedan en SENA
+                // ========================================
+                if (dispositivosQuedanSena.size === 0) {
+                    ownerContainer.innerHTML = '<p class="text-center text-muted">No hay dispositivos marcados como "Quedan en SENA".</p>';
+                    return;
+                }
+
+                ownerContainer.innerHTML = '';
+
+                const todosDispositivos = await safeFetch(API.owner(tipoPersonaActual, idPropietarioActual));
+                const dispositivos = await todosDispositivos.json();
+
+                // Agregar pendientes
+                dispositivosPendientes.forEach(p => {
+                    const d = p.elemento || p.Elemento;
+                    if (!dispositivos.find(td => (td.idElemento || td.IdElemento) === (d.idElemento || d.IdElemento))) {
+                        dispositivos.push(d);
+                    }
+                });
+
+                dispositivos.forEach(d => {
+                    const idElem = d.idElemento || d.IdElemento;
+                    if (dispositivosQuedanSena.has(idElem)) {
+                        renderDeviceLeft(d, false, true, () => toggleDispositivoSalida(idElem));
+                    }
+                });
+            }
+
+        } catch (error) {
+            console.error("Error renderizando columna izquierda:", error);
+            ownerContainer.innerHTML = '<p class="text-danger text-center">Error al cargar</p>';
+        }
+    }
+
+    // ✅ RENDERIZAR DISPOSITIVO EN COLUMNA IZQUIERDA
+    function renderDeviceLeft(d, enCarrito, marcadoQuedaSena, onClickHandler) {
+        // Extraer tipo correctamente de todas las variaciones posibles
+        const tipo = d.tipoElemento?.tipo || d.TipoElemento?.Tipo || d.tipoElemento?.Tipo || d.TipoElemento?.tipo || "Dispositivo";
+        const imagen = d.imagenUrl || d.ImagenUrl;
+        const idElem = d.idElemento || d.IdElemento;
+
+        const itemDiv = document.createElement('div');
+        itemDiv.className = `device-item ${enCarrito ? 'selected' : ''} ${marcadoQuedaSena ? 'pendiente' : ''}`;
+        itemDiv.onclick = onClickHandler;
+
+        let iconoEstado = '';
+        if (enCarrito) {
+            iconoEstado = '<i class="bi bi-check-circle-fill text-success" style="font-size: 1.5rem;"></i>';
+        } else if (marcadoQuedaSena) {
+            iconoEstado = '<i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 1.5rem;"></i>';
+        } else {
+            iconoEstado = '<i class="bi bi-plus-circle text-success" style="font-size: 1.5rem;"></i>';
+        }
+
+        itemDiv.innerHTML = `
+            <div class="device-icon">
+                ${imagen
+                    ? `<img src="${imagen}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
+                    : `<i class="bi bi-${getIconoDispositivo(tipo)}"></i>`
+                }
+            </div>
+            <div style="flex:1">
+                <strong>${tipo}</strong><br>
+                ${d.marca || ''} ${d.modelo || ''}<br>
+                <small style="color: #666;">Serial: ${d.serial || 'N/A'}</small>
+            </div>
+            ${iconoEstado}
+        `;
+
+        ownerContainer.appendChild(itemDiv);
+    }
+
+    // ✅ RENDERIZAR COLUMNA DERECHA (CARRITO)
+    async function renderizarColumnaDerecha() {
+        const esIngreso = modoActual === 'Ingreso';
+
+        if (dispositivosSeleccionados.size === 0 && dispositivosPendientes.length === 0) {
+            processContainer.innerHTML = `
+                <p class="text-center text-muted">
+                    <i class="bi bi-inbox" style="font-size: 3rem;"></i><br>
+                    ${esIngreso ? 'Selecciona dispositivos para agregarlos al carrito' : 'No hay dispositivos para salir'}
+                </p>
+            `;
+            return;
+        }
+
+        try {
+            const res = await safeFetch(API.owner(tipoPersonaActual, idPropietarioActual));
+            const todosDispositivos = await res.json();
+
+            // ✅ AGREGAR PENDIENTES AL ARRAY
+            if (!esIngreso) {
+                dispositivosPendientes.forEach(p => {
+                    const d = p.elemento || p.Elemento;
+                    if (!todosDispositivos.find(td => (td.idElemento || td.IdElemento) === (d.idElemento || d.IdElemento))) {
+                        todosDispositivos.push(d);
+                    }
+                });
+            }
+
+            processContainer.innerHTML = '';
+
+            // ✅ MOSTRAR PENDIENTES EN ROJO (SOLO EN INGRESO)
+            if (esIngreso && dispositivosPendientes.length > 0) {
+                dispositivosPendientes.forEach(p => {
+                    const d = p.elemento || p.Elemento;
+                    renderDeviceRightPendiente(d);
+                });
+            }
+
+            // ✅ MOSTRAR DISPOSITIVOS SELECCIONADOS (CARRITO)
+            todosDispositivos.forEach(d => {
+                const idElem = d.idElemento || d.IdElemento;
+                if (!dispositivosSeleccionados.has(idElem)) return;
+
+                renderDeviceRight(d, esIngreso);
+            });
+
+        } catch (error) {
+            console.error("Error renderizando columna derecha:", error);
+        }
+    }
+
+    // ✅ RENDERIZAR DISPOSITIVO PENDIENTE EN ROJO (SOLO INGRESO)
+    function renderDeviceRightPendiente(d) {
+        // Extraer tipo correctamente de todas las variaciones posibles
+        const tipo = d.tipoElemento?.tipo || d.TipoElemento?.Tipo || d.tipoElemento?.Tipo || d.TipoElemento?.tipo || "Dispositivo";
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'device-item pendiente-rojo';
+
+        itemDiv.innerHTML = `
+            <div class="device-icon" style="background: #ffcccc;">
+                <i class="bi bi-${getIconoDispositivo(tipo)} text-danger"></i>
+            </div>
+            <div style="flex:1">
+                <strong class="text-danger">${tipo}</strong><br>
+                ${d.marca || ''} ${d.modelo || ''}<br>
+                <small style="color: #666;">Serial: ${d.serial || 'N/A'}</small><br>
+                <span class="badge bg-danger mt-1">
+                    <i class="bi bi-exclamation-triangle"></i> Quedó dentro del SENA
+                </span>
+            </div>
+            <i class="bi bi-lock-fill text-danger" style="font-size: 1.5rem;"></i>
+        `;
+
+        processContainer.appendChild(itemDiv);
+    }
+
+    // ✅ RENDERIZAR DISPOSITIVO EN CARRITO
+    function renderDeviceRight(d, esIngreso) {
+        // Extraer tipo correctamente de todas las variaciones posibles
+        const tipo = d.tipoElemento?.tipo || d.TipoElemento?.Tipo || d.tipoElemento?.Tipo || d.TipoElemento?.tipo || "Dispositivo";
+        const idElem = d.idElemento || d.IdElemento;
+
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'device-item';
+        itemDiv.style.borderLeft = esIngreso ? '5px solid var(--sena-verde)' : '5px solid var(--sena-naranja)';
+
+        const botonHTML = esIngreso
+            ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); toggleDispositivoIngreso(${idElem})">
+                   <i class="bi bi-trash"></i>
+               </button>`
+            : `<button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); toggleDispositivoSalida(${idElem})">
+                   <i class="bi bi-arrow-left-right"></i> Mover a "Quedan"
+               </button>`;
+
+        itemDiv.innerHTML = `
+            <div class="device-icon">
+                ${d.imagenUrl
+                    ? `<img src="${d.imagenUrl}" style="width:48px;height:48px;border-radius:6px;object-fit:cover;">`
+                    : `<i class="bi bi-${getIconoDispositivo(tipo)}"></i>`
+                }
+            </div>
+            <div style="flex:1">
+                <strong>${tipo}</strong><br>
+                ${d.marca || ''} ${d.modelo || ''}<br>
+                <small style="color: #666;">Serial: ${d.serial || 'N/A'}</small>
+            </div>
+            ${botonHTML}
+        `;
+
+        processContainer.appendChild(itemDiv);
+    }
+
+       // ✅ CONFIRMAR PROCESO (INGRESO O SALIDA) - VERSIÓN CORREGIDA
+    btnConfirmarProceso.onclick = async function () {
+        if (dispositivosSeleccionados.size === 0) {
+            showToast("⚠️ No hay dispositivos seleccionados", "warning");
+            return;
+        }
+
+        const esIngreso = modoActual === 'Ingreso';
+        const confirmMsg = esIngreso
+            ? `¿Confirmar INGRESO de ${dispositivosSeleccionados.size} dispositivo(s)?`
+            : `¿Confirmar SALIDA de ${dispositivosSeleccionados.size} dispositivo(s)?`;
+
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            showToast("⏳ Guardando...", "info");
+
+            if (esIngreso) {
+                // ========================================
+                // MODO INGRESO
+                // ========================================
+                console.log(`📝 Confirmando INGRESO - Proceso: ${procesoActualId}`);
+
+                const dispositivosYaVinculados = new Set();
+                todosPendientes.forEach(p => {
+                    const d = p.elemento || p.Elemento;
+                    dispositivosYaVinculados.add(d.idElemento || d.IdElemento);
+                });
+
+                let guardados = 0;
+                let yaExistian = 0;
+
+                // ✅ VINCULAR DISPOSITIVOS NUEVOS
+                for (const idElemento of dispositivosSeleccionados) {
+                    if (dispositivosYaVinculados.has(idElemento)) {
+                        yaExistian++;
+                        continue;
+                    }
+
+                    await safeFetch(API.vincular(), {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            IdElemento: idElemento,
+                            IdProceso: procesoActualId,
+                            Validado: true,
+                            QuedoEnSena: false
+                        })
+                    });
+                    guardados++;
+                }
+
+                // ✅ CONFIRMAR INGRESO
+                const procesoResponse = await safeFetch(`/api/Procesoes/${procesoActualId}`);
+                const procesoData = await procesoResponse.json();
+                const estadoActual = procesoData.estadoProceso || procesoData.EstadoProceso;
+
+                if (estadoActual === "Abierto") {
+                    await safeFetch(`/api/Procesoes/confirmarIngreso/${procesoActualId}`, {
+                        method: 'POST',
+                        headers: { "Content-Type": "application/json" }
+                    });
+                }
+
+                showToast(`✅ Ingreso confirmado: ${guardados} dispositivo(s)`, "success");
+
+            } else {
+                // ========================================
+                // MODO SALIDA
+                // ========================================
+                console.log(`🚪 Confirmando SALIDA - Proceso: ${procesoActualId}`);
+                console.log(`   • Dispositivos que salen: ${dispositivosSeleccionados.size}`);
+                console.log(`   • Dispositivos que quedan: ${dispositivosQuedanSena.size}`);
+
+                // ✅ NOTA IMPORTANTE: Ya NO marcamos los dispositivos aquí
+                // porque toggleDispositivoSalida() ya actualiza la BD en tiempo real
+                // cuando el usuario mueve dispositivos entre columnas.
+                // 
+                // ❌ ANTIGUA IMPLEMENTACIÓN (CAUSABA EL BUG):
+                // Marcaba todos los dispositivosQuedanSena como QuedoEnSena=true
+                // incluso si el usuario los había movido de vuelta a "Salida".
+                //
+                // ✅ NUEVA IMPLEMENTACIÓN:
+                // Solo llamamos a confirmarSalida - el backend lee el estado actual
+                // de ElementoProceso.QuedoEnSena que ya fue actualizado por toggleDispositivoSalida
+
+                console.log(`💾 Llamando a /api/Procesoes/confirmarSalida/${procesoActualId}...`);
+                console.log(`   Estado final en BD (ya actualizado por toggles):`);
+                console.log(`   - Dispositivos con QuedoEnSena=false: ${dispositivosSeleccionados.size}`);
+                console.log(`   - Dispositivos con QuedoEnSena=true: ${dispositivosQuedanSena.size}`);
+
+                const salidaResponse = await safeFetch(`/api/Procesoes/confirmarSalida/${procesoActualId}`, {
+                    method: 'POST',
+                    headers: { "Content-Type": "application/json" }
+                });
+
+                const salidaData = await salidaResponse.json();
+                console.log(`✅ Respuesta del servidor:`, salidaData);
+
+                showToast(`✅ Salida confirmada: ${salidaData.dispositivosSalieron} salen, ${salidaData.dispositivosQuedaron} quedan`, "success");
+            }
+
+            // ✅ LIMPIAR DESPUÉS DE CONFIRMAR
+            dispositivosSeleccionados.clear();
+            dispositivosQuedanSena.clear();
+            limpiarProceso();
+
+        } catch (error) {
+            console.error("❌ Error completo:", error);
+            showToast(`❌ Error: ${error.message}`, "danger");
+        }
+    };
+
+    // ✅ ACTUALIZAR BOTÓN "QUEDARON EN SENA"
+    function actualizarBotonQuedanSena() {
+        const btnContainer = document.getElementById('btnConfirmarQuedanSenaContainer');
+        const contador = document.getElementById('contadorQuedanSena');
+
+        if (modoActual === 'Salida' && dispositivosQuedanSena.size > 0) {
+            btnContainer.style.display = 'block';
+            contador.textContent = dispositivosQuedanSena.size;
+        } else {
+            btnContainer.style.display = 'none';
+        }
+    }
+
+    // ✅ BOTÓN SEPARADO "CONFIRMAR QUEDARON EN SENA"
+    document.getElementById('btnConfirmarQuedanSena').onclick = async () => {
+        if (dispositivosQuedanSena.size === 0) {
+            showToast("⚠️ No hay dispositivos marcados", "warning");
+            return;
+        }
+
+        if (!confirm(`¿Marcar ${dispositivosQuedanSena.size} dispositivo(s) como "Quedan en SENA" SIN cerrar el proceso?`)) return;
+
+        try {
+            let marcados = 0;
+
+            for (const idElemento of dispositivosQuedanSena) {
+                const pendiente = todosPendientes.find(p => {
+                    const d = p.elemento || p.Elemento;
+                    return (d.idElemento || d.IdElemento) === idElemento;
+                });
+
+                if (pendiente) {
+                    const idEP = pendiente.idElementoProceso || pendiente.IdElementoProceso;
+                    await safeFetch(API.marcarQuedoSena(idEP), { method: "POST" });
+                    marcados++;
+                }
+            }
+
+            showToast(`✅ ${marcados} dispositivo(s) marcados (proceso AÚN ACTIVO)`, "success");
+
+            // ✅ NO LIMPIAR NI CERRAR - Solo mover dispositivos
+            dispositivosQuedanSena.forEach(id => {
+                dispositivosSeleccionados.delete(id);
+            });
+            dispositivosQuedanSena.clear();
+
+            actualizarBotonQuedanSena();
+            actualizarUIHeaders();
+            await renderizarColumnaIzquierda();
+            await renderizarColumnaDerecha();
+
+        } catch (error) {
+            showToast("❌ Error al marcar dispositivos", "danger");
+        }
+    };
+
+    // ✅ FUNCIONES AUXILIARES
+    async function safeFetch(url, options = {}) {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            let errorMsg = `Error ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.Message || errorData.message || errorMsg;
+            } catch {}
+            throw new Error(errorMsg);
+        }
+        return response;
+    }
+
+    function showToast(msg, type = "info") {
+        const div = document.createElement("div");
+        div.className = `toast text-bg-${type} show`;
+        div.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${msg}</div>
+                <button class="btn-close btn-close-white me-2 m-auto" onclick="this.parentElement.parentElement.remove()"></button>
+            </div>
+        `;
+        document.getElementById("toast-container").appendChild(div);
+        setTimeout(() => div.remove(), 5000);
+    }
+
+    function limpiarProceso() {
+        procesoActualId = null;
+        tipoPersonaActual = null;
+        idPropietarioActual = null;
+        modoActual = null;
+        nombreUsuarioActual = null;
+        dispositivosSeleccionados.clear();
+        dispositivosQuedanSena.clear();
+        dispositivosPendientes = [];
+        todosPendientes = [];
+
+        ownerContainer.innerHTML = `<p class="text-center text-muted">Sin dispositivos.</p>`;
+        processContainer.innerHTML = `<p class="text-center text-muted">No hay dispositivos seleccionados.</p>`;
+        profileDiv.innerHTML = `<div class="text-muted">Esperando lectura...</div>`;
+        lastDetected.innerHTML = `<p class="text-muted">Esperando escaneo...</p>`;
+
+        btnAddDevice.disabled = true;
+        btnConfirmarProceso.disabled = true;
+        processCount.textContent = '0';
+
+        const alertDiv = document.getElementById('pendientes-alert');
+        if (alertDiv) alertDiv.innerHTML = '';
+    }
+
+    function validarProceso(proceso) {
+        if (!proceso) return false;
+        const tipo = proceso.tipoPersona || proceso.TipoPersona;
+        if (tipo === "Aprendiz") return !!(proceso.idAprendiz || proceso.IdAprendiz);
+        if (tipo === "Usuario") return !!(proceso.idUsuario || proceso.IdUsuario);
+        return false;
+    }
+
+    function mapPersona(tipo, data) {
+        const nombre = data.nombre || data.Nombre || "";
+        const apellido = data.apellido || data.Apellido || "";
+        const tipoDoc = data.tipoDocumento || data.TipoDocumento || "";
+        const numDoc = data.numeroDocumento || data.NumeroDocumento || "";
+        const correo = data.correo || data.Correo || "";
+        const codigo = data.codigoBarras || data.CodigoBarras || "N/A";
+
+        let extra = "";
+        if (tipo === "Aprendiz") {
+            const fichaData = data.ficha || data.Ficha;
+            const codigoFicha = fichaData?.codigo || fichaData?.Codigo || "N/A";
+            const programaData = fichaData?.programa || fichaData?.Programa;
+            const nombrePrograma = programaData?.nombrePrograma || programaData?.NombrePrograma || "N/A";
+            extra = `🎓 Aprendiz<br>📚 Ficha: ${codigoFicha}<br>🎯 ${nombrePrograma}`;
+        } else {
+            const rol = data.rol || data.Rol || "Funcionario";
+            const cargo = data.cargo || data.Cargo;
+            extra = `👔 ${rol}${cargo ? `<br>💼 ${cargo}` : ''}`;
+        }
+
+        return {
+            nombreCompleto: `${nombre} ${apellido}`,
+            documento: `${tipoDoc} ${numDoc}`,
+            correo: correo,
+            codigo: codigo,
+            extra: extra
+        };
+    }
+
+    async function showProfile(persona, tipoPersona, proceso, registro) {
+        tipoPersonaActual = tipoPersona;
+        procesoActualId = proceso.idProceso || proceso.IdProceso;
+        modoActual = registro.tipoRegistro || registro.TipoRegistro;
+        nombreUsuarioActual = persona.nombreCompleto;
+
+        idPropietarioActual = tipoPersona === "Aprendiz"
+            ? (proceso.idAprendiz || proceso.IdAprendiz)
+            : (proceso.idUsuario || proceso.IdUsuario);
+
+        const esIngreso = modoActual === "Ingreso";
+
+        profileDiv.innerHTML = `
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    <i class="bi bi-${esIngreso ? 'person-check-fill' : 'person-dash-fill'}"></i>
+                </div>
+                <div style="flex:1">
+                    <strong style="font-size:1.3rem">${persona.nombreCompleto}</strong><br>
+                    <span class="badge bg-${esIngreso ? 'success' : 'warning'} fs-6">
+                        ${esIngreso ? '🟢' : '🟠'} ${modoActual.toUpperCase()}
+                    </span>
+                    <div class="profile-details mt-2">
+                        📄 ${persona.documento}<br>
+                        ✉️ ${persona.correo}<br>
+                        ${persona.extra}<br>
+                        🧾 Código: ${persona.codigo}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        btnAddDevice.disabled = !esIngreso;
+
+        // ✅ OBTENER DISPOSITIVOS DEL PROCESO
+        try {
+            const resDispositivos = await safeFetch(API.byProceso(procesoActualId));
+            todosPendientes = await resDispositivos.json();
+            console.log(`📊 Dispositivos del proceso ${procesoActualId}:`, todosPendientes);
+        } catch {
+            todosPendientes = [];
+        }
+
+        // ✅ OBTENER PENDIENTES (QuedoEnSena=true)
+        try {
+            const resPendientes = await safeFetch(API.pendientes(tipoPersonaActual, idPropietarioActual));
+            dispositivosPendientes = await resPendientes.json();
+            console.log(`📊 Dispositivos pendientes (QuedoEnSena=true):`, dispositivosPendientes);
+
+            if (dispositivosPendientes.length > 0) {
+                mostrarAlertaPendientes(dispositivosPendientes);
+
+                // ✅ EN SALIDA: Agregar pendientes automáticamente al carrito
+                if (!esIngreso) {
+                    dispositivosPendientes.forEach(p => {
+                        const d = p.elemento || p.Elemento;
+                        const idElem = d.idElemento || d.IdElemento;
+                        dispositivosSeleccionados.add(idElem);
+                        console.log(`   ✅ Pendiente ${idElem} agregado al carrito de SALIDA`);
+                    });
+                }
+            }
+        } catch {
+            dispositivosPendientes = [];
+        }
+
+        // ✅ EN SALIDA: Agregar todos los del proceso actual al carrito (excepto pendientes)
+        if (!esIngreso && todosPendientes.length > 0) {
+            todosPendientes.forEach(p => {
+                const d = p.elemento || p.Elemento;
+                const idElem = d.idElemento || d.IdElemento;
+
+                // ✅ SOLO AGREGAR SI NO ES PENDIENTE
+                const esPendiente = dispositivosPendientes.some(pen => {
+                    const penElem = pen.elemento || pen.Elemento;
+                    return (penElem.idElemento || penElem.IdElemento) === idElem;
+                });
+
+                if (!esPendiente) {
+                    dispositivosSeleccionados.add(idElem);
+                    console.log(`   ✅ Dispositivo ${idElem} agregado al carrito de SALIDA`);
+                }
+            });
+        }
+
+        actualizarUIHeaders();
+        await renderizarColumnaIzquierda();
+        await renderizarColumnaDerecha();
+
+        addHistory(modoActual, new Date(), persona.nombreCompleto);
+        showToast(`✔️ ${modoActual} iniciado`, "success");
+    }
+
+    function mostrarAlertaPendientes(pendientes) {
+        // ✅ Alerta removida - los pendientes se manejan silenciosamente
+        // Se mantiene la función vacía por si se usa en otros lugares
+        return;
+    }
+
+    function getIconoDispositivo(tipo) {
+        const iconos = {
+            'Portátil': 'laptop', 'Computador': 'pc-display', 'Tablet': 'tablet',
+            'Mouse': 'mouse', 'Teclado': 'keyboard', 'Cargador': 'plug',
+            'Celular': 'phone', 'USB': 'usb-drive', 'Monitor': 'display', 'Impresora': 'printer'
+        };
+        return iconos[tipo] || "hdd";
+    }
+
+    function addHistory(tipo, fecha, nombre) {
+        const item = document.createElement("div");
+        item.className = `history-item ${tipo === "Ingreso" ? "ingreso" : "salida"}`;
+        item.innerHTML = `
+            <strong>${tipo === "Ingreso" ? "🟢" : "🟠"} ${tipo}</strong> — ${nombre}<br>
+            <small>${new Date(fecha).toLocaleString("es-CO")}</small>
+        `;
+        historyList.prepend(item);
+        while (historyList.children.length > 20) historyList.lastChild.remove();
+    }
+
+    // ✅ MODAL CREAR DISPOSITIVO
+    document.getElementById("modalAddDevice").addEventListener("show.bs.modal", async () => {
+        document.getElementById("modalUserData").innerHTML = `
+            <strong>${nombreUsuarioActual}</strong><br>
+            <span class="badge bg-primary">${tipoPersonaActual}</span>
+        `;
+        await cargarTiposElemento();
+    });
+
+    async function cargarTiposElemento() {
+        try {
+            const res = await safeFetch(API.tipos());
+            const tipos = await res.json();
+            document.getElementById("selTipoElemento").innerHTML = tipos.map(t => `
+                <option value="${t.idTipoElemento || t.IdTipoElemento}">
+                    ${t.tipo || t.Tipo}
+                </option>
+            `).join("");
+        } catch {
+            document.getElementById("selTipoElemento").innerHTML = `<option value="">Error</option>`;
+        }
+    }
+
+    document.getElementById("btnGuardarDevice").onclick = async () => {
+        const selTipo = document.getElementById("selTipoElemento");
+        const inpSerial = document.getElementById("inpSerial");
+        const inpMarca = document.getElementById("inpMarca");
+        const inpModelo = document.getElementById("inpModelo");
+        const inpDescripcion = document.getElementById("inpDescripcion");
+
+        if (!selTipo.value || !inpSerial.value.trim()) {
+            showToast("⚠️ Completa Tipo y Serial", "danger");
+            return;
+        }
+
+        try {
+            const res = await safeFetch(API.crearElem(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    idTipoElemento: Number(selTipo.value),
+                    idPropietario: idPropietarioActual,
+                    tipoPropietario: tipoPersonaActual,
+                    marca: inpMarca.value.trim(),
+                    modelo: inpModelo.value.trim(),
+                    serial: inpSerial.value.trim().toUpperCase(),
+                    descripcion: inpDescripcion.value.trim()
+                })
+            });
+
+            const nuevoElemento = await res.json();
+            dispositivosSeleccionados.add(nuevoElemento.idElemento || nuevoElemento.IdElemento);
+
+            showToast("✅ Dispositivo creado y agregado", "success");
+
+            inpSerial.value = "";
+            inpMarca.value = "";
+            inpModelo.value = "";
+            inpDescripcion.value = "";
+
+            await renderizarColumnaIzquierda();
+            await renderizarColumnaDerecha();
+            actualizarUIHeaders();
+
+            bootstrap.Modal.getInstance(document.getElementById("modalAddDevice")).hide();
+
+        } catch (error) {
+            showToast("❌ Error al crear dispositivo", "danger");
+        }
+    };
+
+    // ✅ BÚSQUEDA MANUAL CON AUTOCOMPLETE DINÁMICO
+    let personaEncontrada = null;
+    let timeoutBusqueda = null;
+    const autocompleteResults = document.getElementById('autocompleteResults');
+    const inpDocumentoBuscar = document.getElementById('inpDocumentoBuscar');
+
+    // 🔍 BÚSQUEDA DINÁMICA (mientras escribe)
+    inpDocumentoBuscar.addEventListener('input', async (e) => {
+        const query = e.target.value.trim();
+
+        // Limpiar timeout anterior
+        if (timeoutBusqueda) clearTimeout(timeoutBusqueda);
+
+        // Si el query es muy corto, ocultar resultados
+        if (query.length < 2) {
+            autocompleteResults.style.display = 'none';
+            autocompleteResults.innerHTML = '';
+            return;
+        }
+
+        // Esperar 300ms antes de buscar (debounce)
+        timeoutBusqueda = setTimeout(async () => {
+            try {
+                const response = await safeFetch(API.personaSearch(query));
+                const resultados = await response.json();
+
+                if (!resultados || resultados.length === 0) {
+                    autocompleteResults.style.display = 'none';
+                    autocompleteResults.innerHTML = '';
+                    return;
+                }
+
+                // Mostrar resultados
+                autocompleteResults.innerHTML = resultados.map(r => {
+                    const tipoPersona = r.tipoPersona || r.TipoPersona;
+                    const badgeClass = tipoPersona === 'Aprendiz' ? 'bg-primary' : 'bg-secondary';
+                    const icon = tipoPersona === 'Aprendiz' ? '🎓' : '👔';
+                    const nombre = r.nombreCompleto || r.NombreCompleto;
+                    const doc = r.numeroDocumento || r.NumeroDocumento;
+                    const correo = r.correo || r.Correo;
+
+                    return `
+                        <button type="button" class="list-group-item list-group-item-action" 
+                                data-persona='${JSON.stringify(r).replace(/'/g, "&apos;")}'>
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">${icon} ${nombre}</h6>
+                                    <small>Doc: ${doc} • ${correo}</small>
+                                </div>
+                                <span class="badge ${badgeClass}">${tipoPersona}</span>
+                            </div>
+                        </button>
+                    `;
+                }).join('');
+
+                autocompleteResults.style.display = 'block';
+
+                // Agregar event listeners a cada resultado
+                autocompleteResults.querySelectorAll('.list-group-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const personaData = JSON.parse(item.dataset.persona);
+                        seleccionarPersonaDesdeAutocomplete(personaData);
+                    });
+                });
+
+            } catch (error) {
+                console.error('Error en búsqueda dinámica:', error);
+                autocompleteResults.style.display = 'none';
+            }
+        }, 300);
+    });
+
+    // 📌 SELECCIONAR PERSONA DESDE AUTOCOMPLETE
+    function seleccionarPersonaDesdeAutocomplete(personaData) {
+        const tipoPersona = personaData.tipoPersona || personaData.TipoPersona;
+        const data = personaData.data || personaData.Data;
+        const idPersona = personaData.idPersona || personaData.IdPersona;
+        const doc = personaData.numeroDocumento || personaData.NumeroDocumento;
+
+        personaEncontrada = mapPersona(tipoPersona, data);
+        personaEncontrada.idReal = idPersona;
+        personaEncontrada.tipoPersona = tipoPersona;
+
+        const badgeClass = tipoPersona === "Aprendiz" ? "bg-primary" : "bg-secondary";
+        const badgeIcon = tipoPersona === "Aprendiz" ? "🎓" : "👔";
+
+        // Actualizar campo de búsqueda
+        inpDocumentoBuscar.value = doc;
+
+        // Ocultar autocomplete
+        autocompleteResults.style.display = 'none';
+
+        // Mostrar resultado
+        document.getElementById('datosPersonaEncontrada').innerHTML = `
+            <strong>${personaEncontrada.nombreCompleto}</strong><br>
+            <span class="badge ${badgeClass} mt-1">${badgeIcon} ${tipoPersona}</span><br>
+            ${personaEncontrada.documento}<br>
+            ${personaEncontrada.correo}
+        `;
+
+        document.getElementById('resultadoBusqueda').style.display = 'block';
+        document.getElementById('btnCargarPersona').style.display = 'block';
+
+        showToast(`✅ ${tipoPersona} seleccionado`, "success");
+    }
+
+    // ✅ BÚSQUEDA EXACTA (botón Buscar)
+    document.getElementById('btnBuscarPersona').onclick = async () => {
+        const documento = inpDocumentoBuscar.value.trim();
+
+        if (!documento) {
+            showToast("⚠️ Ingresa un documento", "warning");
+            return;
+        }
+
+        try {
+            // 🎯 Usar endpoint unificado que busca automáticamente
+            const response = await safeFetch(API.personaByDoc(documento));
+            const result = await response.json();
+            
+            // result = { TipoPersona: "Aprendiz"|"Usuario", IdPersona: 123, Data: {...} }
+            const tipoPersona = result.tipoPersona || result.TipoPersona;
+            const data = result.data || result.Data;
+            const idPersona = result.idPersona || result.IdPersona;
+
+            personaEncontrada = mapPersona(tipoPersona, data);
+            personaEncontrada.idReal = idPersona;
+            personaEncontrada.tipoPersona = tipoPersona;
+
+            const badgeClass = tipoPersona === "Aprendiz" ? "bg-primary" : "bg-secondary";
+            const badgeIcon = tipoPersona === "Aprendiz" ? "🎓" : "👔";
+
+            document.getElementById('datosPersonaEncontrada').innerHTML = `
+                <strong>${personaEncontrada.nombreCompleto}</strong><br>
+                <span class="badge ${badgeClass} mt-1">${badgeIcon} ${tipoPersona}</span><br>
+                ${personaEncontrada.documento}<br>
+                ${personaEncontrada.correo}
+            `;
+
+            document.getElementById('resultadoBusqueda').style.display = 'block';
+            document.getElementById('btnCargarPersona').style.display = 'block';
+
+            showToast(`✅ ${tipoPersona} encontrado`, "success");
+
+        } catch (error) {
+            console.error('Error en búsqueda:', error);
+            showToast("❌ Persona no encontrada", "danger");
+            document.getElementById('resultadoBusqueda').style.display = 'none';
+            document.getElementById('btnCargarPersona').style.display = 'none';
+        }
+    };
+
+    document.getElementById('btnCargarPersona').onclick = async () => {
+        if (!personaEncontrada) return;
+
+        try {
+            let proceso = null;
+
+            try {
+                const resProcesoActivo = await safeFetch(API.procesoActivo(personaEncontrada.tipoPersona, personaEncontrada.idReal));
+                if (resProcesoActivo.ok) {
+                    const procesoData = await resProcesoActivo.json();
+                    const estadoProceso = procesoData.estadoProceso || procesoData.EstadoProceso;
+
+                    if (modoForzado === 'Ingreso') {
+                        if (estadoProceso === 'Abierto' || estadoProceso === 'EnCurso') {
+                            proceso = procesoData;
+                        }
+                    } else {
+                        if (estadoProceso === 'EnCurso') {
+                            proceso = procesoData;
+                        } else {
+                            showToast("⚠️ No hay ingreso activo", "warning");
+                            return;
+                        }
+                    }
+                }
+            } catch { }
+
+            if (!proceso && modoForzado === 'Ingreso') {
+                proceso = await crearNuevoProceso(personaEncontrada);
+            } else if (!proceso) {
+                showToast("❌ No hay proceso activo", "danger");
+                return;
+            }
+
+            const registro = {
+                tipoRegistro: modoForzado,
+                TipoRegistro: modoForzado,
+                fechaRegistro: new Date()
+            };
+
+            await showProfile(personaEncontrada, personaEncontrada.tipoPersona, proceso, registro);
+
+            bootstrap.Modal.getInstance(document.getElementById('modalBuscarManual')).hide();
+            document.getElementById('inpDocumentoBuscar').value = '';
+            document.getElementById('resultadoBusqueda').style.display = 'none';
+            document.getElementById('btnCargarPersona').style.display = 'none';
+            personaEncontrada = null;
+
+        } catch (error) {
+            showToast("❌ Error al cargar persona", "danger");
+        }
+    };
+
+    async function crearNuevoProceso(persona) {
+        const tiposRes = await safeFetch(API.tiposProceso());
+        const tipos = await tiposRes.json();
+        const tipoIngreso = tipos.find(t => (t.tipo || t.Tipo) === 'Ingreso');
+
+        const response = await safeFetch(API.crearProceso(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                IdTipoProceso: tipoIngreso.idTipoProceso || tipoIngreso.IdTipoProceso,
+                TipoPersona: persona.tipoPersona,
+                EstadoProceso: "Abierto",
+                Observaciones: "Proceso manual",
+                IdAprendiz: persona.tipoPersona === "Aprendiz" ? persona.idReal : null,
+                IdUsuario: persona.tipoPersona === "Usuario" ? persona.idReal : null
+            })
+        });
+
+        return await response.json();
+    }
+
+    // ✅ SIGNALR
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl(HUB_URL)
+        .withAutomaticReconnect([0, 2000, 5000, 10000])
+        .build();
+
+    connection.on("OperacionProcesada", async raw => {
+        limpiarProceso();
+
+        const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
+        const proceso = payload.proceso || payload.Proceso;
+        const registro = payload.registro || payload.Registro;
+
+        registro.tipoRegistro = modoForzado;
+        registro.TipoRegistro = modoForzado;
+
+        if (!validarProceso(proceso)) {
+            showToast("❌ Proceso inválido", "danger");
+            return;
+        }
+
+        const tipo = proceso.tipoPersona || proceso.TipoPersona;
+        const id = tipo === "Aprendiz"
+            ? (proceso.idAprendiz || proceso.IdAprendiz)
+            : (proceso.idUsuario || proceso.IdUsuario);
+
+        try {
+            const res = await safeFetch(tipo === "Aprendiz" ? API.aprendiz(id) : API.usuario(id));
+            const data = await res.json();
+            const persona = mapPersona(tipo, data);
+            await showProfile(persona, tipo, proceso, registro);
+        } catch (error) {
+            showToast("❌ Error cargando datos", "danger");
+        }
+    });
+
+       // ✅ CONFIGURAR MODO TERMINAL AL INICIAR
+    connection.start().then(async () => {
+        await connection.invoke("SetModoTerminal");
+        console.log("✅ Modo TERMINAL activado");
+        showToast("🟢 Sistema NFC activo", "success");
+    }).catch(err => console.error(err));
+
+    // ✅ RESTAURAR MODO AL SALIR (opcional)
+    window.addEventListener('beforeunload', () => {
+        connection.invoke("SetModoTerminal").catch(() => {});
+    });
+     
+    connection.onreconnecting(() => showToast("⚠️ Reconectando...", "warning"));
+    connection.onreconnected(() => showToast("✅ Reconectado", "success"));
+    connection.onclose(() => {
+        showToast("❌ Conexión perdida. Recargando...", "danger");
+        setTimeout(() => location.reload(), 3000);
+    });
+
+    document.getElementById("btnNuevoProceso").addEventListener("click", () => {
+        if (procesoActualId && !confirm("¿Iniciar nuevo proceso?")) return;
+        limpiarProceso();
+        showToast("🔄 Esperando escaneo...", "info");
+    });
+
+</script>

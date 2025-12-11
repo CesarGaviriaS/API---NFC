@@ -1,0 +1,213 @@
+﻿<style>
+    /* Navegación compacta y profesional */
+    .admin-subnav {
+        background: white;
+        border-bottom: 2px solid #e9ecef;
+        padding: 0.5rem 0;
+        margin-bottom: 1.5rem;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+
+        .admin-subnav .nav-pills {
+            margin-bottom: 0;
+        }
+
+        .admin-subnav .nav-link {
+            color: #6c757d;
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            position: relative;
+        }
+
+            .admin-subnav .nav-link:hover {
+                color: #198754;
+                background: rgba(25, 135, 84, 0.08);
+            }
+
+            .admin-subnav .nav-link.active {
+                background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+                color: white;
+                font-weight: 600;
+            }
+
+            /* Efecto de línea inferior en hover */
+            .admin-subnav .nav-link::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 0;
+                height: 2px;
+                background: #198754;
+                transition: width 0.3s ease;
+            }
+
+            .admin-subnav .nav-link:hover::after {
+                width: 80%;
+            }
+
+            .admin-subnav .nav-link.active::after {
+                width: 0;
+            }
+
+            /* Iconos en los nav-links */
+            .admin-subnav .nav-link i {
+                margin-right: 0.5rem;
+                font-size: 1rem;
+            }
+
+        /* Dropdown mejorado */
+        .admin-subnav .dropdown-menu {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            min-width: 200px;
+        }
+
+        .admin-subnav .dropdown-item {
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            color: #495057;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+            .admin-subnav .dropdown-item:hover {
+                background: linear-gradient(135deg, rgba(25, 135, 84, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%);
+                color: #198754;
+                transform: translateX(5px);
+            }
+
+            .admin-subnav .dropdown-item i {
+                margin-right: 0.5rem;
+                width: 20px;
+                text-align: center;
+            }
+
+        /* Flecha del dropdown */
+        .admin-subnav .dropdown-toggle::after {
+            margin-left: 0.4rem;
+            vertical-align: middle;
+        }
+
+        /* Estilo para el botón de Login en la subnavegación */
+        .admin-subnav .login-nav-item {
+            margin-left: auto;
+        }
+
+        .admin-subnav .login-nav-link {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white !important;
+            border: none;
+            font-weight: 600;
+        }
+
+            .admin-subnav .login-nav-link:hover {
+                background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+                color: white !important;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+            }
+
+            .admin-subnav .login-nav-link::after {
+                display: none; /* Oculta la línea inferior para el login */
+            }
+</style>
+
+@* Submenú solo visible para Administrador; se controla con data-visible-roles *@
+<div class="admin-subnav" data-visible-roles="Administrador">
+    <div class="container-fluid">
+        <ul class="nav nav-pills">
+            <li class="nav-item">
+                <a class="nav-link @(Context.Request.Path.Value.Contains("/Usuarios") ? "active" : "")"
+                   href="/Admin/Usuarios">
+                    <i class="bi bi-people-fill"></i>Usuarios
+                </a>
+            </li>
+
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle @(Context.Request.Path.Value.Contains("/Elemento") || Context.Request.Path.Value.Contains("/TipoElemento") ? "active" : "")"
+                   data-bs-toggle="dropdown"
+                   href="#"
+                   role="button"
+                   aria-expanded="false">
+                    <i class="bi bi-boxes"></i>Elementos
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item" href="/Admin/Elemento">
+                            <i class="bi bi-box-seam"></i>Elementos
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="/Admin/TipoElemento">
+                            <i class="bi bi-tag"></i>Tipo Elemento
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle @(Context.Request.Path.Value.Contains("/Proceso") || Context.Request.Path.Value.Contains("/TipoProceso") ? "active" : "")"
+                   data-bs-toggle="dropdown"
+                   href="#"
+                   role="button"
+                   aria-expanded="false">
+                    <i class="bi bi-gear-fill"></i>TipoProceso
+                </a>
+                <ul class="dropdown-menu">
+                   
+                    <li>
+                        <a class="dropdown-item" href="/Admin/TipoProceso">
+                            <i class="bi bi-bookmark"></i>Tipo Proceso
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" asp-page="/Admin/FlujoNFC">
+                    <i class="bi bi-shuffle"></i> Flujo Ingreso / Salida
+                </a>
+            </li>
+
+
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle @(Context.Request.Path.Value.Contains("/Programa") || Context.Request.Path.Value.Contains("/Ficha") ? "active" : "")"
+                   data-bs-toggle="dropdown"
+                   href="#"
+                   role="button"
+                   aria-expanded="false">
+                    <i class="bi bi-mortarboard-fill"></i>Académico
+                </a>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a class="dropdown-item" href="/Admin/Programa">
+                            <i class="bi bi-journal-code"></i>Programas
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="/Admin/Ficha">
+                            <i class="bi bi-file-earmark-text"></i>Fichas
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(Context.Request.Path.Value.Contains("/Import") ? "active" : "")"
+                   href="/Admin/Import">
+                    <i class="bi bi-cloud-upload-fill"></i>Importación
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
