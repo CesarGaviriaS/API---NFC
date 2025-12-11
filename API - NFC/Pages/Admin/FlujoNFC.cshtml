@@ -114,6 +114,9 @@
                     <button class="btn btn-outline-primary btn-sm ms-2" id="btnExportPdf">
                         <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
                     </button>
+                    <button class="btn btn-outline-success btn-sm ms-1" id="btnExportCsv">
+                        <i class="bi bi-filetype-csv"></i> Exportar CSV
+                    </button>
                     <button class="btn btn-outline-secondary btn-sm ms-1" id="btnExportWord">
                         <i class="bi bi-file-earmark-word"></i> Exportar Word
                     </button>
@@ -528,6 +531,18 @@
                 const q = buildExportQuery();
                 const url = '/api/Reportes/FlujoNFC/export/word' + (q ? '?' + q : '');
                 const fallback = `flujo_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'')}.docx`;
+                downloadFromUrl(url, fallback);
+            });
+        }
+
+        // ✅ NUEVO: Exportar CSV
+        const btnExportCsv = document.getElementById('btnExportCsv');
+        if (btnExportCsv) {
+            btnExportCsv.addEventListener('click', (e) => {
+                e.preventDefault();
+                const q = buildExportQuery();
+                const url = '/api/Reportes/FlujoNFC/export/csv' + (q ? '?' + q : '');
+                const fallback = `flujo_nfc_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'')}.csv`;
                 downloadFromUrl(url, fallback);
             });
         }
