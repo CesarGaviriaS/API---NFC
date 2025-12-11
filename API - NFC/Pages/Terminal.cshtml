@@ -989,29 +989,22 @@
                 console.log(`   • Dispositivos que salen: ${dispositivosSeleccionados.size}`);
                 console.log(`   • Dispositivos que quedan: ${dispositivosQuedanSena.size}`);
 
-                // ✅ 1. MARCAR LOS QUE QUEDAN EN SENA (SI HAY)
-                if (dispositivosQuedanSena.size > 0) {
-                    console.log(`🟠 Marcando ${dispositivosQuedanSena.size} dispositivo(s) como "Quedan en SENA"...`);
+                // ✅ NOTA IMPORTANTE: Ya NO marcamos los dispositivos aquí
+                // porque toggleDispositivoSalida() ya actualiza la BD en tiempo real
+                // cuando el usuario mueve dispositivos entre columnas.
+                // 
+                // ❌ ANTIGUA IMPLEMENTACIÓN (CAUSABA EL BUG):
+                // Marcaba todos los dispositivosQuedanSena como QuedoEnSena=true
+                // incluso si el usuario los había movido de vuelta a "Salida".
+                //
+                // ✅ NUEVA IMPLEMENTACIÓN:
+                // Solo llamamos a confirmarSalida - el backend lee el estado actual
+                // de ElementoProceso.QuedoEnSena que ya fue actualizado por toggleDispositivoSalida
 
-                    for (const idElemento of dispositivosQuedanSena) {
-                        const pendiente = todosPendientes.find(p => {
-                            const d = p.elemento || p.Elemento;
-                            return (d.idElemento || d.IdElemento) === idElemento;
-                        });
-
-                        if (pendiente) {
-                            const idEP = pendiente.idElementoProceso || pendiente.IdElementoProceso;
-                            console.log(`   • Marcando ElementoProceso ${idEP} como QuedoEnSena=true`);
-
-                            await safeFetch(API.marcarQuedoSena(idEP), {
-                                method: "POST"
-                            });
-                        }
-                    }
-                }
-
-                // ✅ 2. CONFIRMAR SALIDA (Esto registrará en RegistroNFC y liberará pendientes)
                 console.log(`💾 Llamando a /api/Procesoes/confirmarSalida/${procesoActualId}...`);
+                console.log(`   Estado final en BD (ya actualizado por toggles):`);
+                console.log(`   - Dispositivos con QuedoEnSena=false: ${dispositivosSeleccionados.size}`);
+                console.log(`   - Dispositivos con QuedoEnSena=true: ${dispositivosQuedanSena.size}`);
 
                 const salidaResponse = await safeFetch(`/api/Procesoes/confirmarSalida/${procesoActualId}`, {
                     method: 'POST',
