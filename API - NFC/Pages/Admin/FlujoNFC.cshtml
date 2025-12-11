@@ -6,44 +6,201 @@
 }
 
 <style>
+    /* Badges profesionales con efecto pulido */
     .badge-role {
         font-size: 0.75rem;
-        padding: 0.35rem 0.7rem;
+        padding: 0.45rem 0.85rem;
+        font-weight: 600;
+        border-radius: 8px;
+        letter-spacing: 0.4px;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    /* Tabla moderna y organizada con alternancia de colores */
+    .table {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.9rem;
+    }
+
+    .table thead th {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        letter-spacing: 0.8px;
+        border: none;
+        padding: 1.1rem 0.85rem;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.12);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .table thead th i {
+        opacity: 0.9;
+        margin-right: 4px;
+    }
+
+    /* Alternancia de colores (zebra striping) */
+    .table tbody tr {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-bottom: 1px solid #dee2e6;
+        background: white;
+    }
+
+    .table tbody tr:nth-child(even) {
+        background: #f8f9fa;
+    }
+
+    .table tbody tr:hover {
+        transform: translateX(8px) scale(1.01);
+        box-shadow: 0 6px 16px rgba(40, 167, 69, 0.2);
+        background: #e8f5e9 !important;
+        border-left: 4px solid #28a745;
+        z-index: 5;
+        position: relative;
+    }
+
+    .table tbody td {
+        padding: 1rem 0.85rem;
+        vertical-align: middle;
+        border-top: none;
+    }
+
+    /* Texto de filas con mejor contraste */
+    .table tbody td strong {
+        color: #212529;
         font-weight: 600;
     }
 
-    .table tbody tr {
-        transition: all 0.2s ease;
+    .table tbody td small {
+        color: #6c757d;
+        font-size: 0.85rem;
     }
 
-        .table tbody tr:hover {
-            transform: translateX(4px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
+    /* Labels requeridos */
     .form-label.required::after {
         content: " *";
-        color: red;
+        color: #dc3545;
+        font-weight: bold;
     }
 
+    /* Paginación mejorada */
     .pagination {
         margin: 0;
     }
 
+    .page-link {
+        border-radius: 6px;
+        margin: 0 2px;
+        transition: all 0.2s ease;
+    }
+
+    .page-link:hover {
+        background: #28a745;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    /* Badges de estado con diseño premium */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.9rem;
+        font-weight: 600;
+        border-radius: 8px;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+
     .badge-ingreso {
-        background-color: #28a745;
+        background: linear-gradient(135deg, #28a745 0%, #34d058 100%);
+        box-shadow: 0 3px 6px rgba(40, 167, 69, 0.35);
+        border: 1px solid rgba(255,255,255,0.3);
     }
 
     .badge-salida {
-        background-color: #dc3545;
+        background: linear-gradient(135deg, #dc3545 0%, #f85149 100%);
+        box-shadow: 0 3px 6px rgba(220, 53, 69, 0.35);
+        border: 1px solid rgba(255,255,255,0.3);
     }
 
     .badge-aprendiz {
-        background-color: #007bff;
+        background: linear-gradient(135deg, #007bff 0%, #0d6efd 100%);
+        box-shadow: 0 3px 6px rgba(0, 123, 255, 0.35);
+        border: 1px solid rgba(255,255,255,0.3);
     }
 
     .badge-usuario {
-        background-color: #6c757d;
+        background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        box-shadow: 0 3px 6px rgba(108, 117, 125, 0.35);
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    /* Cards con sombra suave */
+    .card {
+        border-radius: 14px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .card-header {
+        border-radius: 14px 14px 0 0 !important;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border-bottom: 3px solid rgba(0,0,0,0.1);
+    }
+
+    /* Botones mejorados */
+    .btn {
+        border-radius: 8px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Scroll suave para tabla */
+    .table-responsive {
+        border-radius: 10px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #28a745 #e9ecef;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .table-responsive::-webkit-scrollbar {
+        height: 10px;
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+        background: #e9ecef;
+        border-radius: 5px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border-radius: 5px;
+        border: 2px solid #e9ecef;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+    }
+
+    /* Badge de contador de registros */
+    .badge.bg-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
     }
 </style>
 
@@ -110,10 +267,7 @@
                         <i class="bi bi-x-circle"></i> Limpiar
                     </button>
 
-                    <!-- BOTONES DE EXPORTACIÓN -->
-                    <button class="btn btn-outline-primary btn-sm ms-2" id="btnExportPdf">
-                        <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
-                    </button>
+                    <!-- EXPORTACIÓN -->
                     <button class="btn btn-outline-success btn-sm ms-1" id="btnExportCsv">
                         <i class="bi bi-filetype-csv"></i> Exportar CSV
                     </button>
@@ -471,7 +625,7 @@
             aplicarFiltros();
         });
 
-        // ==================== FUNCIONES DE EXPORTACIÓN ====================
+        // ==================== EXPORTACIÓN CSV ====================
         function buildExportQuery() {
             const params = new URLSearchParams();
             if (filtroDesde.value) params.append('desde', filtroDesde.value + 'T00:00:00');
