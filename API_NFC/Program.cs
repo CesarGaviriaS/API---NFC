@@ -10,40 +10,57 @@ using API___NFC.Services.Import;
 var builder = WebApplication.CreateBuilder(args);
 
 // ------------------------------------------------------
+// DB CONNECTION: SOLO POSTGRESQL (Render + Local)
+// ------------------------------------------------------
+
+string connectionUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+string connectionString;
+
+if (!string.IsNullOrEmpty(connectionUrl))
+{
+    var uri = new Uri(connectionUrl);
+
+    var userInfo = uri.UserInfo.Split(':');
+
+    connectionString =
+        $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};" +
+        $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=True;";
+}
+else
+{
+    // Local (usa lo que tengas en appsettings.json)
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+}
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// ------------------------------------------------------
 // SERVICES
 // ------------------------------------------------------
-// Razor Pages
+
 builder.Services.AddRazorPages();
 
-// Controllers + camelCase JSON  ✅ (IMPORTANTE)
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
     {
         opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
-// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// DbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// SignalR
 builder.Services.AddSignalR();
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
-// Email Sender (MailKit)
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 
-// Import Services
 builder.Services.AddScoped<ProgramaImportService>();
 builder.Services.AddScoped<FichaImportService>();
 builder.Services.AddScoped<AprendizImportService>();
@@ -51,7 +68,7 @@ builder.Services.AddScoped<UsuarioImportService>();
 builder.Services.AddScoped<ImportServiceFactory>();
 
 // ------------------------------------------------------
-// JWT CONFIG  🔐
+// JWT CONFIG
 // ------------------------------------------------------
 var key = builder.Configuration["Jwt:Key"];
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -81,12 +98,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// ------------------------------------------------------
-// BUILD APP
-// ------------------------------------------------------
 var app = builder.Build();
 
-// Ambiente de desarrollo
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -94,24 +107,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Middlewares
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseCors("AllowAll");
 
-// JWT
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Endpoints
 app.MapRazorPages();
 app.MapControllers();
-
-// SignalR Hub
 app.MapHub<NfcHub>("/nfcHub");
 
-// Redirect root → /Login
 app.MapGet("/", (HttpContext ctx) =>
 {
     ctx.Response.Redirect("/Login");
