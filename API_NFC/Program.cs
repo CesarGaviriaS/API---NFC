@@ -10,7 +10,7 @@ using API___NFC.Services.Import;
 var builder = WebApplication.CreateBuilder(args);
 
 // ------------------------------------------------------
-// DB CONNECTION: SOLO POSTGRESQL (Render + Local)
+// DB CONNECTION: POSTGRES (Render) + LOCAL
 // ------------------------------------------------------
 
 string connectionUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
@@ -20,7 +20,6 @@ string connectionString;
 if (!string.IsNullOrEmpty(connectionUrl))
 {
     var uri = new Uri(connectionUrl);
-
     var userInfo = uri.UserInfo.Split(':');
 
     connectionString =
@@ -29,7 +28,6 @@ if (!string.IsNullOrEmpty(connectionUrl))
 }
 else
 {
-    // Local (usa lo que tengas en appsettings.json)
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
@@ -40,14 +38,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // SERVICES
 // ------------------------------------------------------
 
-builder.Services.AddRazorPages();
-
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
     {
         opts.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
+builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -71,6 +68,7 @@ builder.Services.AddScoped<ImportServiceFactory>();
 // JWT CONFIG
 // ------------------------------------------------------
 var key = builder.Configuration["Jwt:Key"];
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -100,6 +98,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
+// ------------------------------------------------------
+// MIDDLEWARE
+// ------------------------------------------------------
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -110,15 +112,22 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapRazorPages();
+// 👉 PRIMERO APIs
 app.MapControllers();
+
+// 👉 DESPUÉS Razor Pages
+app.MapRazorPages();
+
+// SignalR
 app.MapHub<NfcHub>("/nfcHub");
 
+// Redirect default route
 app.MapGet("/", (HttpContext ctx) =>
 {
     ctx.Response.Redirect("/Login");
