@@ -14,35 +14,79 @@ namespace API___NFC.Services.Import
 
         public FichaImportService(ApplicationDbContext context) : base(context) { }
 
-        protected override async Task<Ficha?> ParseRowAsync(string[] values, Dictionary<string, int> headerMap, int lineNumber, ImportResult result)
+        protected override async Task<Ficha?> ParseRowAsync(
+            string[] values, 
+            Dictionary<string, int> headerMap, 
+            int lineNumber, 
+            ImportResult result)
         {
-            // Cargar cache si es la primera vez
+            // ================================
+            // Cargar Programas en Cache
+            // ================================
             if (_programasCache == null)
             {
                 _programasCache = await _context.Programa
                     .ToDictionaryAsync(p => p.Codigo, p => p.IdPrograma);
             }
 
-            var codigoFicha = GetValue(values, headerMap, "Codigo");
-            var codigoPrograma = GetValue(values, headerMap, "Codigo_Programa");
-            var fechaInicioStr = GetValue(values, headerMap, "FechaInicio");
-            var fechaFinStr = GetValue(values, headerMap, "FechaFin");
+            // ================================
+            // Obtener valores mapeados
+            // ================================
+            var codigoFicha = GetMappedValue(values, headerMap, "Codigo", new[] { "Codigo", "CodigoFicha" });
+            var codigoPrograma = GetMappedValue(values, headerMap, "Codigo_Programa", new[] { "Codigo_Programa", "Programa" });
+            var fechaInicioStr = GetMappedValue(values, headerMap, "FechaInicio", new[] { "FechaInicio" });
+            var fechaFinStr = GetMappedValue(values, headerMap, "FechaFin", new[] { "FechaFin" });
 
-            if (string.IsNullOrEmpty(codigoFicha) || string.IsNullOrEmpty(codigoPrograma))
+            // Crear resumen de datos de la fila
+            var rowData = $"[CodigoFicha: '{codigoFicha ?? "(vacío)"}', " +
+                          $"CodigoPrograma: '{codigoPrograma ?? "(vacío)"}', " +
+                          $"FechaInicio: '{fechaInicioStr ?? "(vacío)"}', " +
+                          $"FechaFin: '{fechaFinStr ?? "(vacío)"}']";
+
+            // ================================
+            // Validar campos obligatorios
+            // ================================
+            var camposFaltantes = new List<string>();
+            if (string.IsNullOrEmpty(codigoFicha)) camposFaltantes.Add("Codigo");
+            if (string.IsNullOrEmpty(codigoPrograma)) camposFaltantes.Add("Codigo_Programa");
+
+            if (camposFaltantes.Count > 0)
             {
-                result.Errores.Add($"Fila {lineNumber}: Faltan campos obligatorios (Codigo, Codigo_Programa)");
+                result.Errores.Add($"❌ Fila {lineNumber}: Faltan campos obligatorios ({string.Join(", ", camposFaltantes)}) → Datos: {rowData}");
                 return null;
             }
 
+            // ================================
+            // Validar que el programa exista
+            // ================================
             if (!_programasCache.ContainsKey(codigoPrograma))
             {
-                result.Errores.Add($"Fila {lineNumber}: El programa con código '{codigoPrograma}' no existe.");
+                result.Errores.Add($"❌ Fila {lineNumber}: El programa con código '{codigoPrograma}' no existe → Datos: {rowData}");
                 return null;
             }
 
-            if (!DateTime.TryParse(fechaInicioStr, out DateTime fechaInicio)) fechaInicio = DateTime.Now;
-            if (!DateTime.TryParse(fechaFinStr, out DateTime fechaFin)) fechaFin = DateTime.Now.AddMonths(6);
+            // ================================
+            // Validar duplicados en BD
+            // ================================
+            var duplicado = await _context.Ficha.AnyAsync(f => f.Codigo == codigoFicha);
+            if (duplicado)
+            {
+                result.Errores.Add($"⚠️ Fila {lineNumber}: La ficha con código '{codigoFicha}' ya existe en la base de datos → Registro ignorado");
+                return null;
+            }
 
+            // ================================
+            // Manejo seguro de fechas
+            // ================================
+            if (!DateTime.TryParse(fechaInicioStr, out DateTime fechaInicio))
+                fechaInicio = DateTime.Now;
+
+            if (!DateTime.TryParse(fechaFinStr, out DateTime fechaFin))
+                fechaFin = fechaInicio.AddMonths(6);
+
+            // ================================
+            // Construir objeto final
+            // ================================
             return new Ficha
             {
                 Codigo = codigoFicha,

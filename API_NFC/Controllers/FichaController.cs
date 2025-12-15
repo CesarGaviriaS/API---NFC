@@ -56,12 +56,14 @@ namespace API___NFC.Controllers
                 return NotFound();
 
             // Actualizar campos
+            // Actualizar campos
             existing.IdPrograma = ficha.IdPrograma;
             existing.Codigo = ficha.Codigo;
-            existing.FechaInicio = ficha.FechaInicio;
-            existing.FechaFinal = ficha.FechaFinal;
+            // Enforce UTC for dates
+            existing.FechaInicio = DateTime.SpecifyKind(ficha.FechaInicio, DateTimeKind.Utc);
+            existing.FechaFinal = DateTime.SpecifyKind(ficha.FechaFinal, DateTimeKind.Utc);
             existing.Estado = ficha.Estado;
-            existing.FechaActualizacion = DateTime.Now;
+            existing.FechaActualizacion = DateTime.UtcNow; // Changed from DateTime.Now to UtcNow
 
             await _context.SaveChangesAsync();
 
@@ -72,6 +74,12 @@ namespace API___NFC.Controllers
         [HttpPost]
         public async Task<ActionResult<Ficha>> PostFicha(Ficha ficha)
         {
+            // Enforce UTC for all dates
+            ficha.FechaInicio = DateTime.SpecifyKind(ficha.FechaInicio, DateTimeKind.Utc);
+            ficha.FechaFinal = DateTime.SpecifyKind(ficha.FechaFinal, DateTimeKind.Utc);
+            ficha.FechaCreacion = DateTime.UtcNow;
+            ficha.FechaActualizacion = DateTime.UtcNow;
+
             _context.Ficha.Add(ficha);
             await _context.SaveChangesAsync();
 

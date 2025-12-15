@@ -10,24 +10,31 @@ using API___NFC.Services.Import;
 var builder = WebApplication.CreateBuilder(args);
 
 // ------------------------------------------------------
+// FIX: Enable Legacy Timestamp Behavior for Npgsql
+// This prevents errors with 'Kind=Unspecified' dates in PostgreSQL
+// ------------------------------------------------------
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+
+// ------------------------------------------------------
 // DATABASE: Render DATABASE_URL or local connection
 // ------------------------------------------------------
-string connectionUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-string connectionString;
+string connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-if (!string.IsNullOrEmpty(connectionUrl))
+var isDev = builder.Environment.IsDevelopment();
+var envDatabaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+// If not in development and we have a DATABASE_URL, use it (Render logic)
+if (!isDev && !string.IsNullOrEmpty(envDatabaseUrl))
 {
-    var uri = new Uri(connectionUrl);
+    var uri = new Uri(envDatabaseUrl);
     var userInfo = uri.UserInfo.Split(':');
 
     connectionString =
         $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};" +
         $"Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=True;";
 }
-else
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-}
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));

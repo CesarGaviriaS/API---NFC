@@ -3,8 +3,8 @@ using System;
 using API_NFC.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -17,74 +17,73 @@ namespace API___NFC.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.9")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("ProductVersion", "8.0.8")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("API___NFC.Models.Aprendiz", b =>
                 {
                     b.Property<int>("IdAprendiz")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdAprendiz"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdAprendiz"));
 
                     b.Property<string>("Apellido")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CodigoBarras")
-                        .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Correo")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasColumnType("character varying(150)");
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<DateTime?>("FechaActualizacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime?>("FechaCreacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<string>("FotoUrl")
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("character varying(255)");
 
                     b.Property<int>("IdFicha")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("NumeroDocumento")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Telefono")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("TipoDocumento")
                         .IsRequired()
                         .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
+                        .HasColumnType("character varying(5)");
 
                     b.HasKey("IdAprendiz");
 
@@ -101,7 +100,53 @@ namespace API___NFC.Migrations
 
                     b.ToTable("Aprendiz", t =>
                         {
-                            t.HasCheckConstraint("CHK_Aprendiz_TipoDocumento", "(TipoDocumento='PA' OR TipoDocumento='CE' OR TipoDocumento='TI' OR TipoDocumento='CC')");
+                            t.HasCheckConstraint("CHK_Aprendiz_TipoDocumento", "(\"TipoDocumento\"='PA' OR \"TipoDocumento\"='CE' OR \"TipoDocumento\"='TI' OR \"TipoDocumento\"='CC')");
+                        });
+                });
+
+            modelBuilder.Entity("API___NFC.Models.DetalleRegistroNFC", b =>
+                {
+                    b.Property<int>("IdDetalleRegistro")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdDetalleRegistro"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("FechaHora")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<int>("IdElemento")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdProceso")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdRegistroNFC")
+                        .HasColumnType("integer");
+
+                    b.Property<bool?>("Validado")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.HasKey("IdDetalleRegistro");
+
+                    b.HasIndex("IdElemento");
+
+                    b.HasIndex("IdProceso");
+
+                    b.HasIndex("IdRegistroNFC");
+
+                    b.ToTable("DetalleRegistroNFC", t =>
+                        {
+                            t.HasCheckConstraint("CHK_DetalleRegistroNFC_Accion", "(\"Accion\"='Ingreso' OR \"Accion\"='Salida' OR \"Accion\"='Quedo')");
                         });
                 });
 
@@ -109,65 +154,64 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdElemento")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdElemento"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdElemento"));
 
                     b.Property<string>("CodigoNFC")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Descripcion")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<DateTime?>("FechaActualizacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime?>("FechaCreacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<int>("IdPropietario")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("IdTipoElemento")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("ImagenUrl")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<string>("Marca")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Modelo")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Serial")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasColumnType("character varying(150)");
 
                     b.Property<string>("TipoPropietario")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("IdElemento");
 
                     b.HasIndex("CodigoNFC")
-                        .IsUnique()
-                        .HasFilter("[CodigoNFC] IS NOT NULL");
+                        .IsUnique();
 
                     b.HasIndex("IdTipoElemento");
 
@@ -176,7 +220,7 @@ namespace API___NFC.Migrations
 
                     b.ToTable("Elemento", t =>
                         {
-                            t.HasCheckConstraint("CHK_Elemento_TipoPropietario", "(TipoPropietario='Usuario' OR TipoPropietario='Aprendiz')");
+                            t.HasCheckConstraint("CHK_Elemento_TipoPropietario", "(\"TipoPropietario\"='Usuario' OR \"TipoPropietario\"='Aprendiz')");
                         });
                 });
 
@@ -184,19 +228,22 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdElementoProceso")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdElementoProceso"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdElementoProceso"));
 
                     b.Property<int>("IdElemento")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("IdProceso")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("QuedoEnSena")
+                        .HasColumnType("boolean");
 
                     b.Property<bool?>("Validado")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
                     b.HasKey("IdElementoProceso");
@@ -212,38 +259,38 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdFicha")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdFicha"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdFicha"));
 
                     b.Property<string>("Codigo")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<DateTime?>("FechaActualizacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime?>("FechaCreacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime>("FechaFinal")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("FechaInicio")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("IdPrograma")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("IdFicha");
 
@@ -259,47 +306,51 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdProceso")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdProceso"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdProceso"));
+
+                    b.Property<string>("EstadoProceso")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<int?>("IdAprendiz")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("IdGuardia")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int?>("IdProceso_Relacionado")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("IdTipoProceso")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int?>("IdUsuario")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Observaciones")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool?>("RequiereOtrosProcesos")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
                     b.Property<bool?>("SincronizadoBD")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
                     b.Property<DateTime?>("TimeStampEntradaSalida")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<string>("TipoPersona")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("IdProceso");
 
@@ -311,7 +362,7 @@ namespace API___NFC.Migrations
 
                     b.ToTable("Proceso", t =>
                         {
-                            t.HasCheckConstraint("CHK_Proceso_TipoPersona", "(TipoPersona='Usuario' OR TipoPersona='Aprendiz')");
+                            t.HasCheckConstraint("CHK_Proceso_TipoPersona", "(\"TipoPersona\"='Usuario' OR \"TipoPersona\"='Aprendiz')");
                         });
                 });
 
@@ -319,39 +370,39 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdPrograma")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdPrograma"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdPrograma"));
 
                     b.Property<string>("Codigo")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<DateTime?>("FechaActualizacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime?>("FechaCreacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<string>("NivelFormacion")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasColumnType("character varying(30)");
 
                     b.Property<string>("NombrePrograma")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("IdPrograma");
 
@@ -360,7 +411,7 @@ namespace API___NFC.Migrations
 
                     b.ToTable("Programa", null, t =>
                         {
-                            t.HasCheckConstraint("CHK_Programa_NivelFormacion", "(NivelFormacion='Operario' OR NivelFormacion='Especialización' OR NivelFormacion='Tecnólogo' OR NivelFormacion='Técnico')");
+                            t.HasCheckConstraint("CHK_Programa_NivelFormacion", "(\"NivelFormacion\"='Operario' OR \"NivelFormacion\"='Especialización' OR \"NivelFormacion\"='Tecnólogo' OR \"NivelFormacion\"='Técnico')");
                         });
                 });
 
@@ -368,33 +419,38 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdRegistro")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdRegistro"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdRegistro"));
 
                     b.Property<string>("Estado")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime?>("FechaRegistro")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<int?>("IdAprendiz")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("IdProceso")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("IdUsuario")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("TipoRegistro")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.HasKey("IdRegistro");
 
                     b.HasIndex("IdAprendiz");
+
+                    b.HasIndex("IdProceso");
 
                     b.HasIndex("IdUsuario");
 
@@ -405,25 +461,25 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdTag")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdTag"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdTag"));
 
                     b.Property<string>("CodigoTag")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("FechaAsignacion")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("IdPersona")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("TipoPersona")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("IdTag");
 
@@ -434,29 +490,29 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdTipoElemento")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdTipoElemento"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdTipoElemento"));
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<DateTime?>("FechaCreacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<bool?>("RequiereNFC")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("IdTipoElemento");
 
@@ -470,19 +526,19 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdTipoProceso")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdTipoProceso"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdTipoProceso"));
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)");
 
                     b.HasKey("IdTipoProceso");
 
@@ -496,87 +552,86 @@ namespace API___NFC.Migrations
                 {
                     b.Property<int>("IdUsuario")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdUsuario"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdUsuario"));
 
                     b.Property<string>("Apellido")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Cargo")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CodigoBarras")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Contraseña")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("Correo")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasColumnType("character varying(150)");
 
                     b.Property<bool?>("Estado")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.Property<DateTime?>("FechaActualizacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime?>("FechaCreacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<DateTime?>("FechaTokenExpira")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("FotoUrl")
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("NumeroDocumento")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Rol")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Telefono")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("TipoDocumento")
                         .IsRequired()
                         .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
+                        .HasColumnType("character varying(5)");
 
                     b.Property<string>("TokenRecuperacion")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("IdUsuario");
 
                     b.HasIndex("CodigoBarras")
-                        .IsUnique()
-                        .HasFilter("[CodigoBarras] IS NOT NULL");
+                        .IsUnique();
 
                     b.HasIndex("Correo")
                         .IsUnique();
@@ -584,11 +639,11 @@ namespace API___NFC.Migrations
                     b.HasIndex("NumeroDocumento")
                         .IsUnique();
 
-                    b.ToTable("Usuario", t =>
+                    b.ToTable("usuario", null, t =>
                         {
-                            t.HasCheckConstraint("CHK_Usuario_Rol", "(Rol='Administrador' OR Rol='Guardia' OR Rol='Funcionario')");
+                            t.HasCheckConstraint("CHK_Usuario_Rol", "(\"Rol\"='Administrador' OR \"Rol\"='Guardia' OR \"Rol\"='Funcionario')");
 
-                            t.HasCheckConstraint("CHK_Usuario_TipoDocumento", "(TipoDocumento='PA' OR TipoDocumento='CE' OR TipoDocumento='TI' OR TipoDocumento='CC')");
+                            t.HasCheckConstraint("CHK_Usuario_TipoDocumento", "(\"TipoDocumento\"='PA' OR \"TipoDocumento\"='CE' OR \"TipoDocumento\"='TI' OR \"TipoDocumento\"='CC')");
                         });
                 });
 
@@ -601,6 +656,33 @@ namespace API___NFC.Migrations
                         .IsRequired();
 
                     b.Navigation("Ficha");
+                });
+
+            modelBuilder.Entity("API___NFC.Models.DetalleRegistroNFC", b =>
+                {
+                    b.HasOne("API___NFC.Models.Elemento", "Elemento")
+                        .WithMany()
+                        .HasForeignKey("IdElemento")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("API___NFC.Models.Proceso", "Proceso")
+                        .WithMany()
+                        .HasForeignKey("IdProceso")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("API___NFC.Models.RegistroNFC", "RegistroNFC")
+                        .WithMany("Detalles")
+                        .HasForeignKey("IdRegistroNFC")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Elemento");
+
+                    b.Navigation("Proceso");
+
+                    b.Navigation("RegistroNFC");
                 });
 
             modelBuilder.Entity("API___NFC.Models.Elemento", b =>
@@ -676,6 +758,11 @@ namespace API___NFC.Migrations
                         .HasForeignKey("IdAprendiz")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("API___NFC.Models.Proceso", "Proceso")
+                        .WithMany()
+                        .HasForeignKey("IdProceso")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("API___NFC.Models.Usuario", "Usuario")
                         .WithMany()
                         .HasForeignKey("IdUsuario")
@@ -683,12 +770,19 @@ namespace API___NFC.Migrations
 
                     b.Navigation("Aprendiz");
 
+                    b.Navigation("Proceso");
+
                     b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("API___NFC.Models.Programa", b =>
                 {
                     b.Navigation("Fichas");
+                });
+
+            modelBuilder.Entity("API___NFC.Models.RegistroNFC", b =>
+                {
+                    b.Navigation("Detalles");
                 });
 #pragma warning restore 612, 618
         }

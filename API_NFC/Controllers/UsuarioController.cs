@@ -95,7 +95,14 @@ namespace API___NFC.Controllers
             existing.Telefono = usuario.Telefono;
             existing.FotoUrl = usuario.FotoUrl;
             existing.Estado = usuario.Estado ?? true;
-            existing.FechaActualizacion = DateTime.Now;
+            existing.FechaActualizacion = DateTime.UtcNow;
+
+            // Ensure other dates are UTC if they exist (PostgreSQL fix)
+            if (existing.FechaCreacion.HasValue && existing.FechaCreacion.Value.Kind == DateTimeKind.Local)
+                existing.FechaCreacion = existing.FechaCreacion.Value.ToUniversalTime();
+            
+            if (existing.FechaTokenExpira.HasValue && existing.FechaTokenExpira.Value.Kind == DateTimeKind.Local)
+                existing.FechaTokenExpira = existing.FechaTokenExpira.Value.ToUniversalTime();
 
             // Actualizar contraseña solo si viene nueva
             if (!string.IsNullOrWhiteSpace(usuario.Contraseña))
@@ -127,8 +134,8 @@ namespace API___NFC.Controllers
             }
 
             usuario.Estado ??= true;
-            usuario.FechaCreacion = DateTime.Now;
-            usuario.FechaActualizacion = DateTime.Now;
+            usuario.FechaCreacion = DateTime.UtcNow;
+            usuario.FechaActualizacion = DateTime.UtcNow;
 
             // 🔐 Hashear contraseña antes de guardar
             usuario.Contraseña = HashPasswordIfNeeded(usuario.Contraseña);
@@ -148,7 +155,7 @@ namespace API___NFC.Controllers
                 return NotFound();
 
             usuario.Estado = false;
-            usuario.FechaActualizacion = DateTime.Now;
+            usuario.FechaActualizacion = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 

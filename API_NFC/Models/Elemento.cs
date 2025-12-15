@@ -42,6 +42,6 @@ namespace API___NFC.Models
         // Navigation
         [ForeignKey("IdTipoElemento")]
         [ValidateNever]  
-        public virtual TipoElemento? TipoElemento { get; set; }  
+        public virtual TipoElemento? TipoElemento { get; set; }
     }
 }

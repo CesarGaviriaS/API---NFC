@@ -14,14 +14,31 @@ namespace API___NFC.Services.Import
 
         public IImportService GetService(string entityType)
         {
-            return entityType.ToLower() switch
+            if (string.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("El nombre del tipo de entidad está vacío.");
+
+            switch (entityType.Trim().ToLower())
             {
-                "programas" => _serviceProvider.GetRequiredService<ProgramaImportService>(),
-                "fichas" => _serviceProvider.GetRequiredService<FichaImportService>(),
-                "aprendices" => _serviceProvider.GetRequiredService<AprendizImportService>(),
-                "funcionarios" => _serviceProvider.GetRequiredService<UsuarioImportService>(),
-                _ => throw new ArgumentException("Tipo de entidad no soportado")
-            };
+                case "programa":
+                case "programas":
+                    return _serviceProvider.GetRequiredService<ProgramaImportService>();
+
+                case "ficha":
+                case "fichas":
+                    return _serviceProvider.GetRequiredService<FichaImportService>();
+
+                case "aprendiz":
+                case "aprendices":
+                    return _serviceProvider.GetRequiredService<AprendizImportService>();
+
+                case "funcionario":
+                case "funcionarios":
+                case "usuarios":
+                    return _serviceProvider.GetRequiredService<UsuarioImportService>();
+
+                default:
+                    throw new ArgumentException($"Tipo de entidad '{entityType}' no soportado.");
+            }
         }
     }
 }

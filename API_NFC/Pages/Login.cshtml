@@ -521,6 +521,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function(){
+            const API_BASE = 'http://localhost:5075';
           // ✅ VALIDACIÓN DE SESIÓN EXISTENTE
           (function checkExistingSession() {
             const token = localStorage.getItem('auth_token');
@@ -922,77 +923,78 @@
         });
 
           // ---------------- REGISTRO ----------------
-          const formRegister = document.getElementById('formRegister');
-          const regError = document.getElementById('alertRegErr');
-          const regOk = document.getElementById('alertRegOk');
-          const spinnerReg = document.getElementById('spinnerReg');
-          const btnReg = document.getElementById('btnReg');
+        const formRegister = document.getElementById('formRegister');
+        const regError = document.getElementById('alertRegErr');
+        const regOk = document.getElementById('alertRegOk');
+        const spinnerReg = document.getElementById('spinnerReg');
+        const btnReg = document.getElementById('btnReg');
 
-          formRegister.addEventListener('submit', async e => {
-            e.preventDefault();
-            hide(regError);
-            hide(regOk);
+        formRegister.addEventListener('submit', async e => {
+        e.preventDefault();
+        hide(regError);
+        hide(regOk);
 
-            const fd = new FormData(formRegister);
+        const fd = new FormData(formRegister);
 
-           
-            const payload = {
-              Nombre: fd.get('Nombre')?.toString().trim(),
-              Apellido: fd.get('Apellido')?.toString().trim(),
-              TipoDocumento: fd.get('TipoDocumento')?.toString().trim(),
-              NumeroDocumento: fd.get('NumeroDocumento')?.toString().trim(),
-              Correo: fd.get('Correo')?.toString().trim(),
-              Contraseña: fd.get('Contraseña')?.toString(),
-              Rol: fd.get('Rol')?.toString().trim(),
+        const payload = {
+            Nombre: fd.get('Nombre')?.toString().trim(),
+            Apellido: fd.get('Apellido')?.toString().trim(),
+            TipoDocumento: fd.get('TipoDocumento')?.toString().trim(),
+            NumeroDocumento: fd.get('NumeroDocumento')?.toString().trim(),
+            Correo: fd.get('Correo')?.toString().trim(),
+            Contraseña: fd.get('Contraseña')?.toString(),
+            Rol: fd.get('Rol')?.toString().trim(),
+            CodigoBarras: fd.get('CodigoBarras')?.toString().trim() || null,
+            Cargo: fd.get('Cargo')?.toString().trim() || null,
+            Telefono: fd.get('Telefono')?.toString().trim() || null,
+            FotoUrl: fd.get('FotoUrl')?.toString().trim() || null
+        };
 
-              CodigoBarras: fd.get('CodigoBarras')?.toString().trim() || null,
-              Cargo: fd.get('Cargo')?.toString().trim() || null,
-              Telefono: fd.get('Telefono')?.toString().trim() || null,
-              FotoUrl: fd.get('FotoUrl')?.toString().trim() || null
-            };
+        if (!payload.Nombre || !payload.Apellido || !payload.TipoDocumento ||
+            !payload.NumeroDocumento || !payload.Correo || !payload.Contraseña || !payload.Rol) {
+            show(regError, 'Completa todos los campos requeridos.');
+            return;
+        }
 
-            // Validación
-            if(!payload.Nombre || !payload.Apellido || !payload.TipoDocumento ||
-               !payload.NumeroDocumento || !payload.Correo || !payload.Contraseña || !payload.Rol) {
-              show(regError, 'Completa todos los campos requeridos.');
-              return;
+        if (payload.Contraseña.length < 6) {
+            show(regError, 'La contraseña debe tener mínimo 6 caracteres.');
+            return;
+        }
+
+        btnReg.disabled = true;
+        spinnerReg.style.display = 'inline-block';
+
+        try {
+            const resp = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+            });
+
+            console.log('Respuesta register:', resp.status, resp.statusText);
+
+            const data = await safeParse(resp);
+
+            if (!resp.ok) {
+            const msg = data.error || data.message || data.rawText || 'Error en el registro';
+            show(regError, msg);
+            } else {
+            show(regOk, 'Registro exitoso. Redirigiendo...');
+            setTimeout(() => {
+                toggleBtn.click();
+                hide(regOk);
+                formRegister.reset();
+            }, 1800);
             }
+        } catch (err) {
+            console.error('Error en fetch /api/auth/register:', err);
+            show(regError, 'Error de conexión. Intenta nuevamente.');
+        } finally {
+            btnReg.disabled = false;
+            spinnerReg.style.display = 'none';
+        }
+        });
 
-            if(payload.Contraseña.length < 6) {
-              show(regError, 'La contraseña debe tener mínimo 6 caracteres.');
-              return;
-            }
-
-            btnReg.disabled = true;
-            spinnerReg.style.display = 'inline-block';
-
-            try {
-              const resp = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-              });
-
-              const data = await safeParse(resp);
-
-              if(!resp.ok) {
-                const msg = data.error || data.message || data.rawText || 'Error en el registro';
-                show(regError, msg);
-              } else {
-                show(regOk, 'Registro exitoso. Redirigiendo...');
-                setTimeout(() => {
-                  toggleBtn.click();
-                  hide(regOk);
-                  formRegister.reset();
-                }, 1800);
-              }
-            } catch {
-              show(regError, 'Error de conexión. Intenta nuevamente.');
-            } finally {
-              btnReg.disabled = false;
-              spinnerReg.style.display = 'none';
-            }
-          });
 
         })();
     </script>
