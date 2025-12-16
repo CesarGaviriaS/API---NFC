@@ -67,6 +67,9 @@ builder.Services.AddScoped<AprendizImportService>();
 builder.Services.AddScoped<UsuarioImportService>();
 builder.Services.AddScoped<ImportServiceFactory>();
 
+// Super Admin Initializer
+builder.Services.AddScoped<SuperAdminInitializer>();
+
 // ------------------------------------------------------
 // JWT AUTHENTICATION
 // ------------------------------------------------------
@@ -100,6 +103,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
+
+// ------------------------------------------------------
+// INITIALIZE SUPER ADMIN
+// ------------------------------------------------------
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var superAdminInitializer = services.GetRequiredService<SuperAdminInitializer>();
+        superAdminInitializer.InitializeAsync().GetAwaiter().GetResult();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error durante la inicialización del super admin");
+    }
+}
 
 // ------------------------------------------------------
 // MIDDLEWARE PIPELINE
